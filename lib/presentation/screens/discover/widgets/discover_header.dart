@@ -4,7 +4,6 @@ import '../../../../core/constants/app_colors.dart';
 class DiscoverHeader extends StatelessWidget {
   final bool isDark;
   final Function(String) onSearch;
-  final VoidCallback onScrapManga;
   final VoidCallback onShowQueue;
   final VoidCallback onSearchScrapSource;
   final VoidCallback onFilter;
@@ -18,7 +17,6 @@ class DiscoverHeader extends StatelessWidget {
     super.key,
     required this.isDark,
     required this.onSearch,
-    required this.onScrapManga,
     required this.onShowQueue,
     required this.onSearchScrapSource,
     required this.onFilter,
@@ -56,13 +54,7 @@ class DiscoverHeader extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
-                  IconButton(
-                    onPressed: onScrapManga,
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: AppColors.primary,
-                    ),
-                  ),
+
                   IconButton(
                     onPressed: onShowQueue,
                     icon: const Icon(

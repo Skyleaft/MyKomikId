@@ -16,7 +16,8 @@ class ReaderScreen extends StatefulWidget {
   State<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> {
+class _ReaderScreenState extends State<ReaderScreen>
+    with SingleTickerProviderStateMixin {
   final MangaApiService _apiService = getIt<MangaApiService>();
   final ProgressionService _progressionService = getIt<ProgressionService>();
   bool _showUI = true;
@@ -24,6 +25,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   final TransformationController _transformationController =
       TransformationController();
   final ScrollController _scrollController = ScrollController();
+  late AnimationController _animationController;
 
   // Local state to allow chapter switching
   late List<String> _pageUrls;
@@ -40,6 +42,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _pageUrls = widget.content.pageUrls;
     _chapterTitle = widget.content.chapterTitle;
     _currentChapterNumber = widget.content.currentChapterNumber;
+    _animationController = AnimationController(vsync: this);
 
     // Set initial scroll position based on saved progress
     if (widget.content.currentPage > 1 &&
@@ -71,6 +74,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _scrollController.dispose();
     _transformationController.removeListener(_onTransformationChanged);
     _transformationController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -179,20 +183,49 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void _handleDoubleTap() {
     final scale = _transformationController.value.getMaxScaleOnAxis();
     if (scale > 1.0) {
-      // Zoom out
-      _transformationController.value = Matrix4.identity();
+      // Zoom out with animation
+      _animateTo(
+        Matrix4.identity(),
+        duration: const Duration(milliseconds: 250),
+      );
     } else if (_doubleTapDetails != null) {
-      // Zoom in
+      // Zoom in with animation
       final position = _doubleTapDetails!.localPosition;
       const targetScale = 2.5;
 
       final x = -position.dx * (targetScale - 1);
       final y = -position.dy * (targetScale - 1);
 
-      _transformationController.value = Matrix4.identity()
+      final targetMatrix = Matrix4.identity()
         ..translate(x, y)
         ..scale(targetScale);
+
+      _animateTo(targetMatrix, duration: const Duration(milliseconds: 250));
     }
+  }
+
+  void _animateTo(Matrix4 targetMatrix, {required Duration duration}) {
+    // Cancel any ongoing animation
+    _animationController.stop();
+    _animationController.reset();
+
+    // Set up the animation
+    _animationController.duration = duration;
+
+    final currentMatrix = _transformationController.value;
+    final animation = Matrix4Tween(begin: currentMatrix, end: targetMatrix)
+        .animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+    animation.addListener(() {
+      _transformationController.value = animation.value;
+    });
+
+    _animationController.forward();
   }
 
   void _onSliderChanged(double value) {

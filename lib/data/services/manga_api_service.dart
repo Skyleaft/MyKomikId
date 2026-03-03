@@ -138,49 +138,32 @@ class MangaApiService {
     return '${AppConfig.baseUrl}/api/images/$localPath';
   }
 
-  Future<void> scrapManga(String mangaUrl, bool scrapChapters) async {
+  Future<void> scrapManga(
+    String mangaUrl,
+    bool scrapChapters,
+    String provider,
+  ) async {
     try {
       await _dio.post(
-        '/api/scrapper/komiku/manga',
-        data: {'mangaUrl': mangaUrl, 'scrapChapters': scrapChapters},
+        '/api/scrapper/$provider/manga',
+        data: {'mangaUrl': mangaUrl, 'scrapChapterPages': scrapChapters},
       );
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> scrapChapterPages(String mangaId) async {
-    try {
-      await _dio.get('/api/scrapper/komiku/manga/$mangaId/chapter-pages');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> searchScrapSource(String query) async {
-    try {
-      final response = await _dio.get(
-        '/api/scrapper/komiku/manga/search',
-        queryParameters: {'keyword': query},
-      );
-      return (response.data as List<dynamic>)
-          .map((e) => e as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> searchKiryuuManga({
+  Future<List<Map<String, dynamic>>> searchScrapSource({
     String? keyword,
     List<String>? genres,
     String? status,
     String? type,
     int page = 1,
+    required String provider,
   }) async {
     try {
       final response = await _dio.get(
-        '/api/scrapper/kiryuu/manga/search',
+        '/api/scrapper/$provider/manga/search',
         queryParameters: {
           'keyword': keyword,
           if (genres != null && genres.isNotEmpty) 'genres': genres,
@@ -189,48 +172,6 @@ class MangaApiService {
           'page': page,
         },
       );
-      return (response.data as List<dynamic>)
-          .map((e) => e as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<Map<String, dynamic>> scrapKiryuuManga(
-    String mangaUrl,
-    bool scrapChapters,
-  ) async {
-    try {
-      final response = await _dio.post(
-        '/api/scrapper/kiryuu/manga',
-        data: {'mangaUrl': mangaUrl, 'scrapChapters': scrapChapters},
-      );
-      return response.data as Map<String, dynamic>;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getKiryuuChapterPages(
-    String chapterUrl,
-  ) async {
-    try {
-      final response = await _dio.post(
-        '/api/scrapper/kiryuu/manga/pages',
-        data: {'chapterUrl': chapterUrl},
-      );
-      return (response.data as List<dynamic>)
-          .map((e) => e as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getKiryuuAllChapters(int mangaId) async {
-    try {
-      final response = await _dio.get('/api/scrapper/kiryuu/manga/$mangaId');
       return (response.data as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();
@@ -266,6 +207,17 @@ class MangaApiService {
   Future<List<Map<String, dynamic>>> getScrapQueue() async {
     try {
       final response = await _dio.get('/api/scrapper/queue');
+      return (response.data as List<dynamic>)
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getScrapProviders() async {
+    try {
+      final response = await _dio.get('/api/scrapper/providers');
       return (response.data as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();

@@ -26,7 +26,12 @@ class _FilterDialogState extends State<FilterDialog> {
 
   List<String> _genres = [];
   List<String> _types = [];
-  final List<String> _statuses = ['Ongoing', 'End', 'Hiatus'];
+  final List<String> _statuses = [
+    'Ongoing',
+    'Completed',
+    'On Hiatus',
+    'Discontinued',
+  ];
 
   bool _isLoading = true;
   String? _error;

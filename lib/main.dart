@@ -4,6 +4,7 @@ import 'core/di/injection.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,9 @@ void main() async {
 
   // Preload Google Fonts to prevent debug pauses
   await GoogleFonts.pendingFonts;
+
+  // Initialize app configuration
+  await AppConfig.init();
 
   await setupInjection();
   runApp(const MyApp());
