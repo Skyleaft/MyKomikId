@@ -58,11 +58,13 @@ class LibraryManga {
       imageUrl: map['imageUrl'] as String,
       url: map['url'] as String?,
       type: map['type'] as String,
-      addedAt: DateTime.parse(map['addedAt'] as String),
-      currentChapter: (map['currentChapter'] as num).toDouble(),
-      currentPage: map['currentPage'] as int,
-      totalPages: map['totalPages'] as int,
-      isCompleted: map['isCompleted'] as bool,
+      addedAt: map['addedAt'] != null
+          ? DateTime.parse(map['addedAt'] as String)
+          : DateTime.now(),
+      currentChapter: (map['currentChapter'] as num? ?? 0).toDouble(),
+      currentPage: map['currentPage'] as int? ?? 1,
+      totalPages: map['totalPages'] as int? ?? 1,
+      isCompleted: map['isCompleted'] as bool? ?? false,
     );
   }
 

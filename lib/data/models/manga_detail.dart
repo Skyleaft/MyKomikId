@@ -54,7 +54,9 @@ class MangaDetail {
       description: map['description'] as String? ?? 'No description available',
       imageUrl: map['imageUrl'] as String?,
       localImageUrl: map['localImageUrl'] as String?,
-      rating: map['rating'] as double?,
+      rating: map['rating'] != null
+          ? (map['rating'] as dynamic).toDouble()
+          : null,
       popularity: map['popularity'] as int? ?? 0,
       members: map['members'] as int? ?? 0,
 
@@ -111,7 +113,7 @@ class Chapter {
   factory Chapter.fromMap(Map<String, dynamic> map) {
     return Chapter(
       title: 'Chapter ${map['number']}',
-      chapterNumber: (map['number'] as num?)?.toDouble() ?? 0.0,
+      chapterNumber: (map['number'] as num? ?? 0).toDouble(),
       date: map['uploadDate'] != null
           ? DateTime.parse(map['uploadDate'] as String)
           : DateTime.now(),

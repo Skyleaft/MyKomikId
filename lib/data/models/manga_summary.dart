@@ -54,7 +54,9 @@ class MangaSummary {
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
       localImageUrl: json['localImageUrl'] as String?,
-      rating: json['rating'] as double?,
+      rating: json['rating'] != null
+          ? (json['rating'] as dynamic).toDouble()
+          : null,
       popularity: json['popularity'] as int? ?? 0,
       members: json['members'] as int? ?? 0,
       status: json['status'] as String?,
@@ -89,7 +91,7 @@ class MangaSummary {
 
 class LatestChapterSummary {
   final String id;
-  final num number;
+  final double number;
   final int totalView;
   final DateTime uploadDate;
   final String? chapterProvider;
@@ -111,7 +113,7 @@ class LatestChapterSummary {
   factory LatestChapterSummary.fromJson(Map<String, dynamic> json) {
     return LatestChapterSummary(
       id: json['id'] as String,
-      number: json['number'] as num? ?? 0,
+      number: (json['number'] as num? ?? 0).toDouble(),
       totalView: json['totalView'] as int? ?? 0,
       uploadDate: json['uploadDate'] != null
           ? DateTime.parse(json['uploadDate'] as String)

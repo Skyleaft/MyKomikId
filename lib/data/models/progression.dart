@@ -20,11 +20,13 @@ class MangaProgression {
   factory MangaProgression.fromMap(Map<String, dynamic> map) {
     return MangaProgression(
       mangaId: map['mangaId'] as String,
-      currentChapter: (map['currentChapter'] as num).toDouble(),
-      currentPage: map['currentPage'] as int,
-      totalPages: map['totalPages'] as int,
-      lastRead: DateTime.parse(map['lastRead'] as String),
-      isCompleted: map['isCompleted'] as bool,
+      currentChapter: (map['currentChapter'] as num? ?? 0).toDouble(),
+      currentPage: map['currentPage'] as int? ?? 1,
+      totalPages: map['totalPages'] as int? ?? 1,
+      lastRead: map['lastRead'] != null
+          ? DateTime.parse(map['lastRead'] as String)
+          : DateTime.now(),
+      isCompleted: map['isCompleted'] as bool? ?? false,
     );
   }
 

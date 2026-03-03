@@ -27,9 +27,10 @@ class SearchResult {
       type: json['type'] ?? '',
       genre: json['genre'] ?? '',
       lastUpdateText: json['lastUpdateText'] ?? '',
-      latestChapterNumber: (json['latestChapterNumber'] ?? 0).toDouble(),
+      latestChapterNumber: (json['latestChapterNumber'] as num? ?? 0)
+          .toDouble(),
       latestScrapped: json['latestScrapped'] != null
-          ? DateTime.parse(json['latestScrapped'])
+          ? DateTime.parse(json['latestScrapped'] as String)
           : null,
     );
   }
