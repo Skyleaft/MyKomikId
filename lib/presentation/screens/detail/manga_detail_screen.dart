@@ -296,61 +296,135 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       manga.imageUrl,
     );
 
-    return Container(
-      height: 400,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            Colors.black.withOpacity(0.2),
-            Colors.black.withOpacity(0.4),
-            AppColors.backgroundDark,
-          ],
-          stops: const [0.0, 0.4, 0.7, 1.0],
-        ),
-      ),
-      child: imageUrl.isNotEmpty
-          ? Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
+    return Stack(
+      children: [
+        // Blurred background image
+        imageUrl.isNotEmpty
+            ? ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
                   height: 400,
-                  color: Colors.grey[800],
-                  child: const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
+                  width: double.infinity,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 400,
+                      color: Colors.grey[800],
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 400,
+                      color: Colors.grey[800],
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: 48,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            : Container(
+                height: 400,
+                color: Colors.grey[800],
+                child: const Center(
+                  child: Icon(
+                    Icons.image_not_supported,
+                    size: 48,
+                    color: Colors.white70,
                   ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 400,
-                  color: Colors.grey[800],
-                  child: const Center(
-                    child: Icon(
-                      Icons.image_not_supported,
-                      size: 48,
-                      color: Colors.white70,
-                    ),
-                  ),
-                );
-              },
-            )
-          : Container(
-              height: 400,
-              color: Colors.grey[800],
-              child: const Center(
-                child: Icon(
-                  Icons.image_not_supported,
-                  size: 48,
-                  color: Colors.white70,
                 ),
               ),
+
+        // Gradient overlay
+        Container(
+          height: 400,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                Colors.black.withOpacity(0.2),
+                Colors.black.withOpacity(0.4),
+                AppColors.backgroundDark,
+              ],
+              stops: const [0.0, 0.4, 0.7, 1.0],
             ),
+          ),
+        ),
+
+        // Centered manga cover thumbnail
+        Center(
+          child: Container(
+            width: 230,
+            height: 300,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.grey[300],
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[300],
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              size: 32,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: 32,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
