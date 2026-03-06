@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:smart_cached_network_image/smart_cached_network_image.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
@@ -9,6 +9,8 @@ import '../../../data/models/progression.dart';
 import '../../../data/models/reader_content.dart';
 import '../../../data/services/manga_api_service.dart';
 import '../../../data/services/progression_service.dart';
+import 'widgets/app_network_image.dart';
+import 'package:flutter/foundation.dart';
 
 class ReaderScreen extends StatefulWidget {
   final ReaderContent content;
@@ -26,6 +28,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _showUI = true;
   bool _isLoading = false;
   Timer? _debounceTimer;
+  late List<GlobalKey> _pageKeys;
+  bool _isSliderScrolling = false;
+
   final TransformationController _transformationController =
       TransformationController();
   final ScrollController _scrollController = ScrollController();
@@ -44,8 +49,12 @@ class _ReaderScreenState extends State<ReaderScreen>
   void initState() {
     super.initState();
     _pageUrls = widget.content.pageUrls;
+
     _chapterTitle = widget.content.chapterTitle;
     _currentChapterNumber = widget.content.currentChapterNumber;
+
+    _pageKeys = List.generate(_pageUrls.length, (_) => GlobalKey());
+
     _animationController = AnimationController(vsync: this);
 
     // Set initial scroll position based on saved progress
@@ -87,26 +96,55 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   void _onScroll() {
+    if (_isSliderScrolling) return;
     if (!_scrollController.hasClients) return;
 
-    final position = _scrollController.position;
-    final maxScroll = position.maxScrollExtent;
-    final currentScroll = position.pixels;
+    final viewportHeight = MediaQuery.of(context).size.height;
+    final scrollPosition = _scrollController.position;
 
-    if (maxScroll > 0) {
-      final newProgress = (currentScroll / maxScroll).clamp(0.0, 1.0);
-      // Logika perhitungan halaman yang lebih akurat
-      final newPage = ((newProgress * (_pageUrls.length - 1)).round() + 1);
+    // Jika sudah di paling bawah
+    if (scrollPosition.pixels >= scrollPosition.maxScrollExtent - 10) {
+      final lastPage = _pageUrls.length;
 
-      if ((newProgress - _progress).abs() > 0.001 || newPage != _currentPage) {
+      if (_currentPage != lastPage) {
         setState(() {
-          _progress = newProgress;
-          _currentPage = newPage;
+          _currentPage = lastPage;
+          _progress = 1.0;
         });
 
-        // OPTIMASI: Jangan simpan setiap pixel. Gunakan Debouncer (misal: 1 detik setelah berhenti scroll)
         _debounceSaveProgression();
       }
+      return;
+    }
+
+    double closestDistance = double.infinity;
+    int visiblePage = _currentPage;
+
+    for (int i = 0; i < _pageKeys.length; i++) {
+      final pageContext = _pageKeys[i].currentContext;
+      if (pageContext == null) continue;
+
+      final box = pageContext.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+
+      final pageCenter = position.dy + box.size.height / 2;
+      final viewportCenter = viewportHeight / 2;
+
+      final distance = (pageCenter - viewportCenter).abs();
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        visiblePage = i + 1;
+      }
+    }
+
+    if (visiblePage != _currentPage) {
+      setState(() {
+        _currentPage = visiblePage;
+        _progress = (visiblePage - 1) / (_pageUrls.length - 1);
+      });
+
+      _debounceSaveProgression();
     }
   }
 
@@ -115,14 +153,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     _debounceTimer = Timer(const Duration(seconds: 1), () {
       _saveProgression();
     });
-  }
-
-  void _precacheNextPages(int currentIndex) {
-    for (int i = 1; i <= 5; i++) {
-      if (currentIndex + i < _pageUrls.length) {
-        precacheImage(NetworkImage(_pageUrls[currentIndex + i]), context);
-      }
-    }
   }
 
   Future<void> _changeChapter(bool next) async {
@@ -170,6 +200,12 @@ class _ReaderScreenState extends State<ReaderScreen>
               ),
             )
             .toList();
+
+        _pageKeys = List.generate(
+          _pageUrls.length,
+          (_) => GlobalKey(),
+        ); // penting
+
         _chapterTitle = targetChapter.title;
         _currentChapterNumber = targetChapter.chapterNumber;
         _progress = 0.0;
@@ -249,17 +285,6 @@ class _ReaderScreenState extends State<ReaderScreen>
     _animationController.forward();
   }
 
-  void _onSliderChanged(double value) {
-    setState(() {
-      _progress = value;
-    });
-    if (_scrollController.hasClients) {
-      final position = _scrollController.position;
-      final targetScroll = value * position.maxScrollExtent;
-      _scrollController.jumpTo(targetScroll);
-    }
-  }
-
   void _handleKeyboard(LogicalKeyboardKey key) {
     if (!_scrollController.hasClients) return;
 
@@ -330,6 +355,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                         )
                       : CustomScrollView(
                           controller: _scrollController,
+                          cacheExtent: 3000,
                           physics: const ClampingScrollPhysics(),
                           slivers: [
                             SliverList(
@@ -339,27 +365,16 @@ class _ReaderScreenState extends State<ReaderScreen>
                               ) {
                                 final url = _pageUrls[index];
 
-                                // Trigger precache untuk halaman didepannya
-                                if (index == _currentPage - 1) {
-                                  _precacheNextPages(index);
-                                }
-
                                 return Container(
+                                  key: _pageKeys[index],
                                   width: screenWidth,
-                                  // Memberikan batasan minimal agar tidak jumpy
-                                  constraints: BoxConstraints(
-                                    minHeight: screenWidth,
-                                  ),
-                                  child: CachedNetworkImage(
+                                  child: AppNetworkImage(
                                     imageUrl: url,
                                     fit: BoxFit.fitWidth,
                                     width: screenWidth,
-                                    // Menggunakan filterQuality rendah saat scroll cepat untuk performa
-                                    filterQuality: FilterQuality.low,
-                                    placeholder: (context, url) => Container(
-                                      height:
-                                          screenWidth *
-                                          1.4, // Rasio standar halaman manga
+                                    gaplessPlayback: true,
+                                    placeholder: Container(
+                                      height: screenWidth * 1.4,
                                       width: screenWidth,
                                       color: Colors.black,
                                       child: const Center(
@@ -368,15 +383,14 @@ class _ReaderScreenState extends State<ReaderScreen>
                                         ),
                                       ),
                                     ),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                          height: 200,
-                                          color: Colors.grey[900],
-                                          child: const Icon(
-                                            Icons.broken_image,
-                                            color: Colors.white24,
-                                          ),
-                                        ),
+                                    errorWidget: Container(
+                                      height: 200,
+                                      color: Colors.black,
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white24,
+                                      ),
+                                    ),
                                   ),
                                 );
                               }, childCount: _pageUrls.length),
@@ -548,7 +562,27 @@ class _ReaderScreenState extends State<ReaderScreen>
                       ),
                       child: Slider(
                         value: _progress,
-                        onChanged: _onSliderChanged,
+                        onChangeStart: (_) {
+                          _isSliderScrolling = true;
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            _progress = value;
+                            _currentPage =
+                                ((value * (_pageUrls.length - 1)).round() + 1);
+                          });
+
+                          if (_scrollController.hasClients) {
+                            final maxScroll =
+                                _scrollController.position.maxScrollExtent;
+                            final target = value * maxScroll;
+
+                            _scrollController.jumpTo(target);
+                          }
+                        },
+                        onChangeEnd: (_) {
+                          _isSliderScrolling = false;
+                        },
                       ),
                     ),
                   ),
