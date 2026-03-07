@@ -50,35 +50,46 @@ class ReaderContentWidget extends StatelessWidget {
                 panEnabled:
                     transformationController.value.getMaxScaleOnAxis() > 1,
                 boundaryMargin: EdgeInsets.zero,
+                clipBehavior: Clip.none,
                 trackpadScrollCausesScale: false,
                 child: CustomScrollView(
                   controller: scrollController,
                   cacheExtent: 5000,
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics:
+                      transformationController.value.getMaxScaleOnAxis() > 1
+                      ? const NeverScrollableScrollPhysics()
+                      : const ClampingScrollPhysics(),
                   slivers: [
                     SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final url = pageUrls[index];
 
-                        return AppNetworkImage(
-                          imageUrl: url,
-                          fit: BoxFit.fitWidth,
+                        final imageHeight = screenWidth * 1.5;
+
+                        return SizedBox(
                           width: screenWidth,
-                          gaplessPlayback: true,
-                          placeholder: Container(
-                            height: screenWidth * 1.5,
+                          child: AppNetworkImage(
+                            imageUrl: url,
+                            fit: BoxFit.fitWidth,
                             width: screenWidth,
-                            color: Colors.black,
-                            child: const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                            gaplessPlayback: true,
+                            placeholder: Container(
+                              height: imageHeight,
+                              width: screenWidth,
+                              color: Colors.black,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
-                          ),
-                          errorWidget: Container(
-                            height: 200,
-                            color: Colors.black,
-                            child: const Icon(
-                              Icons.broken_image,
-                              color: Colors.white24,
+                            errorWidget: Container(
+                              height: imageHeight,
+                              color: Colors.black,
+                              child: const Icon(
+                                Icons.broken_image,
+                                color: Colors.white24,
+                              ),
                             ),
                           ),
                         );

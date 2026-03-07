@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 
-class AppNetworkImage extends StatelessWidget {
+class AppNetworkImage extends StatefulWidget {
   final String imageUrl;
   final BoxFit fit;
   final double? width;
@@ -13,7 +12,7 @@ class AppNetworkImage extends StatelessWidget {
   const AppNetworkImage({
     super.key,
     required this.imageUrl,
-    this.fit = BoxFit.cover,
+    this.fit = BoxFit.fitWidth,
     this.width,
     required this.placeholder,
     required this.errorWidget,
@@ -21,32 +20,52 @@ class AppNetworkImage extends StatelessWidget {
   });
 
   @override
+  State<AppNetworkImage> createState() => _AppNetworkImageState();
+}
+
+class _AppNetworkImageState extends State<AppNetworkImage> {
+  double? _aspectRatio;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveImage();
+  }
+
+  void _resolveImage() {
+    final image = Image(image: CachedNetworkImageProvider(widget.imageUrl));
+
+    image.image
+        .resolve(const ImageConfiguration())
+        .addListener(
+          ImageStreamListener((info, _) {
+            final ratio =
+                info.image.width.toDouble() / info.image.height.toDouble();
+
+            if (mounted) {
+              setState(() {
+                _aspectRatio = ratio;
+              });
+            }
+          }),
+        );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // WEB
-    if (kIsWeb) {
-      return Image.network(
-        imageUrl,
-        fit: fit,
-        width: width,
-        gaplessPlayback: gaplessPlayback,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return placeholder ??
-              const Center(child: CircularProgressIndicator());
-        },
-        errorBuilder: (context, error, stack) {
-          return errorWidget ??
-              const Icon(Icons.broken_image, color: Colors.white24);
-        },
-      );
+    if (_aspectRatio == null) {
+      return widget.placeholder;
     }
-    // MOBILE
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      fit: fit,
-      width: width,
-      placeholder: (context, url) => placeholder,
-      errorWidget: (context, url, error) => errorWidget,
+
+    return AspectRatio(
+      aspectRatio: _aspectRatio!,
+      child: CachedNetworkImage(
+        imageUrl: widget.imageUrl,
+        fit: widget.fit,
+        width: widget.width,
+        placeholder: (context, url) => widget.placeholder,
+        errorWidget: (context, url, error) => widget.errorWidget,
+      ),
     );
   }
 }
