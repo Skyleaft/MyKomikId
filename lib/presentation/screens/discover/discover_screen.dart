@@ -13,7 +13,10 @@ import 'widgets/scrap_queue_dialog.dart';
 import 'widgets/filter_dialog.dart';
 
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key});
+  final String? initialSearch;
+  final String? sortBy;
+
+  const DiscoverScreen({super.key, this.initialSearch, this.sortBy});
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -33,13 +36,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   String? _selectedType;
   String? _selectedStatus;
 
-  String _sortBy = 'updatedAt';
+  late String _sortBy;
   String _orderBy = 'desc';
 
   @override
   void initState() {
     super.initState();
+    _searchQuery = widget.initialSearch;
+    _sortBy = widget.sortBy ?? 'updatedAt';
     _fetchData();
+  }
+
+  @override
+  void didUpdateWidget(covariant DiscoverScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialSearch != oldWidget.initialSearch ||
+        widget.sortBy != oldWidget.sortBy) {
+      _searchQuery = widget.initialSearch;
+      _sortBy = widget.sortBy ?? 'updatedAt';
+      _fetchData(refresh: true);
+    }
   }
 
   Future<void> _fetchData({bool refresh = false}) async {

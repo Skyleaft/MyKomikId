@@ -295,11 +295,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   borderRadius: BorderRadius.circular(12),
                   color: isDark ? Colors.grey[800] : Colors.grey[200],
                 ),
-                child: mangaDetail?.displayImageUrl != null
+                child: mangaDetail != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
-                          mangaDetail!.displayImageUrl,
+                          _apiService.getLocalImageUrl(
+                            mangaDetail.localImageUrl,
+                            mangaDetail.imageUrl,
+                          ),
                           fit: BoxFit.cover,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;

@@ -77,18 +77,22 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text('Removed from library')));
       } else {
+        final status = await _showStatusSelection(context);
+        if (status == null) return; // User cancelled
+
         final libraryManga = LibraryManga.fromMangaDetail(
           manga.id,
           manga.title,
           manga.author,
           manga.displayImageUrl,
           manga.url,
-          manga.type ?? 'MANGA', // Use manga type or default to MANGA
+          manga.type,
+          status: status,
         );
         await _libraryService.addToLibrary(libraryManga);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Added to library')));
+        ).showSnackBar(SnackBar(content: Text('Added to library as $status')));
       }
 
       if (mounted) {
@@ -103,6 +107,44 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     }
+  }
+
+  Future<String?> _showStatusSelection(BuildContext context) async {
+    return showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final statuses = [
+          'Reading',
+          'Completed',
+          'OnHold',
+          'Dropped',
+          'PlanToRead',
+        ];
+
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Status',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ...statuses.map(
+                (status) => ListTile(
+                  title: Text(status),
+                  onTap: () => Navigator.pop(context, status),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -229,11 +271,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
   }
 
-  Future<void> _navigateToReader(
-    BuildContext context,
-    double chapterNumber,
-    String chapterTitle,
-  ) async {
+  Future<void> _navigateToReader(BuildContext context, Chapter chapter) async {
     // Show loading dialog
     showDialog(
       context: context,
@@ -244,7 +282,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
 
     try {
-      final pages = await _apiService.getChapterPages(manga.id, chapterNumber);
+      final pages = await _apiService.getChapterPages(
+        manga.id,
+        chapter.chapterNumber,
+      );
 
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
@@ -254,16 +295,17 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         int startingPage = 1;
 
         if (progression != null &&
-            progression.currentChapter == chapterNumber) {
+            progression.currentChapter == chapter.chapterNumber) {
           startingPage = progression.currentPage;
         }
 
         final content = ReaderContent(
           mangaId: manga.id,
           mangaTitle: manga.title,
-          currentChapterNumber: chapterNumber,
+          currentChapterNumber: chapter.chapterNumber,
+          chapterId: chapter.id,
           allChapters: _chapters,
-          chapterTitle: chapterTitle,
+          chapterTitle: chapter.title,
           pageUrls: pages
               .map(
                 (p) => _apiService.getLocalImageUrl(
@@ -690,11 +732,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     if (availableChapters.isNotEmpty) {
                       // Assuming last is first chapter (earliest)
                       final firstAvailable = availableChapters.last;
-                      _navigateToReader(
-                        context,
-                        firstAvailable.chapterNumber,
-                        firstAvailable.title,
-                      );
+                      _navigateToReader(context, firstAvailable);
                     }
                   },
             style: ElevatedButton.styleFrom(
@@ -777,11 +815,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           child: ElevatedButton.icon(
             onPressed: () {
               if (targetChapter != null) {
-                _navigateToReader(
-                  context,
-                  targetChapter.chapterNumber,
-                  targetChapter.title,
-                );
+                _navigateToReader(context, targetChapter);
               } else {
                 // Fallback to first available chapter
                 final availableChapters = _chapters
@@ -790,11 +824,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
                 if (availableChapters.isNotEmpty) {
                   final firstAvailable = availableChapters.last;
-                  _navigateToReader(
-                    context,
-                    firstAvailable.chapterNumber,
-                    firstAvailable.title,
-                  );
+                  _navigateToReader(context, firstAvailable);
                 }
               }
             },
@@ -952,10 +982,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     final Color textColor = isDark ? Colors.white : Colors.black87;
 
     return InkWell(
-      onTap: isAvailable
-          ? () =>
-                _navigateToReader(context, chapter.chapterNumber, chapter.title)
-          : null,
+      onTap: isAvailable ? () => _navigateToReader(context, chapter) : null,
       borderRadius: BorderRadius.circular(16),
       child: Opacity(
         opacity: isAvailable ? 1.0 : 0.6,

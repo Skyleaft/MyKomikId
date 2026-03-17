@@ -39,11 +39,16 @@ class _ReaderScreenState extends State<ReaderScreen>
   // Local state to allow chapter switching
   late List<String> _pageUrls;
   late String _chapterTitle;
+  late String _chapterId;
   late double _currentChapterNumber;
 
   double _progress = 0.0;
   int _currentPage = 1;
   TapDownDetails? _doubleTapDetails;
+
+  // Reading time tracking
+  int _initialReadingTimeSeconds = 0;
+  late DateTime _sessionStartTime;
 
   @override
   void initState() {
@@ -51,6 +56,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _pageUrls = widget.content.pageUrls;
 
     _chapterTitle = widget.content.chapterTitle;
+    _chapterId = widget.content.chapterId;
     _currentChapterNumber = widget.content.currentChapterNumber;
 
     _animationController = AnimationController(vsync: this);
@@ -77,6 +83,24 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     _transformationController.addListener(_onTransformationChanged);
     _scrollController.addListener(_onScroll);
+
+    _sessionStartTime = DateTime.now();
+    _loadInitialReadingTime();
+  }
+
+  Future<void> _loadInitialReadingTime() async {
+    try {
+      final progression = await _progressionService.getProgression(
+        widget.content.mangaId,
+      );
+      if (progression != null && mounted) {
+        setState(() {
+          _initialReadingTimeSeconds = progression.readingTimeSeconds;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load initial reading time: $e');
+    }
   }
 
   @override
@@ -172,6 +196,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       // Clear live images to allow eviction of previous chapter images
       PaintingBinding.instance.imageCache.clearLiveImages();
 
+      // Update total reading time before switching
+      final sessionSeconds = DateTime.now()
+          .difference(_sessionStartTime)
+          .inSeconds;
+      _initialReadingTimeSeconds += sessionSeconds;
+      _sessionStartTime = DateTime.now();
+
       setState(() {
         _pageUrls = pages
             .map(
@@ -183,6 +214,7 @@ class _ReaderScreenState extends State<ReaderScreen>
             .toList();
 
         _chapterTitle = targetChapter.title;
+        _chapterId = targetChapter.id;
         _currentChapterNumber = targetChapter.chapterNumber;
         _progress = 0.0;
         _currentPage = 1;
@@ -409,13 +441,20 @@ class _ReaderScreenState extends State<ReaderScreen>
   Future<void> _saveProgression() async {
     final isCompleted = _progress >= 0.99;
 
+    final sessionSeconds = DateTime.now()
+        .difference(_sessionStartTime)
+        .inSeconds;
+    final totalReadingTime = _initialReadingTimeSeconds + sessionSeconds;
+
     final progression = MangaProgression(
       mangaId: widget.content.mangaId,
+      chapterId: _chapterId,
       currentChapter: _currentChapterNumber,
       currentPage: _currentPage,
       totalPages: _pageUrls.length,
       lastRead: DateTime.now(),
       isCompleted: isCompleted,
+      readingTimeSeconds: totalReadingTime,
     );
 
     try {

@@ -21,6 +21,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final MangaApiService _apiService = getIt<MangaApiService>();
   List<LibraryManga> _libraryMangas = [];
   bool _isLoading = true;
+  String _selectedStatus = 'All';
 
   @override
   void initState() {
@@ -131,10 +132,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterChip('All', true),
-                _buildFilterChip('Reading', false),
-                _buildFilterChip('Completed', false),
-                _buildFilterChip('Planned', false),
+                _buildFilterChip('All'),
+                _buildFilterChip('Reading'),
+                _buildFilterChip('Completed'),
+                _buildFilterChip('OnHold'),
+                _buildFilterChip('Dropped'),
+                _buildFilterChip('PlanToRead'),
               ],
             ),
           ),
@@ -143,22 +146,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, bool isActive) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.primary
-            : Colors.grey[200]!.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isActive ? Colors.white : Colors.grey,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
+  Widget _buildFilterChip(String label) {
+    final bool isActive = _selectedStatus == label;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedStatus = label;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.primary
+              : Colors.grey[200]!.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white : Colors.grey,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -177,15 +188,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    if (_libraryMangas.isEmpty) {
+    final filteredMangas = _selectedStatus == 'All'
+        ? _libraryMangas
+        : _libraryMangas
+              .where(
+                (m) => m.status.toLowerCase() == _selectedStatus.toLowerCase(),
+              )
+              .toList();
+
+    if (filteredMangas.isEmpty) {
       return SliverToBoxAdapter(
         child: Container(
           color: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
           padding: const EdgeInsets.all(24.0),
-          child: const Center(
+          child: Center(
             child: Text(
-              'Your library is empty\nAdd some manga to get started!',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              _selectedStatus == 'All'
+                  ? 'Your library is empty\nAdd some manga to get started!'
+                  : 'No manga with status $_selectedStatus',
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
               textAlign: TextAlign.center,
             ),
           ),
@@ -201,16 +222,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
         childAspectRatio: 0.6,
       ),
       delegate: SliverChildBuilderDelegate((context, index) {
-        final manga = _libraryMangas[index];
+        final manga = filteredMangas[index];
         return MangaCard(
           title: manga.title,
           imageUrl: manga.imageUrl,
+          localImageUrl: manga.imageUrl,
           currentChapter: manga.currentChapter.toInt(),
           totalChapters: 0, // Library manga doesn't track total chapters
           progress: manga.progressPercentage,
           isCompleted: manga.isCompleted,
           type: manga.type, // Use the type from library manga
-          status: manga.isCompleted ? 'COMPLETED' : 'READING',
+          status: manga.status,
           genres: [], // Library doesn't track genres
           onTap: () async {
             showDialog(
@@ -241,7 +263,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             }
           },
         );
-      }, childCount: _libraryMangas.length),
+      }, childCount: filteredMangas.length),
     );
   }
 }

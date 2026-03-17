@@ -1,5 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/progression.dart';
+import '../../core/di/injection.dart';
+import 'manga_api_service.dart';
+import 'sync_service.dart';
 
 extension ListExtensions<T> on List<T> {
   T? firstWhereOrNull(bool Function(T element) test) {
@@ -21,72 +24,86 @@ class ProgressionService {
   static const _progressionKey = 'manga_progression';
 
   Future<void> saveProgression(MangaProgression progression) async {
+    // 1. Update local cache
+    await _updateLocalCache(progression);
+
+    // 2. Try API
+    final apiService = getIt<MangaApiService>();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final progressions = await getAllProgressions();
-
-      // Find existing progression for this manga and chapter
-      final existingIndex = progressions.indexWhere(
-        (p) =>
-            p.mangaId == progression.mangaId &&
-            p.currentChapter == progression.currentChapter,
-      );
-
-      if (existingIndex >= 0) {
-        // Update existing progression for this chapter
-        progressions[existingIndex] = progression;
-      } else {
-        // Check if there's any existing progression for this manga
-        final mangaIndex = progressions.indexWhere(
-          (p) => p.mangaId == progression.mangaId,
-        );
-
-        if (mangaIndex >= 0) {
-          // Update the existing manga progression (replace with new chapter)
-          progressions[mangaIndex] = progression;
-        } else {
-          // New progression for this manga
-          progressions.add(progression);
-        }
-      }
-
-      // Save back to preferences
-      final jsonList = progressions.map((p) => p.toJson()).toList();
-      final success = await prefs.setStringList(_progressionKey, jsonList);
-
-      if (!success) {
-        throw Exception('Failed to save progression to SharedPreferences');
-      }
+      await apiService.updateUserProgression(progression.toApiRequest());
     } catch (e) {
-      // Re-throw the error so it can be handled by the caller
-      throw Exception('Error saving progression: $e');
+      // 3. Queue for sync if failed
+      getIt<SyncService>().enqueueAction('progression_update', progression.toApiRequest());
     }
   }
 
   Future<MangaProgression?> getProgression(String mangaId) async {
-    final progressions = await getAllProgressions();
+    final apiService = getIt<MangaApiService>();
+    
+    try {
+      final data = await apiService.getProgressionForManga(mangaId);
+      if (data != null) {
+        final progression = MangaProgression.fromMap(data);
+        await _updateLocalCache(progression);
+        return progression;
+      }
+    } catch (_) {}
+
+    // Fallback to local cache
+    final progressions = await _loadFromLocalCache();
     return progressions.firstWhereOrNull((p) => p.mangaId == mangaId);
   }
 
   Future<List<MangaProgression>> getAllProgressions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = prefs.getStringList(_progressionKey) ?? [];
-
-    return jsonList.map((json) => MangaProgression.fromJson(json)).toList();
+    final apiService = getIt<MangaApiService>();
+    
+    try {
+      final data = await apiService.getUserProgression();
+      final progressions = data.map((json) => MangaProgression.fromMap(json)).toList();
+      
+      await _saveAllToLocalCache(progressions);
+      getIt<SyncService>().syncPendingActions();
+      
+      return progressions;
+    } catch (e) {
+      return _loadFromLocalCache();
+    }
   }
 
   Future<void> deleteProgression(String mangaId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final progressions = await getAllProgressions();
-
+    final progressions = await _loadFromLocalCache();
     progressions.removeWhere((p) => p.mangaId == mangaId);
-
-    final jsonList = progressions.map((p) => p.toJson()).toList();
-    await prefs.setStringList(_progressionKey, jsonList);
+    await _saveAllToLocalCache(progressions);
   }
 
   Future<void> clearAllProgressions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_progressionKey);
+  }
+
+  // Helper methods for local cache
+
+  Future<void> _updateLocalCache(MangaProgression progression) async {
+    final progressions = await _loadFromLocalCache();
+    final index = progressions.indexWhere((p) => p.mangaId == progression.mangaId);
+
+    if (index >= 0) {
+      progressions[index] = progression;
+    } else {
+      progressions.add(progression);
+    }
+    await _saveAllToLocalCache(progressions);
+  }
+
+  Future<void> _saveAllToLocalCache(List<MangaProgression> progressions) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = progressions.map((p) => p.toJson()).toList();
+    await prefs.setStringList(_progressionKey, jsonList);
+  }
+
+  Future<List<MangaProgression>> _loadFromLocalCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = prefs.getStringList(_progressionKey) ?? [];
+    return jsonList.map((json) => MangaProgression.fromJson(json)).toList();
   }
 }

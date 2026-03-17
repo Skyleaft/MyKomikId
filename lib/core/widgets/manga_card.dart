@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../../data/services/manga_api_service.dart';
+import '../di/injection.dart';
 
 class MangaCard extends StatelessWidget {
   final String title;
   final String? imageUrl;
+  final String? localImageUrl;
   final int currentChapter;
   final int totalChapters;
   final double progress;
@@ -17,6 +20,7 @@ class MangaCard extends StatelessWidget {
     super.key,
     required this.title,
     this.imageUrl,
+    this.localImageUrl,
     required this.currentChapter,
     required this.totalChapters,
     required this.progress,
@@ -29,6 +33,11 @@ class MangaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String displayUrl = getIt<MangaApiService>().getLocalImageUrl(
+      localImageUrl,
+      imageUrl,
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -51,9 +60,9 @@ class MangaCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    if (imageUrl != null)
+                    if (displayUrl.isNotEmpty)
                       Image.network(
-                        imageUrl!,
+                        displayUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             _buildPlaceholder(),
@@ -61,24 +70,25 @@ class MangaCard extends StatelessWidget {
                     else
                       _buildPlaceholder(),
 
-                    // Status Badge
+                    // Status Badge (Top Left)
                     if (status != null && status!.isNotEmpty)
                       Positioned(
                         top: 8,
-                        right: 8,
+                        left: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: status?.toLowerCase() == 'ongoing'
-                                ? Colors.green.withOpacity(0.8)
-                                : status?.toLowerCase() == 'completed' ||
-                                      status?.toLowerCase() == 'finished' ||
-                                      status?.toLowerCase() == 'end'
-                                ? Colors.blue.withOpacity(0.8)
-                                : Colors.orange.withOpacity(0.8),
+                            color: switch (status!.toLowerCase()) {
+                              'reading' => Colors.green.withOpacity(0.8),
+                              'completed' => Colors.blue.withOpacity(0.8),
+                              'onhold' => Colors.orange.withOpacity(0.8),
+                              'dropped' => Colors.red.withOpacity(0.8),
+                              'plantoread' => Colors.purple.withOpacity(0.8),
+                              _ => Colors.grey.withOpacity(0.8),
+                            },
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -93,9 +103,9 @@ class MangaCard extends StatelessWidget {
                         ),
                       ),
 
-                    // Type Badge (Manga/Manhwa/Manhua)
+                    // Type Badge (Bottom Left)
                     Positioned(
-                      top: 8,
+                      bottom: 12,
                       left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -134,15 +144,15 @@ class MangaCard extends StatelessWidget {
                       ),
                     ),
 
-                    // Completed Badge
+                    // Completed Badge (Keep as indicator if progression is done)
                     if (isCompleted)
                       Positioned(
-                        top: 4,
-                        right: 4,
+                        top: 8,
+                        right: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
-                            vertical: 2,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.green,

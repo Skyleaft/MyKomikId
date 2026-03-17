@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:my_manga_reader/core/di/injection.dart';
+import 'package:my_manga_reader/data/services/manga_api_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -15,6 +17,13 @@ class AuthService {
       if (kIsWeb) {
         final provider = GoogleAuthProvider();
         final userCredential = await _auth.signInWithPopup(provider);
+
+        // Fetch ID token and send to backend
+        final idToken = await userCredential.user?.getIdToken();
+        if (idToken != null) {
+          await getIt<MangaApiService>().loginWithFirebase(idToken);
+        }
+
         return userCredential.user;
       }
 
@@ -33,6 +42,12 @@ class AuthService {
 
       final userCredential = await _auth.signInWithCredential(credential);
 
+      // Fetch ID token and send to backend
+      final idToken = await userCredential.user?.getIdToken();
+      if (idToken != null) {
+        await getIt<MangaApiService>().loginWithFirebase(idToken);
+      }
+
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
       print("Firebase error: ${e.code}");
@@ -47,6 +62,10 @@ class AuthService {
     if (!kIsWeb) {
       await _googleSignIn.signOut();
     }
+    
+    // Clear backend JWT token
+    await getIt<MangaApiService>().logout();
+
     await _auth.signOut();
   }
 }

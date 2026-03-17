@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../utils/formatters.dart';
 import '../../data/models/manga_summary.dart';
+import '../../data/services/manga_api_service.dart';
+import '../di/injection.dart';
 
 class DiscoverCard extends StatelessWidget {
   final String title;
   final String? imageUrl;
+  final String? localImageUrl;
   final String type;
   final String views;
   final LatestChapterSummary? latestChapter;
@@ -17,6 +20,7 @@ class DiscoverCard extends StatelessWidget {
     super.key,
     required this.title,
     this.imageUrl,
+    this.localImageUrl,
     required this.type,
     required this.views,
     required this.latestChapter,
@@ -27,6 +31,7 @@ class DiscoverCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String displayUrl = getIt<MangaApiService>().getLocalImageUrl(localImageUrl, imageUrl);
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 768;
     final isDesktop = screenWidth >= 1024;
@@ -37,12 +42,6 @@ class DiscoverCard extends StatelessWidget {
         : isTablet
         ? 14
         : 12;
-
-    final EdgeInsetsGeometry padding = isDesktop
-        ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12)
-        : isTablet
-        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
-        : const EdgeInsets.symmetric(horizontal: 8, vertical: 8);
 
     final double titleFontSize = isDesktop
         ? 16
@@ -142,9 +141,9 @@ class DiscoverCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    if (imageUrl != null)
+                    if (displayUrl.isNotEmpty)
                       Image.network(
-                        imageUrl!,
+                        displayUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             _buildPlaceholder(placeholderIconSize),

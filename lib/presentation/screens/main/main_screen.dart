@@ -18,13 +18,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   late AnimationController _animationController;
   Animation<Offset>? _slideAnimation;
   Animation<double>? _fadeAnimation;
+  String? _discoverSortBy;
+  String? _discoverSearch;
 
-  final List<Widget> _screens = [
-    const HomeScreen(key: ValueKey('home')),
-    const LibraryScreen(key: ValueKey('library')),
-    const DiscoverScreen(key: ValueKey('discover')),
-    const MoreScreen(key: ValueKey('more')),
-  ];
+  void _navigateToDiscover({String? sortBy, String? search}) {
+    setState(() {
+      _discoverSortBy = sortBy;
+      _discoverSearch = search;
+    });
+    _navigateTo(2);
+  }
 
   @override
   void initState() {
@@ -33,6 +36,22 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+  }
+
+  List<Widget> _buildScreens() {
+    return [
+      HomeScreen(
+        key: const ValueKey('home'),
+        onNavigateToDiscover: _navigateToDiscover,
+      ),
+      const LibraryScreen(key: ValueKey('library')),
+      DiscoverScreen(
+        key: const ValueKey('discover'),
+        initialSearch: _discoverSearch,
+        sortBy: _discoverSortBy,
+      ),
+      const MoreScreen(key: ValueKey('more')),
+    ];
   }
 
   @override
@@ -102,7 +121,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                     curve: const Interval(0.0, 0.7, curve: Curves.easeInOut),
                   ),
                 ),
-                child: _screens[_previousIndex],
+                child: _buildScreens()[_previousIndex],
               ),
             ),
 
@@ -121,7 +140,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                     begin: 1.0,
                     end: 1.0,
                   ).animate(_animationController),
-              child: _screens[_currentIndex],
+              child: _buildScreens()[_currentIndex],
             ),
           ),
 

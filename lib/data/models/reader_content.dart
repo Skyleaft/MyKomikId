@@ -5,6 +5,7 @@ class ReaderContent {
   final String mangaTitle;
   final double currentChapterNumber;
   final List<Chapter> allChapters;
+  final String chapterId;
   final String chapterTitle;
   final List<String> pageUrls;
   final int currentPage;
@@ -14,6 +15,7 @@ class ReaderContent {
     required this.mangaId,
     required this.mangaTitle,
     required this.currentChapterNumber,
+    required this.chapterId,
     required this.allChapters,
     required this.chapterTitle,
     required this.pageUrls,
@@ -27,6 +29,7 @@ class ReaderContent {
       mangaTitle: map['mangaTitle'] as String,
       currentChapterNumber: (map['currentChapterNumber'] as num? ?? 0)
           .toDouble(),
+      chapterId: map['chapterId'] as String? ?? "",
       allChapters:
           (map['allChapters'] as List<dynamic>?)
               ?.map((e) => Chapter.fromMap(e as Map<String, dynamic>))

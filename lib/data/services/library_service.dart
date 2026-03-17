@@ -1,64 +1,91 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/library_manga.dart';
-import 'progression_service.dart';
+import '../models/progression.dart';
+import '../../core/di/injection.dart';
+import 'manga_api_service.dart';
+import 'sync_service.dart';
 
 class LibraryService {
   static const _libraryKey = 'manga_library';
 
   Future<void> addToLibrary(LibraryManga manga) async {
+    // 1. Update local cache
+    await _updateLocalCache(manga, isRemoving: false);
+
+    // 2. Try API
+    final apiService = getIt<MangaApiService>();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final library = await getAllLibraryMangas();
-
-      // Check if manga already exists in library
-      final existingIndex = library.indexWhere((m) => m.id == manga.id);
-
-      if (existingIndex >= 0) {
-        // Update existing manga
-        library[existingIndex] = manga;
-      } else {
-        // Add new manga
-        library.add(manga);
-      }
-
-      // Save back to preferences
-      final jsonList = library.map((m) => m.toJson()).toList();
-      await prefs.setStringList(_libraryKey, jsonList);
+      await apiService.addToUserLibrary(manga.toApiRequest());
     } catch (e) {
-      // Handle serialization or storage errors
-      throw Exception('Failed to add manga to library: $e');
+      // 3. Queue for sync if failed
+      getIt<SyncService>().enqueueAction('library_add', manga.toApiRequest());
     }
   }
 
   Future<void> removeFromLibrary(String mangaId) async {
+    // 1. Update local cache
+    await _updateLocalCacheById(mangaId, isRemoving: true);
+
+    // 2. Try API
+    final apiService = getIt<MangaApiService>();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final library = await getAllLibraryMangas();
-
-      library.removeWhere((m) => m.id == mangaId);
-
-      final jsonList = library.map((m) => m.toJson()).toList();
-      await prefs.setStringList(_libraryKey, jsonList);
+      await apiService.removeFromUserLibrary(mangaId);
     } catch (e) {
-      // Handle storage errors
-      throw Exception('Failed to remove manga from library: $e');
+      // 3. Queue for sync if failed
+      getIt<SyncService>().enqueueAction('library_remove', {'mangaId': mangaId});
     }
   }
 
   Future<LibraryManga?> getLibraryManga(String mangaId) async {
     final library = await getAllLibraryMangas();
-    return library.firstWhereOrNull((m) => m.id == mangaId);
+    try {
+      return library.firstWhere((m) => m.id == mangaId);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<LibraryManga>> getAllLibraryMangas() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = prefs.getStringList(_libraryKey) ?? [];
+    final apiService = getIt<MangaApiService>();
+    final syncService = getIt<SyncService>();
 
-      return jsonList.map((json) => LibraryManga.fromJson(json)).toList();
+    try {
+      // 1. Try fetching from backend
+      final libraryData = await apiService.getUserLibrary();
+      final progressionData = await apiService.getUserProgression();
+
+      final progressions = progressionData
+          .map((e) => MangaProgression.fromMap(e))
+          .toList();
+
+      final library = libraryData.map((e) {
+        final libraryModel = LibraryManga.fromMap(e);
+        MangaProgression? progression;
+        try {
+          progression = progressions.firstWhere((p) => p.mangaId == libraryModel.id);
+        } catch (_) {}
+        
+        if (progression != null) {
+          return libraryModel.copyWith(
+            currentChapter: progression.currentChapter,
+            currentPage: progression.currentPage,
+            totalPages: progression.totalPages,
+            isCompleted: progression.isCompleted,
+          );
+        }
+        return libraryModel;
+      }).toList();
+
+      // 2. Update local cache on success
+      await _saveAllToLocalCache(library);
+
+      // 3. Trigger sync of pending actions
+      syncService.syncPendingActions();
+
+      return library;
     } catch (e) {
-      // Handle parsing or storage errors
-      throw Exception('Failed to load library: $e');
+      // 4. Fallback to local cache on error
+      return _loadFromLocalCache();
     }
   }
 
@@ -74,26 +101,78 @@ class LibraryService {
     int totalPages,
     bool isCompleted,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final library = await getAllLibraryMangas();
+    final apiService = getIt<MangaApiService>();
+    final payload = {
+      'mangaId': mangaId,
+      'chapterNumber': currentChapter,
+      'lastReadPage': currentPage,
+      'totalPages': totalPages,
+    };
 
-    final mangaIndex = library.indexWhere((m) => m.id == mangaId);
-
-    if (mangaIndex >= 0) {
-      library[mangaIndex] = library[mangaIndex].copyWith(
+    // 1. Update local cache (find and update)
+    final library = await _loadFromLocalCache();
+    final index = library.indexWhere((m) => m.id == mangaId);
+    if (index >= 0) {
+      library[index] = library[index].copyWith(
         currentChapter: currentChapter,
         currentPage: currentPage,
         totalPages: totalPages,
         isCompleted: isCompleted,
       );
+      await _saveAllToLocalCache(library);
+    }
 
-      final jsonList = library.map((m) => m.toJson()).toList();
-      await prefs.setStringList(_libraryKey, jsonList);
+    // 2. Try API
+    try {
+      await apiService.updateUserProgression(payload);
+    } catch (e) {
+      // 3. Queue for sync if failed
+      getIt<SyncService>().enqueueAction('progression_update', payload);
     }
   }
 
   Future<void> clearLibrary() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_libraryKey);
+  }
+
+  // Helper methods for local cache
+
+  Future<void> _updateLocalCache(LibraryManga manga, {required bool isRemoving}) async {
+    final library = await _loadFromLocalCache();
+    final index = library.indexWhere((m) => m.id == manga.id);
+
+    if (isRemoving) {
+      if (index >= 0) library.removeAt(index);
+    } else {
+      if (index >= 0) {
+        library[index] = manga;
+      } else {
+        library.add(manga);
+      }
+    }
+    await _saveAllToLocalCache(library);
+  }
+
+  Future<void> _updateLocalCacheById(String mangaId, {required bool isRemoving}) async {
+    final library = await _loadFromLocalCache();
+    final index = library.indexWhere((m) => m.id == mangaId);
+
+    if (isRemoving && index >= 0) {
+      library.removeAt(index);
+      await _saveAllToLocalCache(library);
+    }
+  }
+
+  Future<void> _saveAllToLocalCache(List<LibraryManga> library) async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = library.map((m) => m.toJson()).toList();
+    await prefs.setStringList(_libraryKey, jsonList);
+  }
+
+  Future<List<LibraryManga>> _loadFromLocalCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = prefs.getStringList(_libraryKey) ?? [];
+    return jsonList.map((json) => LibraryManga.fromJson(json)).toList();
   }
 }

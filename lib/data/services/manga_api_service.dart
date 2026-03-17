@@ -2,9 +2,13 @@ import 'package:dio/dio.dart';
 import '../../core/config/app_config.dart';
 import '../models/manga_summary.dart';
 import '../models/paged_response.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MangaApiService {
+  static const String _tokenKey = 'auth_token';
   final Dio _dio;
+  String? _jwtToken;
 
   List<String>? _cachedGenres;
   List<String>? _cachedTypes;
@@ -16,7 +20,81 @@ class MangaApiService {
           connectTimeout: const Duration(seconds: 45),
           receiveTimeout: const Duration(seconds: 45),
         ),
+      ) {
+    _initInterceptor();
+  }
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _jwtToken = prefs.getString(_tokenKey);
+  }
+
+  void _initInterceptor() {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (_jwtToken != null) {
+            options.headers['Authorization'] = 'Bearer $_jwtToken';
+          }
+          return handler.next(options);
+        },
+        onError: (DioException e, handler) async {
+          if (e.response?.statusCode == 401 &&
+              e.requestOptions.path != '/api/auth/firebase') {
+            try {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user != null) {
+                final idToken = await user.getIdToken(true);
+                if (idToken != null) {
+                  await loginWithFirebase(idToken);
+
+                  // Retry the request with the new token
+                  final response = await _dio.fetch(e.requestOptions);
+                  return handler.resolve(response);
+                }
+              }
+            } catch (error) {
+              print('Token refresh failed: $error');
+            }
+
+            print('Unauthorized, clearing token...');
+            _jwtToken = null;
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove(_tokenKey);
+          }
+          return handler.next(e);
+        },
+      ),
+    );
+  }
+
+  Future<void> loginWithFirebase(String idToken) async {
+    try {
+      final response = await _dio.post(
+        '/api/auth/firebase',
+        data: {'idToken': idToken},
       );
+      _jwtToken = response.data['token'];
+      if (_jwtToken != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_tokenKey, _jwtToken!);
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await _dio.get('/api/auth/logout');
+    } catch (e) {
+      // Ignore error on logout
+    } finally {
+      _jwtToken = null;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+    }
+  }
 
   void updateBaseUrl(String newUrl) {
     _dio.options.baseUrl = newUrl;
@@ -36,12 +114,12 @@ class MangaApiService {
       final response = await _dio.get(
         '/api/manga/paged',
         queryParameters: {
-          'search': ?search,
+          'search': search,
           if (genres != null && genres.isNotEmpty) 'genres': genres,
-          'status': ?status,
-          'type': ?type,
-          'sortBy': ?sortBy,
-          'orderBy': ?orderBy,
+          'status': status,
+          'type': type,
+          'sortBy': sortBy,
+          'orderBy': orderBy,
           'page': page,
           'pageSize': pageSize,
         },
@@ -51,6 +129,26 @@ class MangaApiService {
         response.data as Map<String, dynamic>,
         (json) => MangaSummary.fromJson(json),
       );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<MangaSummary>> getRecommendations({
+    List<String>? readingHistoryIds,
+    int limit = 10,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/api/manga/recommendations',
+        data: {
+          'readingHistoryIds': readingHistoryIds ?? [],
+          'limit': limit,
+        },
+      );
+
+      final List<dynamic> items = response.data['items'];
+      return items.map((json) => MangaSummary.fromJson(json)).toList();
     } catch (e) {
       rethrow;
     }
@@ -221,6 +319,77 @@ class MangaApiService {
       return (response.data as List<dynamic>)
           .map((e) => e as Map<String, dynamic>)
           .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- Library Endpoints ---
+
+  Future<List<Map<String, dynamic>>> getUserLibrary() async {
+    try {
+      final response = await _dio.get('/api/user-library');
+      return (response.data as List<dynamic>)
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      // Return empty list if unauthorized or error
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> addToUserLibrary(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.post('/api/user-library', data: data);
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> removeFromUserLibrary(String mangaId) async {
+    try {
+      await _dio.delete('/api/user-library/$mangaId');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- Progression Endpoints ---
+
+  Future<List<Map<String, dynamic>>> getUserProgression() async {
+    try {
+      final response = await _dio.get('/api/user-progression');
+      return (response.data as List<dynamic>)
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      // Return empty list if unauthorized or error
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getProgressionForManga(String mangaId) async {
+    try {
+      final response = await _dio.get('/api/user-progression/$mangaId');
+      if (response.statusCode == 204) return null; // Or appropriate empty check
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUserProgression(
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _dio.post('/api/user-progression', data: data);
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       rethrow;
     }

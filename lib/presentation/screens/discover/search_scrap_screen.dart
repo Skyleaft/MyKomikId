@@ -130,12 +130,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
 
         _isLoadingSearch = false;
 
-        // Page size logic berdasarkan providerName
-        final pageSize = _selectedProviderName.toLowerCase() == 'kiryuu'
-            ? 24
-            : 10;
-
-        _hasMoreResults = results.length >= pageSize;
+        _hasMoreResults = results.isNotEmpty;
       });
     } catch (e) {
       // Check if this request was cancelled

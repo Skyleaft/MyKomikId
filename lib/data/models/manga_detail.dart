@@ -83,11 +83,12 @@ class MangaDetail {
   String get displayImageUrl {
     // This will be handled by the MangaApiService.getLocalImageUrl method
     // when the image is actually used in the UI
-    return imageUrl ?? '';
+    return localImageUrl ?? imageUrl ?? '';
   }
 }
 
 class Chapter {
+  final String id;
   final String title;
   final double chapterNumber;
   final DateTime date;
@@ -99,6 +100,7 @@ class Chapter {
   final String? link;
 
   Chapter({
+    required this.id,
     required this.title,
     required this.chapterNumber,
     required this.date,
@@ -112,6 +114,7 @@ class Chapter {
 
   factory Chapter.fromMap(Map<String, dynamic> map) {
     return Chapter(
+      id: map['id'] as String? ?? (map['number']?.toString() ?? ''),
       title: 'Chapter ${map['number']}',
       chapterNumber: (map['number'] as num? ?? 0).toDouble(),
       date: map['uploadDate'] != null
