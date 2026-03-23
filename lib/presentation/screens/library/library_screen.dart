@@ -7,6 +7,7 @@ import '../../../data/models/library_manga.dart';
 import '../../../data/models/manga_detail.dart';
 import '../../../data/services/library_service.dart';
 import '../../../data/services/manga_api_service.dart';
+import '../../../data/services/manga_detail_service.dart';
 import '../../../routes/app_pages.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen> {
   final LibraryService _libraryService = getIt<LibraryService>();
   final MangaApiService _apiService = getIt<MangaApiService>();
+  final MangaDetailService _detailService = getIt<MangaDetailService>();
   List<LibraryManga> _libraryMangas = [];
   bool _isLoading = true;
   String _selectedStatus = 'All';
@@ -47,36 +49,50 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
   }
 
+  Future<void> _refresh() async {
+    // Force a fresh API fetch then reload from the updated local cache
+    final apiService = getIt<MangaApiService>();
+    try {
+      await apiService.getUserLibrary();
+      await apiService.getUserProgression();
+    } catch (_) {}
+    await _loadLibrary();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            backgroundColor:
-                (isDark ? AppColors.backgroundDark : AppColors.backgroundLight)
-                    .withOpacity(0.8),
-            surfaceTintColor: Colors.transparent,
-            expandedHeight: 220,
-            toolbarHeight: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: _buildHeader(context, isDark),
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _refresh,
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              backgroundColor:
+                  (isDark ? AppColors.backgroundDark : AppColors.backgroundLight)
+                      .withOpacity(0.8),
+              surfaceTintColor: Colors.transparent,
+              expandedHeight: 220,
+              toolbarHeight: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                background: ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: _buildHeader(context, isDark),
+                  ),
                 ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
-            sliver: _buildContent(context, isDark),
-          ),
-        ],
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
+              sliver: _buildContent(context, isDark),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -235,6 +251,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
           status: manga.status,
           genres: [], // Library doesn't track genres
           onTap: () async {
+            final mangaId = manga.id;
+
+            // 1. Try local cache first (instant, works offline)
+            final cached = await _detailService.getDetail(mangaId);
+
+            if (cached != null && mounted) {
+              // Navigate immediately with cached data
+              Navigator.pushNamed(
+                context,
+                AppRoutes.detail,
+                arguments: cached,
+              );
+              // 2. Background sync: fetch latest from API and update cache
+              _apiService.getMangaDetail(mangaId).then((data) {
+                final fresh = MangaDetail.fromMap(data);
+                _detailService.saveDetail(fresh);
+              }).catchError((_) {});
+              return;
+            }
+
+            // 3. No cache — fetch from API with a loading indicator
+            if (!mounted) return;
             showDialog(
               context: context,
               barrierDismissible: false,
@@ -243,11 +281,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
             );
 
             try {
-              final detailData = await _apiService.getMangaDetail(manga.id);
+              final detailData = await _apiService.getMangaDetail(mangaId);
               if (!mounted) return;
               Navigator.pop(context); // Close loading dialog
 
               final mangaDetail = MangaDetail.fromMap(detailData);
+              // Save to local cache for future offline access
+              await _detailService.saveDetail(mangaDetail);
 
               Navigator.pushNamed(
                 context,

@@ -1,3 +1,4 @@
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../../data/services/manga_api_service.dart';
@@ -61,11 +62,12 @@ class MangaCard extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     if (displayUrl.isNotEmpty)
-                      Image.network(
-                        displayUrl,
+                      CachedNetworkImage(
+                        imageUrl: displayUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
+                        errorWidget: (context, url, error) =>
                             _buildPlaceholder(),
+                        placeholder: (context, url) => _buildPlaceholder(),
                       )
                     else
                       _buildPlaceholder(),

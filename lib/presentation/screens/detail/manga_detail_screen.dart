@@ -1,5 +1,5 @@
 import 'dart:ui';
-
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../../../core/constants/app_colors.dart';
@@ -11,6 +11,7 @@ import '../../../data/models/progression.dart';
 import '../../../data/models/reader_content.dart';
 import '../../../data/services/library_service.dart';
 import '../../../data/services/manga_api_service.dart';
+import '../../../data/services/manga_detail_service.dart';
 import '../../../data/services/progression_service.dart';
 import '../../../routes/app_pages.dart';
 import 'package:intl/intl.dart';
@@ -28,9 +29,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   final MangaApiService _apiService = getIt<MangaApiService>();
   final ProgressionService _progressionService = getIt<ProgressionService>();
   final LibraryService _libraryService = getIt<LibraryService>();
+  final MangaDetailService _detailService = getIt<MangaDetailService>();
   List<Chapter> _chapters = [];
   bool _isLoadingChapters = true;
   bool _isInLibrary = false;
+  Future<List<MangaProgression>>? _progressionsFuture;
 
   MangaDetail get manga => widget.manga;
 
@@ -38,11 +41,72 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   void initState() {
     super.initState();
     _chapters = widget.manga.chapters;
+    _progressionsFuture = _progressionService.getAllProgressions();
     _loadChapters();
     _checkIfInLibrary();
   }
 
+  void _refreshProgressions() {
+    if (mounted) {
+      setState(() {
+        _progressionsFuture = _progressionService.getAllProgressions();
+      });
+    }
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _isLoadingChapters = true);
+    try {
+      final chaptersData = await _apiService.getMangaChapters(manga.id);
+      if (mounted) {
+        final freshChapters = chaptersData
+            .map((e) => Chapter.fromMap(e))
+            .toList();
+        setState(() {
+          _chapters = freshChapters;
+          _isLoadingChapters = false;
+        });
+        // Persist refreshed data to local cache
+        final freshDetail = MangaDetail(
+          id: manga.id,
+          malId: manga.malId,
+          title: manga.title,
+          author: manga.author,
+          type: manga.type,
+          genres: manga.genres,
+          description: manga.description,
+          imageUrl: manga.imageUrl,
+          localImageUrl: manga.localImageUrl,
+          rating: manga.rating,
+          popularity: manga.popularity,
+          members: manga.members,
+          totalView: manga.totalView,
+          status: manga.status,
+          releaseDate: manga.releaseDate,
+          createdAt: manga.createdAt,
+          updatedAt: manga.updatedAt,
+          url: manga.url,
+          chapters: freshChapters,
+        );
+        await _detailService.saveDetail(freshDetail);
+        _refreshProgressions();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingChapters = false);
+    }
+  }
+
   Future<void> _loadChapters() async {
+    // 1. Load from local cache first for instant offline display
+    final cached = await _detailService.getDetail(manga.id);
+    if (cached != null && cached.chapters.isNotEmpty && mounted) {
+      setState(() {
+        _chapters = cached.chapters;
+        _isLoadingChapters = false;
+      });
+    }
+
+    // 2. Try to sync from API in the background
     try {
       final chaptersData = await _apiService.getMangaChapters(manga.id);
       if (mounted) {
@@ -50,9 +114,32 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           _chapters = chaptersData.map((e) => Chapter.fromMap(e)).toList();
           _isLoadingChapters = false;
         });
+        // Update local cache with fresh chapter data
+        final freshDetail = MangaDetail(
+          id: manga.id,
+          malId: manga.malId,
+          title: manga.title,
+          author: manga.author,
+          type: manga.type,
+          genres: manga.genres,
+          description: manga.description,
+          imageUrl: manga.imageUrl,
+          localImageUrl: manga.localImageUrl,
+          rating: manga.rating,
+          popularity: manga.popularity,
+          members: manga.members,
+          totalView: manga.totalView,
+          status: manga.status,
+          releaseDate: manga.releaseDate,
+          createdAt: manga.createdAt,
+          updatedAt: manga.updatedAt,
+          url: manga.url,
+          chapters: _chapters,
+        );
+        await _detailService.saveDetail(freshDetail);
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _chapters.isEmpty) {
         setState(() {
           _isLoadingChapters = false;
         });
@@ -155,116 +242,120 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       body: Stack(
         children: [
           // Scrollable Content
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 400,
-                floating: false,
-                pinned: false,
-                snap: false,
-                flexibleSpace: FlexibleSpaceBar(
-                  collapseMode: CollapseMode.parallax,
-                  background: _buildHeroSection(context),
-                ),
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: Container(
-                  margin: const EdgeInsets.only(left: 16, top: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    shape: BoxShape.circle,
+          RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 400,
+                  floating: false,
+                  pinned: false,
+                  snap: false,
+                  flexibleSpace: FlexibleSpaceBar(
+                    collapseMode: CollapseMode.parallax,
+                    background: _buildHeroSection(context),
                   ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-                actions: [
-                  if (manga.url != null)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8, top: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.public,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        onPressed: () => launchUrlString(manga.url!),
-                      ),
-                    ),
-                  Container(
-                    margin: const EdgeInsets.only(right: 16, top: 8),
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  leading: Container(
+                    margin: const EdgeInsets.only(left: 16, top: 8),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.5),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
                       icon: const Icon(
-                        Icons.share,
+                        Icons.arrow_back,
                         color: Colors.white,
                         size: 20,
                       ),
-                      onPressed: () {},
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                ],
-              ),
-              SliverToBoxAdapter(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.backgroundDark
-                        : AppColors.backgroundLight,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMainInfoSection(isDark),
-                      const SizedBox(height: 16),
-                      _buildStatsRow(),
-                      const SizedBox(height: 16),
-                      // Divider before genre section
+                  actions: [
+                    if (manga.url != null)
                       Container(
-                        height: 1,
-                        color: AppColors.primary.withOpacity(0.2),
-                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        margin: const EdgeInsets.only(right: 8, top: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.public,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () => launchUrlString(manga.url!),
+                        ),
                       ),
-                      _buildGenreTags(),
-                      const SizedBox(height: 24),
-                      _buildSynopsis(),
-                      const SizedBox(height: 24),
-                      _buildActionButtons(context),
-                      const SizedBox(height: 32),
-                      _buildChapterListHeader(context),
-                    ],
+                    Container(
+                      margin: const EdgeInsets.only(right: 16, top: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.share,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        onPressed: () {},
+                      ),
+                    ),
+                  ],
+                ),
+                SliverToBoxAdapter(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.backgroundDark
+                          : AppColors.backgroundLight,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildMainInfoSection(isDark),
+                        const SizedBox(height: 16),
+                        _buildStatsRow(),
+                        const SizedBox(height: 16),
+                        // Divider before genre section
+                        Container(
+                          height: 1,
+                          color: AppColors.primary.withOpacity(0.2),
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        _buildGenreTags(),
+                        const SizedBox(height: 24),
+                        _buildSynopsis(),
+                        const SizedBox(height: 24),
+                        _buildActionButtons(context),
+                        const SizedBox(height: 32),
+                        _buildChapterListHeader(context),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              _buildChapterListSliver(context, isDark),
-              SliverToBoxAdapter(
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.backgroundDark
-                        : AppColors.backgroundLight,
+                _buildChapterListSliver(context, isDark),
+                SliverToBoxAdapter(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.backgroundDark
+                          : AppColors.backgroundLight,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -317,7 +408,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           currentPage: startingPage,
         );
 
-        Navigator.pushNamed(context, AppRoutes.reader, arguments: content);
+        await Navigator.pushNamed(
+          context,
+          AppRoutes.reader,
+          arguments: content,
+        );
+        _refreshProgressions();
       }
     } catch (e) {
       if (context.mounted) {
@@ -341,36 +437,31 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         imageUrl.isNotEmpty
             ? ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Image.network(
-                  imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
                   fit: BoxFit.cover,
                   height: 400,
                   width: double.infinity,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 400,
-                      color: Colors.grey[800],
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
+                  placeholder: (context, url) => Container(
+                    height: 400,
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
                       ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 400,
-                      color: Colors.grey[800],
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 48,
-                          color: Colors.white70,
-                        ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 400,
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: 48,
+                        color: Colors.white70,
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               )
             : Container(
@@ -404,32 +495,27 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
                       fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.grey[300],
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                            ),
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
                           ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[300],
-                          child: const Center(
-                            child: Icon(
-                              Icons.image_not_supported,
-                              size: 32,
-                              color: Colors.black54,
-                            ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_not_supported,
+                            size: 32,
+                            color: Colors.black54,
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     )
                   : Container(
                       color: Colors.grey[300],
@@ -691,7 +777,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   Widget _buildActionButtons(BuildContext context) {
     return FutureBuilder<List<MangaProgression>>(
-      future: _progressionService.getAllProgressions(),
+      future: _progressionsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -1128,7 +1214,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   Widget _buildCompletionBadge(double chapterNumber) {
     return FutureBuilder<List<MangaProgression>>(
-      future: _progressionService.getAllProgressions(),
+      future: _progressionsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();
@@ -1220,7 +1306,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   Widget _buildProgressionBar(double chapterNumber) {
     return FutureBuilder<List<MangaProgression>>(
-      future: _progressionService.getAllProgressions(),
+      future: _progressionsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const LinearProgressIndicator(

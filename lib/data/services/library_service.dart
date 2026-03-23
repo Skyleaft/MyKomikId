@@ -49,8 +49,23 @@ class LibraryService {
     final apiService = getIt<MangaApiService>();
     final syncService = getIt<SyncService>();
 
+    // 1. Return local cache immediately for instant offline access
+    final localLibrary = await _loadFromLocalCache();
+
+    // 2. Try to sync with API in the background
+    _syncLibraryFromApi(apiService, syncService);
+
+    return localLibrary;
+  }
+
+  /// Fires a background sync — updates the local cache from the API without
+  /// blocking the caller. Errors are silently swallowed since the caller
+  /// already has the local data.
+  Future<void> _syncLibraryFromApi(
+    MangaApiService apiService,
+    SyncService syncService,
+  ) async {
     try {
-      // 1. Try fetching from backend
       final libraryData = await apiService.getUserLibrary();
       final progressionData = await apiService.getUserProgression();
 
@@ -64,7 +79,7 @@ class LibraryService {
         try {
           progression = progressions.firstWhere((p) => p.mangaId == libraryModel.id);
         } catch (_) {}
-        
+
         if (progression != null) {
           return libraryModel.copyWith(
             currentChapter: progression.currentChapter,
@@ -76,16 +91,10 @@ class LibraryService {
         return libraryModel;
       }).toList();
 
-      // 2. Update local cache on success
       await _saveAllToLocalCache(library);
-
-      // 3. Trigger sync of pending actions
       syncService.syncPendingActions();
-
-      return library;
-    } catch (e) {
-      // 4. Fallback to local cache on error
-      return _loadFromLocalCache();
+    } catch (_) {
+      // Silently ignore — we already returned the cached data
     }
   }
 

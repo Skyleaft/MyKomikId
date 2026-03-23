@@ -33,40 +33,61 @@ class ProgressionService {
       await apiService.updateUserProgression(progression.toApiRequest());
     } catch (e) {
       // 3. Queue for sync if failed
-      getIt<SyncService>().enqueueAction('progression_update', progression.toApiRequest());
+      getIt<SyncService>().enqueueAction(
+        'progression_update',
+        progression.toApiRequest(),
+      );
     }
   }
 
   Future<MangaProgression?> getProgression(String mangaId) async {
-    final apiService = getIt<MangaApiService>();
-    
+    // 1. Return local cache immediately
+    final progressions = await _loadFromLocalCache();
+    final local = progressions.firstWhereOrNull((p) => p.mangaId == mangaId);
+
+    // 2. Background sync from API
+    _syncProgressionFromApi(mangaId);
+
+    return local;
+  }
+
+  /// Fetches a single manga's progression from the API and updates local cache.
+  Future<void> _syncProgressionFromApi(String mangaId) async {
     try {
+      final apiService = getIt<MangaApiService>();
       final data = await apiService.getProgressionForManga(mangaId);
       if (data != null) {
         final progression = MangaProgression.fromMap(data);
         await _updateLocalCache(progression);
-        return progression;
       }
-    } catch (_) {}
-
-    // Fallback to local cache
-    final progressions = await _loadFromLocalCache();
-    return progressions.firstWhereOrNull((p) => p.mangaId == mangaId);
+    } catch (_) {
+      // Silently ignore — caller already has local data
+    }
   }
 
   Future<List<MangaProgression>> getAllProgressions() async {
-    final apiService = getIt<MangaApiService>();
-    
+    // 1. Return local cache immediately
+    final local = await _loadFromLocalCache();
+
+    // 2. Background sync from API
+    _syncAllProgressionsFromApi();
+
+    return local;
+  }
+
+  /// Fetches all progressions from the API and updates local cache.
+  Future<void> _syncAllProgressionsFromApi() async {
     try {
+      final apiService = getIt<MangaApiService>();
       final data = await apiService.getUserProgression();
-      final progressions = data.map((json) => MangaProgression.fromMap(json)).toList();
-      
+      final progressions = data
+          .map((json) => MangaProgression.fromMap(json))
+          .toList();
+
       await _saveAllToLocalCache(progressions);
       getIt<SyncService>().syncPendingActions();
-      
-      return progressions;
-    } catch (e) {
-      return _loadFromLocalCache();
+    } catch (_) {
+      // Silently ignore — caller already has local data
     }
   }
 
@@ -85,7 +106,9 @@ class ProgressionService {
 
   Future<void> _updateLocalCache(MangaProgression progression) async {
     final progressions = await _loadFromLocalCache();
-    final index = progressions.indexWhere((p) => p.mangaId == progression.mangaId);
+    final index = progressions.indexWhere(
+      (p) => p.mangaId == progression.mangaId,
+    );
 
     if (index >= 0) {
       progressions[index] = progression;
