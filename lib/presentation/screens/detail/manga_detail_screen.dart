@@ -15,6 +15,8 @@ import '../../../data/services/manga_detail_service.dart';
 import '../../../data/services/progression_service.dart';
 import '../../../routes/app_pages.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/discover_card.dart';
+import '../../../data/models/manga_summary.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final MangaDetail manga;
@@ -25,7 +27,7 @@ class MangaDetailScreen extends StatefulWidget {
   State<MangaDetailScreen> createState() => _MangaDetailScreenState();
 }
 
-class _MangaDetailScreenState extends State<MangaDetailScreen> {
+class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTickerProviderStateMixin {
   final MangaApiService _apiService = getIt<MangaApiService>();
   final ProgressionService _progressionService = getIt<ProgressionService>();
   final LibraryService _libraryService = getIt<LibraryService>();
@@ -34,6 +36,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   bool _isLoadingChapters = true;
   bool _isInLibrary = false;
   Future<List<MangaProgression>>? _progressionsFuture;
+
+  late TabController _tabController;
+  List<MangaSummary> _recommendations = [];
+  bool _isLoadingRecommendations = false;
 
   MangaDetail get manga => widget.manga;
 
@@ -44,6 +50,20 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     _progressionsFuture = _progressionService.getAllProgressions();
     _loadChapters();
     _checkIfInLibrary();
+
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && _recommendations.isEmpty) {
+        _loadRecommendations();
+      }
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _refreshProgressions() {
@@ -153,6 +173,25 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       setState(() {
         _isInLibrary = isInLibrary;
       });
+    }
+  }
+
+  Future<void> _loadRecommendations() async {
+    if (_isLoadingRecommendations) return;
+    setState(() => _isLoadingRecommendations = true);
+    try {
+      final recommendations = await _apiService.getRecommendations(
+        readingHistoryIds: [manga.id],
+        limit: 10,
+      );
+      if (mounted) {
+        setState(() {
+          _recommendations = recommendations;
+          _isLoadingRecommendations = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingRecommendations = false);
     }
   }
 
@@ -338,12 +377,49 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         const SizedBox(height: 24),
                         _buildActionButtons(context),
                         const SizedBox(height: 32),
-                        _buildChapterListHeader(context),
                       ],
                     ),
                   ),
                 ),
-                _buildChapterListSliver(context, isDark),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverTabHeaderDelegate(
+                    backgroundColor: isDark
+                        ? AppColors.backgroundDark
+                        : AppColors.backgroundLight,
+                    tabBar: TabBar(
+                      controller: _tabController,
+                      indicatorColor: AppColors.primary,
+                      labelColor: AppColors.primary,
+                      unselectedLabelColor: Colors.grey,
+                      labelStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Chapters'),
+                        Tab(text: 'Recommendations'),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_tabController.index == 0)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      color: isDark
+                          ? AppColors.backgroundDark
+                          : AppColors.backgroundLight,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      child: _buildChapterListHeader(context),
+                    ),
+                  ),
+                if (_tabController.index == 0)
+                  _buildChapterListSliver(context, isDark)
+                else
+                  _buildRecommendationsSliver(context, isDark),
                 SliverToBoxAdapter(
                   child: Container(
                     height: 48,
@@ -1354,5 +1430,139 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         );
       },
     );
+  }
+
+  Widget _buildRecommendationsSliver(BuildContext context, bool isDark) {
+    final bgColor = isDark
+        ? AppColors.backgroundDark
+        : AppColors.backgroundLight;
+
+    if (_isLoadingRecommendations) {
+      return SliverToBoxAdapter(
+        child: Container(
+          color: bgColor,
+          padding: const EdgeInsets.all(48.0),
+          child: const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        ),
+      );
+    }
+
+    if (_recommendations.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          color: bgColor,
+          padding: const EdgeInsets.all(48.0),
+          child: const Center(
+            child: Text(
+              'No recommendations available',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.all(24.0),
+      sliver: SliverGrid(
+        gridDelegate: _buildRecommendationGridDelegate(),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final item = _recommendations[index];
+            return DiscoverCard(
+              title: item.title,
+              type: item.type,
+              latestChapter: item.latestChapter,
+              views: formatViewCount(item.totalView),
+              genres: item.genres ?? [],
+              status: item.status,
+              localImageUrl: item.localImageUrl,
+              imageUrl: item.imageUrl,
+              onTap: () => _navigateToDetail(context, item),
+            );
+          },
+          childCount: _recommendations.length,
+        ),
+      ),
+    );
+  }
+
+  SliverGridDelegateWithFixedCrossAxisCount _buildRecommendationGridDelegate() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 768;
+    final isDesktop = screenWidth >= 1024;
+
+    final int crossAxisCount = isDesktop ? 4 : isTablet ? 3 : 2;
+
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: crossAxisCount,
+      mainAxisSpacing: 24,
+      crossAxisSpacing: 16,
+      childAspectRatio: 0.65,
+    );
+  }
+
+  Future<void> _navigateToDetail(BuildContext context, MangaSummary item) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+
+    try {
+      final detailData = await _apiService.getMangaDetail(item.id);
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        final mangaDetail = MangaDetail.fromMap(detailData);
+        Navigator.pushNamed(
+          context,
+          AppRoutes.detail,
+          arguments: mangaDetail,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load details: $e')),
+        );
+      }
+    }
+  }
+}
+
+class _SliverTabHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+  final Color backgroundColor;
+
+  _SliverTabHeaderDelegate({
+    required this.tabBar,
+    required this.backgroundColor,
+  });
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: backgroundColor,
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabHeaderDelegate oldDelegate) {
+    return false;
   }
 }
