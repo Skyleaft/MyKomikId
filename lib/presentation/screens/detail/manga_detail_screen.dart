@@ -1478,6 +1478,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
               views: formatViewCount(item.totalView),
               genres: item.genres ?? [],
               status: item.status,
+              rating: item.rating,
               localImageUrl: item.localImageUrl,
               imageUrl: item.imageUrl,
               onTap: () => _navigateToDetail(context, item),

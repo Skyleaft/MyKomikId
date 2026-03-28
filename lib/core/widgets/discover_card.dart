@@ -14,6 +14,7 @@ class DiscoverCard extends StatelessWidget {
   final LatestChapterSummary? latestChapter;
   final List<String> genres;
   final String? status;
+  final double? rating;
   final VoidCallback? onTap;
 
   const DiscoverCard({
@@ -26,12 +27,16 @@ class DiscoverCard extends StatelessWidget {
     required this.latestChapter,
     required this.genres,
     this.status,
+    this.rating,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final String displayUrl = getIt<MangaApiService>().getLocalImageUrl(localImageUrl, imageUrl);
+    final String displayUrl = getIt<MangaApiService>().getLocalImageUrl(
+      localImageUrl,
+      imageUrl,
+    );
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 768;
     final isDesktop = screenWidth >= 1024;
@@ -56,6 +61,11 @@ class DiscoverCard extends StatelessWidget {
         : 10;
 
     final double statusFontSize = isDesktop
+        ? 10
+        : isTablet
+        ? 9.5
+        : 9;
+    final double ratingFontSize = isDesktop
         ? 10
         : isTablet
         ? 9.5
@@ -86,6 +96,12 @@ class DiscoverCard extends StatelessWidget {
         : 12;
 
     final EdgeInsetsGeometry statusPadding = isDesktop
+        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+        : isTablet
+        ? const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5)
+        : const EdgeInsets.symmetric(horizontal: 6, vertical: 3);
+
+    final EdgeInsetsGeometry ratingPadding = isDesktop
         ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
         : isTablet
         ? const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5)
@@ -151,42 +167,76 @@ class DiscoverCard extends StatelessWidget {
                     else
                       _buildPlaceholder(placeholderIconSize),
 
-                    // Status Badge
-                    if (status != null && status!.isNotEmpty)
-                      Positioned(
-                        top: isDesktop
-                            ? 12
-                            : isTablet
-                            ? 10
-                            : 8,
-                        right: isDesktop
-                            ? 12
-                            : isTablet
-                            ? 10
-                            : 8,
-                        child: Container(
-                          padding: statusPadding,
-                          decoration: BoxDecoration(
-                            color: status?.toLowerCase() == 'ongoing'
-                                ? Colors.green.withOpacity(0.8)
-                                : status?.toLowerCase() == 'completed' ||
-                                      status?.toLowerCase() == 'finished' ||
-                                      status?.toLowerCase() == 'end'
-                                ? Colors.blue.withOpacity(0.8)
-                                : Colors.orange.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            status!.toUpperCase(),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: statusFontSize,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                    // Top Right Badges (Status & Rating)
+                    Positioned(
+                      top: isDesktop
+                          ? 12
+                          : isTablet
+                          ? 10
+                          : 8,
+                      right: isDesktop
+                          ? 12
+                          : isTablet
+                          ? 10
+                          : 8,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (status != null && status!.isNotEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: statusPadding,
+                              decoration: BoxDecoration(
+                                color: status?.toLowerCase() == 'ongoing'
+                                    ? Colors.green.withOpacity(0.8)
+                                    : status?.toLowerCase() == 'completed' ||
+                                          status?.toLowerCase() == 'finished' ||
+                                          status?.toLowerCase() == 'end'
+                                    ? Colors.blue.withOpacity(0.8)
+                                    : Colors.orange.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                status!.toUpperCase(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: statusFontSize,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          Container(
+                            padding: ratingPadding,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  color: Colors.amber,
+                                  size: iconSize + 2,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  (rating == null || rating == 0)
+                                      ? 'N/A'
+                                      : rating!.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: ratingFontSize,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
+                        ],
                       ),
+                    ),
 
                     // Type Badge (Manga/Manhwa/Manhua)
                     Positioned(

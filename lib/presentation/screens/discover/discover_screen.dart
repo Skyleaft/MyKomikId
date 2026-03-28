@@ -272,6 +272,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         views: formatViewCount(item.totalView),
                         genres: item.genres ?? [],
                         status: item.status,
+                        rating: item.rating,
                         imageUrl: _apiService.getLocalImageUrl(
                           item.localImageUrl,
                           item.imageUrl,
