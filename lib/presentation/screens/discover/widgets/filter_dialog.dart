@@ -7,13 +7,24 @@ class FilterDialog extends StatefulWidget {
   final List<String> initialGenres;
   final String? initialType;
   final String? initialStatus;
-  final Function(List<String> genres, String? type, String? status) onApply;
+  final String initialSortBy;
+  final String initialOrderBy;
+  final Function(
+    List<String> genres,
+    String? type,
+    String? status,
+    String sortBy,
+    String orderBy,
+  )
+  onApply;
 
   const FilterDialog({
     super.key,
     required this.initialGenres,
     this.initialType,
     this.initialStatus,
+    required this.initialSortBy,
+    required this.initialOrderBy,
     required this.onApply,
   });
 
@@ -31,6 +42,7 @@ class _FilterDialogState extends State<FilterDialog> {
     'Completed',
     'On Hiatus',
     'Discontinued',
+    'Unknown',
   ];
 
   bool _isLoading = true;
@@ -39,6 +51,8 @@ class _FilterDialogState extends State<FilterDialog> {
   late List<String> _selectedGenres;
   String? _selectedType;
   String? _selectedStatus;
+  late String _selectedSortBy;
+  late String _selectedOrderBy;
 
   @override
   void initState() {
@@ -46,6 +60,8 @@ class _FilterDialogState extends State<FilterDialog> {
     _selectedGenres = List.from(widget.initialGenres);
     _selectedType = widget.initialType;
     _selectedStatus = widget.initialStatus;
+    _selectedSortBy = widget.initialSortBy;
+    _selectedOrderBy = widget.initialOrderBy;
     _fetchFilterData();
   }
 
@@ -73,11 +89,17 @@ class _FilterDialogState extends State<FilterDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (_isLoading) {
-      return const Dialog(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Column(
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.backgroundDark : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(color: AppColors.primary),
@@ -90,9 +112,13 @@ class _FilterDialogState extends State<FilterDialog> {
     }
 
     if (_error != null) {
-      return Dialog(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.backgroundDark : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -110,172 +136,281 @@ class _FilterDialogState extends State<FilterDialog> {
       );
     }
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
-        child: Column(
-          children: [
-            Row(
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.backgroundDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          // Handle
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white24 : Colors.black12,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Filters',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const Divider(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    _buildSectionTitle('Status'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _statuses.map((status) {
-                        final isSelected = _selectedStatus == status;
-                        return ChoiceChip(
-                          label: Text(status),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedStatus = selected ? status : null;
-                            });
-                          },
-                          selectedColor: AppColors.primary.withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isSelected ? AppColors.primary : Colors.grey,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Type'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _types.map((type) {
-                        final isSelected = _selectedType == type;
-                        return ChoiceChip(
-                          label: Text(type),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedType = selected ? type : null;
-                            });
-                          },
-                          selectedColor: AppColors.primary.withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isSelected ? AppColors.primary : Colors.grey,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Genres'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _genres.map((genre) {
-                        final isSelected = _selectedGenres.contains(genre);
-                        return FilterChip(
-                          label: Text(genre),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedGenres.add(genre);
-                              } else {
-                                _selectedGenres.remove(genre);
-                              }
-                            });
-                          },
-                          selectedColor: AppColors.primary.withOpacity(0.2),
-                          checkmarkColor: AppColors.primary,
-                          labelStyle: TextStyle(
-                            color: isSelected ? AppColors.primary : Colors.grey,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-            const Divider(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
                 TextButton(
                   onPressed: () {
                     setState(() {
                       _selectedGenres.clear();
                       _selectedType = null;
                       _selectedStatus = null;
+                      _selectedSortBy = 'updatedAt';
+                      _selectedOrderBy = 'desc';
                     });
                   },
                   child: const Text(
-                    'Reset',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    widget.onApply(
-                      _selectedGenres,
-                      _selectedType,
-                      _selectedStatus,
-                    );
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                    'Reset All',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  child: const Text('Apply'),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionTitle('Sort By'),
+                  _buildSortByGroup(),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Sort Order'),
+                  _buildOrderGroup(),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Status'),
+                  _buildChoiceGroup(
+                    items: _statuses,
+                    selectedItem: _selectedStatus,
+                    onSelected: (val) => setState(() => _selectedStatus = val),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Type'),
+                  _buildChoiceGroup(
+                    items: _types,
+                    selectedItem: _selectedType,
+                    onSelected: (val) => setState(() => _selectedType = val),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle('Genres'),
+                  _buildFilterGroup(
+                    items: _genres,
+                    selectedItems: _selectedGenres,
+                    onToggle: (type, selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedGenres.add(type);
+                        } else {
+                          _selectedGenres.remove(type);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  widget.onApply(
+                    _selectedGenres,
+                    _selectedType,
+                    _selectedStatus,
+                    _selectedSortBy,
+                    _selectedOrderBy,
+                  );
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  shadowColor: AppColors.primary.withOpacity(0.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: const Text(
+                  'Apply Filters',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChoiceGroup({
+    required List<String> items,
+    required String? selectedItem,
+    required Function(String?) onSelected,
+  }) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: items.map((item) {
+        final isSelected = selectedItem == item;
+        return _buildOptionChip(
+          label: item,
+          isSelected: isSelected,
+          onTap: () => onSelected(isSelected ? null : item),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildFilterGroup({
+    required List<String> items,
+    required List<String> selectedItems,
+    required Function(String, bool) onToggle,
+  }) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: items.map((item) {
+        final isSelected = selectedItems.contains(item);
+        return _buildOptionChip(
+          label: item,
+          isSelected: isSelected,
+          onTap: () => onToggle(item, !isSelected),
+          icon: isSelected ? Icons.check_rounded : null,
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSortByGroup() {
+    final sortOptions = {
+      'updatedAt': 'Updated',
+      'title': 'Name',
+      'popularity': 'Popularity',
+      'rating': 'Rating',
+      'releaseDate': 'Release Date',
+    };
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: sortOptions.entries.map((e) {
+        final isSelected = _selectedSortBy == e.key;
+        return _buildOptionChip(
+          label: e.value,
+          isSelected: isSelected,
+          onTap: () => setState(() => _selectedSortBy = e.key),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildOrderGroup() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _buildOptionChip(
+          label: 'Ascending',
+          isSelected: _selectedOrderBy == 'asc',
+          onTap: () => setState(() => _selectedOrderBy = 'asc'),
+          icon: Icons.arrow_upward_rounded,
+        ),
+        _buildOptionChip(
+          label: 'Descending',
+          isSelected: _selectedOrderBy == 'desc',
+          onTap: () => setState(() => _selectedOrderBy = 'desc'),
+          icon: Icons.arrow_downward_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOptionChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    IconData? icon,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.1)
+              : Colors.transparent,
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary
+                : Colors.grey.withOpacity(0.3),
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null)
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.primary : Colors.grey[600],
+              ),
+            if (icon != null) const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : Colors.grey[600],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

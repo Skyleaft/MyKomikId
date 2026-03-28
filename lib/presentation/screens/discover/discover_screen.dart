@@ -126,36 +126,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   void _onFilter() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => FilterDialog(
         initialGenres: _selectedGenres,
         initialType: _selectedType,
         initialStatus: _selectedStatus,
-        onApply: (genres, type, status) {
+        initialSortBy: _sortBy,
+        initialOrderBy: _orderBy,
+        onApply: (genres, type, status, sortBy, orderBy) {
           setState(() {
             _selectedGenres = genres;
             _selectedType = type;
             _selectedStatus = status;
+            _sortBy = sortBy;
+            _orderBy = orderBy;
           });
           _fetchData(refresh: true);
         },
       ),
     );
-  }
-
-  void _onSortChanged(String sortBy) {
-    setState(() {
-      _sortBy = sortBy;
-    });
-    _fetchData(refresh: true);
-  }
-
-  void _onOrderToggle() {
-    setState(() {
-      _orderBy = _orderBy == 'asc' ? 'desc' : 'asc';
-    });
-    _fetchData(refresh: true);
   }
 
   SliverGridDelegateWithFixedCrossAxisCount _buildGridDelegate() {
@@ -228,26 +220,25 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             : AppColors.backgroundLight)
                         .withOpacity(0.8),
                 surfaceTintColor: Colors.transparent,
-                expandedHeight: 196,
+                expandedHeight: 146,
                 toolbarHeight: 0,
                 flexibleSpace: FlexibleSpaceBar(
                   background: ClipRRect(
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: DiscoverHeader(
-                        isDark: isDark,
-                        onSearch: _onSearch,
-                        onShowQueue: _onShowQueue,
-                        onSearchScrapSource: _onSearchScrapSource,
-                        onFilter: _onFilter,
-                        onSortChanged: _onSortChanged,
-                        onOrderToggle: _onOrderToggle,
-                        currentSortBy: _sortBy,
-                        currentOrderBy: _orderBy,
-                        hasFilters:
-                            _selectedGenres.isNotEmpty ||
-                            _selectedType != null ||
-                            _selectedStatus != null,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: DiscoverHeader(
+                          isDark: isDark,
+                          onSearch: _onSearch,
+                          onShowQueue: _onShowQueue,
+                          onSearchScrapSource: _onSearchScrapSource,
+                          onFilter: _onFilter,
+                          hasFilters:
+                              _selectedGenres.isNotEmpty ||
+                              _selectedType != null ||
+                              _selectedStatus != null,
+                        ),
                       ),
                     ),
                   ),
