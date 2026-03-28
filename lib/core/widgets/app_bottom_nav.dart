@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:animated_icon/animated_icon.dart';
 import '../constants/app_colors.dart';
 
 class AppBottomNav extends StatelessWidget {
@@ -61,28 +62,28 @@ class AppBottomNav extends StatelessWidget {
                 _buildNavItem(
                   context,
                   0,
-                  Icons.home_rounded,
+                  AnimateIcons.home,
                   'Home',
                   isTablet || isDesktop,
                 ),
                 _buildNavItem(
                   context,
                   1,
-                  Icons.auto_stories_rounded,
+                  AnimateIcons.bookmark,
                   'Library',
                   isTablet || isDesktop,
                 ),
                 _buildNavItem(
                   context,
                   2,
-                  Icons.explore_rounded,
+                  AnimateIcons.compass,
                   'Discover',
                   isTablet || isDesktop,
                 ),
                 _buildNavItem(
                   context,
                   3,
-                  Icons.more_horiz_rounded,
+                  AnimateIcons.circlesMenu3,
                   'More',
                   isTablet || isDesktop,
                 ),
@@ -97,72 +98,75 @@ class AppBottomNav extends StatelessWidget {
   Widget _buildNavItem(
     BuildContext context,
     int index,
-    IconData icon,
+    AnimateIcons animateIcon,
     String label,
     bool showLabel,
   ) {
     final isActive = currentIndex == index;
 
     return Expanded(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => onTap(index),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primary.withValues(alpha: 0.2)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
-                    width: isActive ? 40 : 36,
-                    height: isActive ? 40 : 36,
-                    decoration: BoxDecoration(
+      child: InkWell(
+        onTap: () => onTap(index),
+        borderRadius: BorderRadius.circular(24),
+        splashColor: AppColors.primary.withValues(alpha: 0.1),
+        highlightColor: AppColors.primary.withValues(alpha: 0.05),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  width: isActive ? 40 : 36,
+                  height: isActive ? 40 : 36,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: AnimateIcon(
+                      key: ValueKey('nav_item_$index'),
+                      onTap: () => onTap(index),
+                      iconType: IconType.animatedOnTap,
+                      height: isActive ? 26 : 24,
+                      width: isActive ? 26 : 24,
                       color: isActive
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        icon,
-                        color: isActive
-                            ? AppColors.primary
-                            : Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white70
-                            : AppColors.secondary,
-                        size: isActive ? 26 : 24,
-                      ),
+                          ? AppColors.primary
+                          : Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : AppColors.secondary,
+                      animateIcon: animateIcon,
                     ),
                   ),
-                  if (showLabel) ...[
-                    const SizedBox(height: 2),
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      style: TextStyle(
-                        color: isActive ? AppColors.primary : Colors.grey,
-                        fontSize: 10,
-                        fontWeight: isActive
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                      child: Text(label),
+                ),
+                if (showLabel) ...[
+                  const SizedBox(height: 2),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    style: TextStyle(
+                      color: isActive ? AppColors.primary : Colors.grey,
+                      fontSize: 10,
+                      fontWeight: isActive
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
-                  ],
+                    child: Text(label),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),

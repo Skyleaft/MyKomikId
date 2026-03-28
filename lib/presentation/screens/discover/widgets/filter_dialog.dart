@@ -333,6 +333,7 @@ class _FilterDialogState extends State<FilterDialog> {
       'popularity': 'Popularity',
       'rating': 'Rating',
       'releaseDate': 'Release Date',
+      'totalView': 'Views',
     };
 
     return Wrap(

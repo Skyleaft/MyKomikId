@@ -27,7 +27,8 @@ class MangaDetailScreen extends StatefulWidget {
   State<MangaDetailScreen> createState() => _MangaDetailScreenState();
 }
 
-class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTickerProviderStateMixin {
+class _MangaDetailScreenState extends State<MangaDetailScreen>
+    with SingleTickerProviderStateMixin {
   final MangaApiService _apiService = getIt<MangaApiService>();
   final ProgressionService _progressionService = getIt<ProgressionService>();
   final LibraryService _libraryService = getIt<LibraryService>();
@@ -40,6 +41,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
   late TabController _tabController;
   List<MangaSummary> _recommendations = [];
   bool _isLoadingRecommendations = false;
+  bool _isAscending = false;
 
   MangaDetail get manga => widget.manga;
 
@@ -57,6 +59,24 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
         _loadRecommendations();
       }
       if (mounted) setState(() {});
+    });
+    _sortChapters();
+  }
+
+  void _sortChapters() {
+    _chapters.sort((a, b) {
+      if (_isAscending) {
+        return a.chapterNumber.compareTo(b.chapterNumber);
+      } else {
+        return b.chapterNumber.compareTo(a.chapterNumber);
+      }
+    });
+  }
+
+  void _toggleSort() {
+    setState(() {
+      _isAscending = !_isAscending;
+      _sortChapters();
     });
   }
 
@@ -84,6 +104,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
             .toList();
         setState(() {
           _chapters = freshChapters;
+          _sortChapters();
           _isLoadingChapters = false;
         });
         // Persist refreshed data to local cache
@@ -122,6 +143,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
     if (cached != null && cached.chapters.isNotEmpty && mounted) {
       setState(() {
         _chapters = cached.chapters;
+        _sortChapters();
         _isLoadingChapters = false;
       });
     }
@@ -132,6 +154,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
       if (mounted) {
         setState(() {
           _chapters = chaptersData.map((e) => Chapter.fromMap(e)).toList();
+          _sortChapters();
           _isLoadingChapters = false;
         });
         // Update local cache with fresh chapter data
@@ -804,6 +827,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
           Colors.grey.withOpacity(0.2),
           Colors.grey,
         ),
+        if (manga.releaseDate != null)
+          _buildTag(
+            'START: ${DateFormat('yyyy').format(manga.releaseDate!)}',
+            Colors.blueAccent.withOpacity(0.2),
+            Colors.blueAccent,
+          ),
       ],
     );
   }
@@ -1069,19 +1098,23 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
               ),
             ),
             TextButton.icon(
-              onPressed: () {},
-              icon: const Text(
-                'Sort',
-                style: TextStyle(
+              onPressed: _toggleSort,
+              icon: Text(
+                _isAscending ? 'Oldest' : 'Latest',
+                style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              label: const Icon(
-                Icons.swap_vert,
-                color: AppColors.primary,
-                size: 16,
+              label: AnimatedRotation(
+                turns: _isAscending ? 0.5 : 0,
+                duration: const Duration(milliseconds: 300),
+                child: const Icon(
+                  Icons.swap_vert,
+                  color: AppColors.primary,
+                  size: 16,
+                ),
               ),
             ),
           ],
@@ -1218,8 +1251,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
                                           size: 14,
                                           color: textColor.withOpacity(0.5),
                                         )
-                                      : Image.network(
-                                          chapter.chapterProviderIcon!,
+                                      : CachedNetworkImage(
+                                          imageUrl:
+                                              chapter.chapterProviderIcon!,
                                           width: 16,
                                           height: 16,
                                           errorBuilder:
@@ -1232,15 +1266,66 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
                                                   ),
                                         ),
                                 ),
+                              const SizedBox(width: 8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.remove_red_eye_outlined,
+                                    color:
+                                        (Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white
+                                                : Colors.black87)
+                                            .withOpacity(0.5),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    formatViewCount(chapter.totalView),
+                                    style: TextStyle(
+                                      color:
+                                          (Theme.of(context).brightness ==
+                                                      Brightness.dark
+                                                  ? Colors.white
+                                                  : Colors.black87)
+                                              .withOpacity(0.5),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            DateFormat('MMM dd, yyyy').format(chapter.date),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: textColor.withOpacity(0.7),
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                DateFormat('MMM dd, yyyy').format(chapter.date),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textColor.withOpacity(0.7),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '·',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: textColor.withOpacity(0.5),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                timeAgo(chapter.date),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontStyle: FontStyle.italic,
+                                  color: textColor.withOpacity(0.5),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -1249,11 +1334,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
                   // Right side: Status and arrow
                   Row(
                     children: [
-                      _buildCompletionBadge(chapter.chapterNumber),
+                      _buildCompletionBadge(chapter),
                       const SizedBox(width: 8),
                       Icon(
                         Icons.chevron_right,
-                        color: textColor.withOpacity(0.5),
+                        color: textColor.withOpacity(0.3),
                         size: 20,
                       ),
                     ],
@@ -1288,96 +1373,69 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
     );
   }
 
-  Widget _buildCompletionBadge(double chapterNumber) {
+  Widget _buildCompletionBadge(Chapter chapter) {
     return FutureBuilder<List<MangaProgression>>(
       future: _progressionsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox.shrink();
-        }
+        final double chapterNumber = chapter.chapterNumber;
+        final bool isRead =
+            snapshot.hasData &&
+            snapshot.data != null &&
+            snapshot.data!.any((p) {
+              if (p.mangaId != manga.id) return false;
+              if (p.currentChapter == chapterNumber && p.isCompleted)
+                return true;
+              if (p.currentChapter > chapterNumber) return true;
+              return false;
+            });
 
-        if (!snapshot.hasData || snapshot.data == null) {
-          return const SizedBox.shrink();
-        }
-
-        final progressions = snapshot.data!;
-
-        // Check if this chapter has been completed by looking for:
-        // 1. A progression for this exact chapter that is completed
-        // 2. A progression for a later chapter (meaning this chapter was completed)
-        final hasCompletedThisChapter = progressions.any((p) {
-          if (p.mangaId != manga.id) return false;
-
-          // Case 1: Exact match and completed
-          if (p.currentChapter == chapterNumber && p.isCompleted) {
-            return true;
-          }
-
-          // Case 2: Later chapter progression means this chapter was completed
-          if (p.currentChapter > chapterNumber) {
-            return true;
-          }
-
-          return false;
-        });
-
-        if (!hasCompletedThisChapter) {
-          return const SizedBox.shrink();
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primary.withOpacity(0.4),
-                AppColors.primary.withOpacity(0.4),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.2),
-                blurRadius: 4,
-                spreadRadius: 1,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                'READ',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isRead)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.4),
+                      AppColors.primary.withOpacity(0.4),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.2),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'READ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+          ],
         );
       },
     );
-  }
-
-  Widget _buildChapterStatus(Chapter chapter) {
-    final bool isAvailable = chapter.isChapterAvailable;
-
-    if (!isAvailable) {
-      return _buildStatusBadge('SOON', Colors.grey[700]!, Colors.white70);
-    } else if (chapter.isNew) {
-      return _buildStatusBadge('NEW', AppColors.primary, Colors.white);
-    } else if (chapter.isRead) {
-      return _buildStatusBadge('READ', Colors.grey[700]!, Colors.grey[400]!);
-    } else {
-      return const Icon(Icons.chevron_right, color: Colors.grey);
-    }
   }
 
   Widget _buildProgressionBar(double chapterNumber) {
@@ -1468,24 +1526,21 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
       padding: const EdgeInsets.all(24.0),
       sliver: SliverGrid(
         gridDelegate: _buildRecommendationGridDelegate(),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final item = _recommendations[index];
-            return DiscoverCard(
-              title: item.title,
-              type: item.type,
-              latestChapter: item.latestChapter,
-              views: formatViewCount(item.totalView),
-              genres: item.genres ?? [],
-              status: item.status,
-              rating: item.rating,
-              localImageUrl: item.localImageUrl,
-              imageUrl: item.imageUrl,
-              onTap: () => _navigateToDetail(context, item),
-            );
-          },
-          childCount: _recommendations.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final item = _recommendations[index];
+          return DiscoverCard(
+            title: item.title,
+            type: item.type,
+            latestChapter: item.latestChapter,
+            views: formatViewCount(item.totalView),
+            genres: item.genres ?? [],
+            status: item.status,
+            rating: item.rating,
+            localImageUrl: item.localImageUrl,
+            imageUrl: item.imageUrl,
+            onTap: () => _navigateToDetail(context, item),
+          );
+        }, childCount: _recommendations.length),
       ),
     );
   }
@@ -1495,7 +1550,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
     final isTablet = screenWidth >= 768;
     final isDesktop = screenWidth >= 1024;
 
-    final int crossAxisCount = isDesktop ? 4 : isTablet ? 3 : 2;
+    final int crossAxisCount = isDesktop
+        ? 4
+        : isTablet
+        ? 3
+        : 2;
 
     return SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: crossAxisCount,
@@ -1505,7 +1564,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
     );
   }
 
-  Future<void> _navigateToDetail(BuildContext context, MangaSummary item) async {
+  Future<void> _navigateToDetail(
+    BuildContext context,
+    MangaSummary item,
+  ) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1519,18 +1581,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> with SingleTicker
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
         final mangaDetail = MangaDetail.fromMap(detailData);
-        Navigator.pushNamed(
-          context,
-          AppRoutes.detail,
-          arguments: mangaDetail,
-        );
+        Navigator.pushNamed(context, AppRoutes.detail, arguments: mangaDetail);
       }
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load details: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load details: $e')));
       }
     }
   }
@@ -1556,10 +1614,7 @@ class _SliverTabHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(
-      color: backgroundColor,
-      child: tabBar,
-    );
+    return Container(color: backgroundColor, child: tabBar);
   }
 
   @override

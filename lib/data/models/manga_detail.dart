@@ -129,6 +129,7 @@ class Chapter {
   final String? chapterProvider;
   final String? chapterProviderIcon;
   final String? link;
+  final int totalView;
 
   Chapter({
     required this.id,
@@ -141,24 +142,28 @@ class Chapter {
     this.chapterProvider,
     this.chapterProviderIcon,
     this.link,
+    this.totalView = 0,
   });
 
   factory Chapter.fromMap(Map<String, dynamic> map) {
     return Chapter(
       id: map['id'] as String? ?? (map['number']?.toString() ?? ''),
       title: map['title'] as String? ?? 'Chapter ${map['number']}',
-      chapterNumber: (map['number'] as num? ?? map['chapterNumber'] as num? ?? 0).toDouble(),
+      chapterNumber:
+          (map['number'] as num? ?? map['chapterNumber'] as num? ?? 0)
+              .toDouble(),
       date: map['uploadDate'] != null
           ? DateTime.parse(map['uploadDate'] as String)
           : map['date'] != null
-              ? DateTime.parse(map['date'] as String)
-              : DateTime.now(),
+          ? DateTime.parse(map['date'] as String)
+          : DateTime.now(),
       isNew: map['isNew'] as bool? ?? false,
       isRead: map['isRead'] as bool? ?? false,
       isChapterAvailable: map['isChapterAvailable'] as bool? ?? true,
       chapterProvider: map['chapterProvider'] as String?,
       chapterProviderIcon: map['chapterProviderIcon'] as String?,
       link: map['link'] as String?,
+      totalView: map['totalView'] as int? ?? 0,
     );
   }
 
@@ -174,6 +179,7 @@ class Chapter {
       'chapterProvider': chapterProvider,
       'chapterProviderIcon': chapterProviderIcon,
       'link': link,
+      'totalView': totalView,
     };
   }
 }

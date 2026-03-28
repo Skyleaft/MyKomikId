@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/widgets/manga_card.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../data/models/manga_detail.dart';
 import '../../../data/models/progression.dart';
 import '../../../data/services/manga_api_service.dart';
@@ -298,14 +299,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 child: mangaDetail != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          _apiService.getLocalImageUrl(
+                        child: CachedNetworkImage(
+                          imageUrl: _apiService.getLocalImageUrl(
                             mangaDetail.localImageUrl,
                             mangaDetail.imageUrl,
                           ),
                           fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
+                          placeholder: (context, url) {
                             return const Center(
                               child: CircularProgressIndicator(
                                 color: AppColors.primary,
