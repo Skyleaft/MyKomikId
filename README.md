@@ -20,7 +20,7 @@ Open Manga Reader is a modern, feature-rich manga reading application built with
 
 - **Framework**: [Flutter](https://flutter.dev/)
 - **State Management**: [Provider](https://pub.dev/packages/provider)
-- **Backend & Auth**: [Firebase](https://firebase.google.com/)
+- **Backend & Auth**: [Firebase](https://firebase.google.com/) & [MangaScrapper API](https://github.com/Skyleaft/MangaScrapper)
 - **Dependency Injection**: [GetIt](https://pub.dev/packages/get_it) & [Injectable](https://pub.dev/packages/injectable)
 - **Networking**: [Dio](https://pub.dev/packages/dio) / [HTTP](https://pub.dev/packages/http)
 - **Typography**: [Google Fonts](https://fonts.google.com/)
