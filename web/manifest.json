@@ -1,6 +1,6 @@
 {
-    "name": "my_manga_reader",
-    "short_name": "my_manga_reader",
+    "name": "Open Manga Reader",
+    "short_name": "Open Manga Reader",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

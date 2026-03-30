@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return Provider<AuthService>(
       create: (_) => AuthService(),
       child: MaterialApp(
-        title: 'MyKomikID',
+        title: 'Open Manga Reader',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
