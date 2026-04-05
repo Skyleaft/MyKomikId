@@ -44,7 +44,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   Future<void> _checkForUpdate() async {
     final updateService = UpdateService();
     final updateData = await updateService.checkForUpdate();
-    
+
     if (updateData != null && mounted) {
       _showUpdateDialog(updateData);
     }
@@ -71,16 +71,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         ),
         actions: [
           TextButton(
-             onPressed: () => Navigator.pop(context),
-             child: const Text('Later'),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
           ),
           ElevatedButton(
-             onPressed: () {
-               Navigator.pop(context);
-               final url = Uri.parse(updateData['url']);
-               launchUrl(url, mode: LaunchMode.externalApplication);
-             },
-             child: const Text('Update Now'),
+            onPressed: () {
+              Navigator.pop(context);
+              final url = Uri.parse(updateData['url']);
+              launchUrl(url, mode: LaunchMode.externalApplication);
+            },
+            child: const Text('Update Now'),
           ),
         ],
       ),
