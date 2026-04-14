@@ -7,6 +7,8 @@ environment:
   sdk: ^3.11.0
 
 dependencies:
+  crypto: ^3.0.6
+  flutter_dotenv: ^5.2.1
   dio: ^5.9.2
   firebase_auth: ^6.1.4
   firebase_core: ^4.4.0
@@ -17,6 +19,7 @@ dependencies:
   get_it: ^9.2.1
   google_fonts: ^8.0.2  
   google_sign_in: ^6.2.1
+  http: ^1.2.2
   intl: ^0.19.0
   jikan_api: ^2.3.0
   shared_preferences: ^2.5.5
@@ -34,3 +37,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
