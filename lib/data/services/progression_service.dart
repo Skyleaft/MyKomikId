@@ -23,23 +23,24 @@ extension ListExtensions<T> on List<T> {
 class ProgressionService {
   static const _progressionKey = 'manga_progression';
 
+  String get _currentUserId => getIt<MangaApiService>().userId ?? '';
+
   Future<void> saveProgression(MangaProgression progression) async {
     // 1. Update local cache (merge)
     await _updateLocalCache(progression, overwrite: false);
 
     // 2. Try API
     final apiService = getIt<MangaApiService>();
+    final payload = progression.toApiRequest(_currentUserId);
     try {
-      final response = await apiService.updateUserProgression(
-        progression.toApiRequest(),
-      );
+      final response = await apiService.updateUserProgression(payload);
       final updatedProgression = MangaProgression.fromMap(response);
       await _updateLocalCache(updatedProgression, overwrite: true);
     } catch (e) {
       // 3. Queue for sync if failed
       getIt<SyncService>().enqueueAction(
         'progression_update',
-        progression.toApiRequest(),
+        payload,
       );
     }
   }
@@ -59,7 +60,7 @@ class ProgressionService {
   Future<void> _syncProgressionFromApi(String mangaId) async {
     try {
       final apiService = getIt<MangaApiService>();
-      final data = await apiService.getProgressionForManga(mangaId);
+      final data = await apiService.getProgressionForManga(_currentUserId, mangaId);
       if (data != null) {
         final progression = MangaProgression.fromMap(data);
         await _updateLocalCache(progression, overwrite: true);
@@ -89,7 +90,7 @@ class ProgressionService {
   Future<void> _syncAllProgressionsFromApi() async {
     try {
       final apiService = getIt<MangaApiService>();
-      final data = await apiService.getUserProgression();
+      final data = await apiService.getUserProgression(_currentUserId);
       final progressions = data
           .map((json) => MangaProgression.fromMap(json))
           .toList();
@@ -143,7 +144,7 @@ class ProgressionService {
               lastReadPage: newLog.lastReadPage,
               totalPages: newLog.totalPages,
               isCompleted: newLog.isCompleted,
-              readingTimeSeconds: existingLog.readingTimeSeconds + newLog.readingTimeSeconds,
+              readingTimeSeconds: newLog.readingTimeSeconds,
               lastReadAt: newLog.lastReadAt,
             );
           } else {

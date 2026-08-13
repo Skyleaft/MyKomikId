@@ -39,7 +39,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   List<Chapter> _chapters = [];
   bool _isLoadingChapters = true;
   bool _isInLibrary = false;
-  Future<List<MangaProgression>>? _progressionsFuture;
+  Future<MangaProgression?>? _progressionFuture;
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _searchQuery = '';
@@ -55,7 +55,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void initState() {
     super.initState();
     _chapters = widget.manga.chapters;
-    _progressionsFuture = _progressionService.getAllProgressions();
+    _progressionFuture = _progressionService.getProgression(widget.manga.id);
     _loadChapters();
     _checkIfInLibrary();
 
@@ -96,7 +96,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void _refreshProgressions() {
     if (mounted) {
       setState(() {
-        _progressionsFuture = _progressionService.getAllProgressions();
+        _progressionFuture = _progressionService.getProgression(manga.id);
       });
     }
   }
@@ -499,10 +499,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     );
 
     try {
-      final pages = await _apiService.getChapterPages(
-        manga.id,
-        chapter.chapterNumber,
-      );
+      final pages = await _apiService.getChapterPages(manga.id, chapter.id);
 
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
@@ -526,12 +523,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           pageUrls: pages
               .map(
                 (p) => _apiService.getLocalImageUrl(
-                  p['localImageUrl'] as String?,
-                  p['imageUrl'] as String?,
+                  p,
+                  null,
                 ),
               )
               .toList(),
           currentPage: startingPage,
+          progression: progression,
         );
 
         await Navigator.pushNamed(
@@ -910,8 +908,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return FutureBuilder<List<MangaProgression>>(
-      future: _progressionsFuture,
+    return FutureBuilder<MangaProgression?>(
+      future: _progressionFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -919,14 +917,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           );
         }
 
-        if (!snapshot.hasData || snapshot.data == null) {
-          return _buildDefaultActionButtons(context);
-        }
-
-        final progressions = snapshot.data!;
-        final currentProgression = progressions.firstWhereOrNull(
-          (p) => p.mangaId == manga.id,
-        );
+        final currentProgression = snapshot.data;
 
         if (currentProgression != null) {
           return _buildResumeActionButtons(context, currentProgression);
@@ -1553,19 +1544,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Widget _buildCompletionBadge(Chapter chapter) {
-    return FutureBuilder<List<MangaProgression>>(
-      future: _progressionsFuture,
+    return FutureBuilder<MangaProgression?>(
+      future: _progressionFuture,
       builder: (context, snapshot) {
         final double chapterNumber = chapter.chapterNumber;
+        final progression = snapshot.data;
         final bool isRead =
-            snapshot.hasData &&
-            snapshot.data != null &&
-            snapshot.data!.any((p) {
-              if (p.mangaId != manga.id) return false;
-              return p.chapterLogs.any(
-                (log) => log.chapterNumber == chapterNumber && log.isCompleted,
-              );
-            });
+            progression != null &&
+            progression.chapterLogs.any(
+              (log) => log.chapterNumber == chapterNumber && log.isCompleted,
+            );
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -1617,8 +1605,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Widget _buildProgressionBar(double chapterNumber) {
-    return FutureBuilder<List<MangaProgression>>(
-      future: _progressionsFuture,
+    return FutureBuilder<MangaProgression?>(
+      future: _progressionFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const LinearProgressIndicator(
@@ -1628,15 +1616,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           );
         }
 
-        if (!snapshot.hasData || snapshot.data == null) {
+        final progression = snapshot.data;
+        if (progression == null) {
           return const SizedBox.shrink();
         }
 
-        final progressions = snapshot.data!;
-        final progression = progressions.firstWhereOrNull(
-          (p) => p.mangaId == manga.id,
-        );
-        final log = progression?.chapterLogs.firstWhereOrNull(
+        final log = progression.chapterLogs.firstWhereOrNull(
           (l) => l.chapterNumber == chapterNumber,
         );
 

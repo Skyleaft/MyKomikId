@@ -1,3 +1,5 @@
+import 'manga_summary.dart';
+
 class SearchResult {
   final String title;
   final String detailUrl;
@@ -23,20 +25,38 @@ class SearchResult {
     this.currentChapterNumber,
   });
 
+  factory SearchResult.fromMangaSummary(MangaSummary summary) {
+    final genresText = summary.genres != null && summary.genres!.isNotEmpty
+        ? summary.genres!.join(', ')
+        : 'Unknown';
+    return SearchResult(
+      title: summary.title,
+      detailUrl: summary.url ?? '',
+      thumbnail: summary.displayImageUrl,
+      type: summary.type,
+      genre: genresText,
+      lastUpdateText: summary.latestChapter != null
+          ? 'Ch. ${summary.latestChapter!.number}'
+          : 'N/A',
+      latestChapterNumber: summary.latestChapter?.number ?? 0.0,
+      latestScrapped: summary.updatedAt,
+      mangaId: summary.id,
+    );
+  }
+
   factory SearchResult.fromJson(Map<String, dynamic> json) {
     return SearchResult(
-      title: json['title'] ?? '',
-      detailUrl: json['detailUrl'] ?? '',
-      thumbnail: json['thumbnail'] ?? '',
-      type: json['type'] ?? '',
-      genre: json['genre'] ?? '',
-      lastUpdateText: json['lastUpdateText'] ?? '',
-      latestChapterNumber: (json['latestChapterNumber'] as num? ?? 0)
-          .toDouble(),
+      title: json['title'] as String? ?? '',
+      detailUrl: json['detailUrl'] as String? ?? json['url'] as String? ?? '',
+      thumbnail: json['thumbnail'] as String? ?? json['imageUrl'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      genre: json['genre'] as String? ?? (json['genres'] is List ? (json['genres'] as List).join(', ') : ''),
+      lastUpdateText: json['lastUpdateText'] as String? ?? '',
+      latestChapterNumber: (json['latestChapterNumber'] as num? ?? 0).toDouble(),
       latestScrapped: json['latestScrapped'] != null
-          ? DateTime.parse(json['latestScrapped'] as String)
+          ? DateTime.tryParse(json['latestScrapped'] as String)
           : null,
-      mangaId: json['mangaId'] as String?,
+      mangaId: json['mangaId'] as String? ?? json['id'] as String?,
       currentChapterNumber: (json['currentChapterNumber'] as num?)?.toDouble(),
     );
   }

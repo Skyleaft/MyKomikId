@@ -4,45 +4,24 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    
-
-        {
-            "name": "my_manga_reader (Web)",
-            "request": "launch",
-            "type": "dart",
-            "args": [
-                "-d",
-                "chrome",
-                "--web-browser-flag",
-                "--disable-web-security"
-            ]
-        },
-        {
-            "name": "my_manga_reader (Web Dev)",
-            "request": "launch",
-            "type": "dart",
-            "args": [
-                "-d",
-                "chrome",
-                "--dart-define",
-                "BASE_URL=http://11.1.1.4:5009",
-                "--web-browser-flag",
-                "--disable-web-security"
-            ]
-        },
-        {
-            "name": "my_manga_reader (Dev)",
-            "request": "launch",
-            "type": "dart",
-            "args": [
-                "--dart-define",
-                "BASE_URL=http://11.1.1.4:5009"
-            ]
-        },
         {
             "name": "my_manga_reader",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": [
+                "--web-port",
+                "3000"
+            ]
+        },
+        {
+            "name": "my_manga_reader (web - port 3000)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome",
+            "args": [
+                "--web-port",
+                "3000"
+            ]
         },
         {
             "name": "my_manga_reader (profile mode)",

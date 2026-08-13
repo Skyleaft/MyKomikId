@@ -8,31 +8,41 @@ import 'sync_service.dart';
 class LibraryService {
   static const _libraryKey = 'manga_library';
 
+  String get _currentUserId => getIt<MangaApiService>().userId ?? '';
+
   Future<void> addToLibrary(LibraryManga manga) async {
     // 1. Update local cache
     await _updateLocalCache(manga, isRemoving: false);
 
     // 2. Try API
     final apiService = getIt<MangaApiService>();
+    final payload = manga.toApiRequest(_currentUserId);
     try {
-      await apiService.addToUserLibrary(manga.toApiRequest());
+      await apiService.addToUserLibrary(payload);
     } catch (e) {
       // 3. Queue for sync if failed
-      getIt<SyncService>().enqueueAction('library_add', manga.toApiRequest());
+      getIt<SyncService>().enqueueAction('library_add', payload);
     }
   }
 
   Future<void> removeFromLibrary(String mangaId) async {
+    final libraryManga = await getLibraryManga(mangaId);
+    final targetId = (libraryManga?.userLibraryId.isNotEmpty ?? false)
+        ? libraryManga!.userLibraryId
+        : mangaId;
+
     // 1. Update local cache
     await _updateLocalCacheById(mangaId, isRemoving: true);
 
     // 2. Try API
     final apiService = getIt<MangaApiService>();
     try {
-      await apiService.removeFromUserLibrary(mangaId);
+      await apiService.removeFromUserLibrary(targetId);
     } catch (e) {
       // 3. Queue for sync if failed
-      getIt<SyncService>().enqueueAction('library_remove', {'mangaId': mangaId});
+      getIt<SyncService>().enqueueAction('library_remove', {
+        'mangaId': targetId,
+      });
     }
   }
 
@@ -66,8 +76,9 @@ class LibraryService {
     SyncService syncService,
   ) async {
     try {
-      final libraryData = await apiService.getUserLibrary();
-      final progressionData = await apiService.getUserProgression();
+      final userId = _currentUserId;
+      final libraryData = await apiService.getUserLibrary(userId: userId);
+      final progressionData = await apiService.getUserProgression(userId);
 
       final progressions = progressionData
           .map((e) => MangaProgression.fromMap(e))
@@ -77,7 +88,9 @@ class LibraryService {
         final libraryModel = LibraryManga.fromMap(e);
         MangaProgression? progression;
         try {
-          progression = progressions.firstWhere((p) => p.mangaId == libraryModel.id);
+          progression = progressions.firstWhere(
+            (p) => p.mangaId == libraryModel.id,
+          );
         } catch (_) {}
 
         if (progression != null) {
@@ -98,6 +111,29 @@ class LibraryService {
     }
   }
 
+  Future<void> _syncLibraryItemFromApi(String mangaId) async {
+    try {
+      final apiService = getIt<MangaApiService>();
+      final userId = _currentUserId;
+      final libraryData = await apiService.getUserLibrary(
+        userId: userId,
+        search: mangaId,
+      );
+
+      if (libraryData.isNotEmpty) {
+        final fetchedModel = LibraryManga.fromMap(libraryData.first);
+        final localLibrary = await _loadFromLocalCache();
+        final index = localLibrary.indexWhere((m) => m.id == fetchedModel.id);
+        if (index >= 0) {
+          localLibrary[index] = fetchedModel;
+        } else {
+          localLibrary.add(fetchedModel);
+        }
+        await _saveAllToLocalCache(localLibrary);
+      }
+    } catch (_) {}
+  }
+
   /// Fetches all library data from the API and updates local cache.
   /// Public wrapper — call and await this to ensure data is refreshed from the server.
   Future<void> refreshFromApi() async {
@@ -107,8 +143,13 @@ class LibraryService {
   }
 
   Future<bool> isInLibrary(String mangaId) async {
-    final library = await getAllLibraryMangas();
-    return library.any((m) => m.id == mangaId);
+    final localLibrary = await _loadFromLocalCache();
+    final inLocal = localLibrary.any((m) => m.id == mangaId);
+
+    // Sync only this single manga item from API in background instead of fetching full library
+    _syncLibraryItemFromApi(mangaId);
+
+    return inLocal;
   }
 
   Future<void> updateMangaProgress(
@@ -116,14 +157,20 @@ class LibraryService {
     double currentChapter,
     int currentPage,
     int totalPages,
-    bool isCompleted,
-  ) async {
+    bool isCompleted, {
+    String chapterId = '',
+    int readingTimeSeconds = 0,
+  }) async {
     final apiService = getIt<MangaApiService>();
     final payload = {
+      'userId': _currentUserId,
       'mangaId': mangaId,
+      'chapterId': chapterId,
       'chapterNumber': currentChapter,
       'lastReadPage': currentPage,
       'totalPages': totalPages,
+      'isCompleted': isCompleted,
+      'readingTimeSeconds': readingTimeSeconds,
     };
 
     // 1. Update local cache (find and update)
@@ -155,7 +202,10 @@ class LibraryService {
 
   // Helper methods for local cache
 
-  Future<void> _updateLocalCache(LibraryManga manga, {required bool isRemoving}) async {
+  Future<void> _updateLocalCache(
+    LibraryManga manga, {
+    required bool isRemoving,
+  }) async {
     final library = await _loadFromLocalCache();
     final index = library.indexWhere((m) => m.id == manga.id);
 
@@ -171,7 +221,10 @@ class LibraryService {
     await _saveAllToLocalCache(library);
   }
 
-  Future<void> _updateLocalCacheById(String mangaId, {required bool isRemoving}) async {
+  Future<void> _updateLocalCacheById(
+    String mangaId, {
+    required bool isRemoving,
+  }) async {
     final library = await _loadFromLocalCache();
     final index = library.indexWhere((m) => m.id == mangaId);
 

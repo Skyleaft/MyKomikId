@@ -1,20 +1,23 @@
 import 'dart:convert';
+import 'manga_summary.dart';
 
 class LibraryManga {
-  final String id; // This represents mangaId from backend logic
+  final String id; // Represents mangaId (or LibraryEntry ID)
+  final String userLibraryId; // Specific ID of the user_library record
   final String title;
   final String author;
   final String imageUrl;
   final String url;
   final String type;
   final DateTime addedAt;
+  final DateTime updatedAt;
 
-  // New API fields for library
+  // API fields for user_library
   final String status;
   final bool isFavorite;
   final double lastReadChapter;
 
-  // Merged progression fields (fetched separately if needed but kept here for UI)
+  // Merged progression fields (kept for UI state)
   final double currentChapter;
   final int currentPage;
   final int totalPages;
@@ -22,20 +25,22 @@ class LibraryManga {
 
   LibraryManga({
     required this.id,
+    this.userLibraryId = '',
     required this.title,
     required this.author,
     required this.imageUrl,
     this.url = '',
     this.type = 'Unknown',
     required this.addedAt,
-    this.status = 'Unknown',
+    DateTime? updatedAt,
+    this.status = 'Reading',
     this.isFavorite = false,
     this.lastReadChapter = 0.0,
     required this.currentChapter,
     required this.currentPage,
     required this.totalPages,
     required this.isCompleted,
-  });
+  }) : updatedAt = updatedAt ?? addedAt;
 
   factory LibraryManga.fromMangaDetail(
     String id,
@@ -46,6 +51,7 @@ class LibraryManga {
     String type, {
     String status = "Reading",
   }) {
+    final now = DateTime.now();
     return LibraryManga(
       id: id,
       title: title,
@@ -53,7 +59,8 @@ class LibraryManga {
       imageUrl: imageUrl,
       url: url ?? '',
       type: type,
-      addedAt: DateTime.now(),
+      addedAt: now,
+      updatedAt: now,
       currentChapter: 0.0,
       currentPage: 0,
       totalPages: 0,
@@ -64,18 +71,52 @@ class LibraryManga {
   }
 
   factory LibraryManga.fromMap(Map<String, dynamic> map) {
+    Map<String, dynamic>? mangaObj;
+    if (map['manga'] != null && map['manga'] is Map<String, dynamic>) {
+      mangaObj = map['manga'] as Map<String, dynamic>;
+    }
+
+    final mangaSummary = mangaObj != null ? MangaSummary.fromJson(mangaObj) : null;
+
+    final mangaId = map['mangaId'] as String? ??
+        mangaSummary?.id ??
+        map['id'] as String? ??
+        '';
+
+    final userLibId = (map['id'] as String? ?? '').isNotEmpty && mangaObj != null
+        ? (map['id'] as String)
+        : (map['userLibraryId'] as String? ?? '');
+
+    final title = mangaSummary?.title ??
+        map['mangaTitle'] as String? ??
+        map['title'] as String? ??
+        'Unknown';
+
+    final author = mangaSummary?.author ??
+        map['author'] as String? ??
+        'Unknown';
+
+    final imageUrl = mangaSummary?.displayImageUrl ??
+        map['mangaImageUrl'] as String? ??
+        map['imageUrl'] as String? ??
+        '';
+
+    final url = mangaSummary?.url ?? map['url'] as String? ?? '';
+    final type = mangaSummary?.type ?? map['type'] as String? ?? 'Manga';
+
     return LibraryManga(
-      id: (map['mangaId'] ?? map['id']) as String,
-      title: (map['mangaTitle'] ?? map['title']) as String,
-      author: map['author'] as String? ?? 'Unknown',
-      imageUrl: (map['mangaImageUrl'] ?? map['imageUrl']) as String? ?? '',
-      url: map['url'] as String? ?? '',
-      type: map['type'] as String? ?? 'Manga',
+      id: mangaId,
+      userLibraryId: userLibId,
+      title: title,
+      author: author,
+      imageUrl: imageUrl,
+      url: url,
+      type: type,
       addedAt: _parseDate(map['addedAt']),
+      updatedAt: _parseDate(map['updatedAt']),
       status: map['status'] as String? ?? 'Reading',
       isFavorite: map['isFavorite'] as bool? ?? false,
       lastReadChapter: ((map['lastReadChapter'] ?? 0) as num).toDouble(),
-
       currentChapter: (map['currentChapter'] as num? ?? 0).toDouble(),
       currentPage: map['currentPage'] as int? ?? 1,
       totalPages: map['totalPages'] as int? ?? 1,
@@ -85,13 +126,14 @@ class LibraryManga {
 
   static DateTime _parseDate(dynamic value) {
     if (value == null) return DateTime.now();
-    if (value is String) return DateTime.parse(value);
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
     return DateTime.now();
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'userLibraryId': userLibraryId,
       'mangaId': id,
       'title': title,
       'author': author,
@@ -99,6 +141,7 @@ class LibraryManga {
       'url': url,
       'type': type,
       'addedAt': addedAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
       'status': status,
       'isFavorite': isFavorite,
       'lastReadChapter': lastReadChapter,
@@ -109,13 +152,13 @@ class LibraryManga {
     };
   }
 
-  Map<String, dynamic> toApiRequest() {
+  /// Produces json payload for [AddOrUpdateUserLibraryCommand]
+  Map<String, dynamic> toApiRequest([String userId = '']) {
     return {
+      'userId': userId,
       'mangaId': id,
-      'mangaTitle': title,
-      'mangaImageUrl': imageUrl,
-      'type': type,
       'status': status,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -126,6 +169,7 @@ class LibraryManga {
 
   LibraryManga copyWith({
     String? id,
+    String? userLibraryId,
     String? title,
     String? author,
     String? imageUrl,
@@ -133,6 +177,7 @@ class LibraryManga {
     String? url,
     String? type,
     DateTime? addedAt,
+    DateTime? updatedAt,
     String? status,
     bool? isFavorite,
     double? lastReadChapter,
@@ -143,12 +188,14 @@ class LibraryManga {
   }) {
     return LibraryManga(
       id: id ?? this.id,
+      userLibraryId: userLibraryId ?? this.userLibraryId,
       title: title ?? this.title,
       author: author ?? this.author,
       imageUrl: imageUrl ?? this.imageUrl,
       url: url ?? this.url,
       type: type ?? this.type,
       addedAt: addedAt ?? this.addedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       status: status ?? this.status,
       isFavorite: isFavorite ?? this.isFavorite,
       lastReadChapter: lastReadChapter ?? this.lastReadChapter,
