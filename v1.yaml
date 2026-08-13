@@ -1,0 +1,2341 @@
+openapi: 3.1.1
+info:
+  title: MangaScrapper.Api | v1
+  version: 1.0.0
+servers:
+  - url: https://localhost:7234/
+paths:
+  /api/v1/manga/{id}:
+    patch:
+      tags:
+        - Manga
+      summary: Update manga details
+      operationId: UpdateManga
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMangaCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+    get:
+      tags:
+        - Manga
+      summary: Get manga details by ID
+      operationId: GetMangaById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfMangaSummaryResponse"
+  /api/v1/manga/search/semantic:
+    get:
+      tags:
+        - Manga
+      summary: Multilingual semantic search using vector embeddings (100+ languages
+        including Indonesian)
+      operationId: SemanticSearchManga
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/trending:
+    get:
+      tags:
+        - Manga
+      summary: Get Trending Manga
+      operationId: GetTrending
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfPagedResponseOfMangaSummaryResponse"
+  /api/v1/manga/{mangaId}/similar:
+    get:
+      tags:
+        - Manga
+      summary: Get mangas semantically similar to a given manga using vector search
+      operationId: GetSimilarManga
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/{mangaId}/similar/filtered:
+    get:
+      tags:
+        - Manga
+      summary: Get mangas similar to a given manga filtered by status, type, or genres
+      operationId: GetSimilarMangaFiltered
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/recomendations:
+    get:
+      tags:
+        - Manga
+      summary: Get manga recomendations by
+      operationId: GetRecomendation
+      parameters:
+        - name: readingHistoryIds
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga:
+    get:
+      tags:
+        - Manga
+      summary: Get paged list of manga
+      operationId: GetPagedManga
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: updatedAt
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfPagedResponseOfMangaSummaryResponse"
+  /api/v1/manga/{mangaId}/chapters/{chapterId}:
+    get:
+      tags:
+        - Manga
+      summary: Get single chapters for a manga
+      operationId: GetChapters
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfChapterResponse"
+  /api/v1/manga/types:
+    get:
+      tags:
+        - Manga
+      summary: Get list of available manga types
+      operationId: GetAllType
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfstring"
+  /api/v1/manga/genres:
+    get:
+      tags:
+        - Manga
+      summary: Get list of available genres
+      operationId: GetAllGenre
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfstring"
+  /api/v1/manga/{mangaId}/chapters:
+    get:
+      tags:
+        - Manga
+      summary: Get all chapters for a manga
+      operationId: GetAllChapters
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfChapterResponse"
+  /api/v1/manga/recommend/advanced:
+    post:
+      tags:
+        - Manga
+      summary: Recommend manga using positive (liked) and negative (disliked) examples
+        via Qdrant native vector arithmetic
+      operationId: GetAdvancedRecommendation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvancedRecommendationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/{mangaId}:
+    delete:
+      tags:
+        - Manga
+      summary: Delete a manga
+      operationId: DeleteManga
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+  /api/v1/manga/{mangaId}/chapter/{chapterId}:
+    delete:
+      tags:
+        - Manga
+      summary: Delete a manga chapter
+      operationId: DeleteChapter
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+  /api/v1/images/proxy:
+    get:
+      tags:
+        - Images
+      summary: Proxy remote image requests
+      operationId: ProxyImage
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get authenticated user info
+      operationId: UserInfo
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfUserInfoResponse"
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user account
+      operationId: Register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfLoginResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: Conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: User logout — clears cookie session
+      operationId: Logout
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User login
+      operationId: Login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfLoginResponse"
+  /api/v1/auth/firebase:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate via Firebase ID token
+      operationId: FirebaseVerify
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FirebaseVerifyRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfLoginResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: Unauthorized
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/users/{userId}:
+    patch:
+      tags:
+        - Users
+      operationId: PatchUserActivity
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfboolean"
+    get:
+      tags:
+        - Users
+      operationId: GetUserById
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfUserResponse"
+  /api/v1/users:
+    get:
+      tags:
+        - Users
+      operationId: GetPagedUser
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: updatedAt
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            default: desc
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfPagedResponseOfUserResponse"
+  /api/v1/user-progression:
+    post:
+      tags:
+        - UserProgression
+      operationId: UpdateUserProgression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserProgressionCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfUserProgressionResponse"
+  /api/v1/user-progression/{userId}:
+    get:
+      tags:
+        - UserProgression
+      operationId: GetUserProgression
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfUserProgressionResponse"
+  /api/v1/user-progression/{userId}/{mangaId}:
+    get:
+      tags:
+        - UserProgression
+      operationId: GetMangaProgression
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfUserProgressionResponse"
+  /api/v1/user-library/{id}:
+    delete:
+      tags:
+        - UserLibrary
+      operationId: RemoveUserLibrary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/user-library:
+    get:
+      tags:
+        - UserLibrary
+      operationId: GetUserLibrary
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: isFavorite
+          in: query
+          schema:
+            type: boolean
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: UpdatedAt
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            default: desc
+        - name: page
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfPagedResponseOfUserLibraryResponse"
+    post:
+      tags:
+        - UserLibrary
+      operationId: AddUserLibrary
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddOrUpdateUserLibraryCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/user-library/all:
+    get:
+      tags:
+        - UserLibrary
+      operationId: GetAllUserLibrary
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfUserLibraryResponse"
+  /api/v1/scrapper/mangaupdates/search:
+    get:
+      tags:
+        - Scrapper
+      operationId: SearchMangaUpdates
+      parameters:
+        - name: title
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/jikan/search:
+    get:
+      tags:
+        - Scrapper
+      operationId: SearchJikanManga
+      parameters:
+        - name: title
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/anilist/search:
+    get:
+      tags:
+        - Scrapper
+      operationId: SearchAnilistManga
+      parameters:
+        - name: title
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/manga/{mangaId}/chapter-pages:
+    get:
+      tags:
+        - Scrapper
+      operationId: ScrapChapterPages
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/queue:
+    get:
+      tags:
+        - Scrapper
+      operationId: GetScrapperQueue
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/providers:
+    get:
+      tags:
+        - Scrapper
+      operationId: GetAllProviders
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/fixfile:
+    get:
+      tags:
+        - Scrapper
+      operationId: FixFilePaths
+      responses:
+        "200":
+          description: OK
+  /api/v1/recurring-jobs/{jobId}/trigger:
+    post:
+      tags:
+        - RecurringJobs
+      operationId: TriggerRecurringJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/recurring-jobs:
+    get:
+      tags:
+        - RecurringJobs
+      operationId: GetRecurringJobs
+      responses:
+        "200":
+          description: OK
+    post:
+      tags:
+        - RecurringJobs
+      operationId: CreateOrUpdateRecurringJob
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrUpdateRecurringJobCommand"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/recurring-jobs/{jobId}:
+    delete:
+      tags:
+        - RecurringJobs
+      operationId: DeleteRecurringJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/providers/{fileName}:
+    get:
+      tags:
+        - Providers
+      operationId: GetProviderConfig
+      parameters:
+        - name: fileName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/mangadex:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/mangadex/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/mangadex/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komiku:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komiku/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komiku/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komikcast:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komikcast/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komikcast/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/kiryuu:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/kiryuu/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/kiryuu/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
+  /api/v1/dashboard/sync-storage:
+    post:
+      tags:
+        - Dashboard
+      operationId: SyncStorage
+      responses:
+        "200":
+          description: OK
+  /api/v1/dashboard/sync-qdrant:
+    post:
+      tags:
+        - Dashboard
+      operationId: SyncQdrant
+      responses:
+        "200":
+          description: OK
+  /api/v1/dashboard/sync-meilisearch:
+    post:
+      tags:
+        - Dashboard
+      operationId: SyncMeilisearch
+      responses:
+        "200":
+          description: OK
+  /api/v1/dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      operationId: GetDashboardStats
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    AddOrUpdateUserLibraryCommand:
+      required:
+        - userId
+        - mangaId
+        - status
+        - isFavorite
+      type: object
+      properties:
+        userId:
+          type: string
+        mangaId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        isFavorite:
+          type: boolean
+    AdvancedRecommendationRequest:
+      type: object
+      properties:
+        likedIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        dislikedIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        limit:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+    ApiResponseOfboolean:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: boolean
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfChapterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/ChapterResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfListOfChapterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type:
+            - "null"
+            - array
+          items:
+            $ref: "#/components/schemas/ChapterResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfListOfMangaSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type:
+            - "null"
+            - array
+          items:
+            $ref: "#/components/schemas/MangaSummaryResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfListOfstring:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfListOfUserLibraryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type:
+            - "null"
+            - array
+          items:
+            $ref: "#/components/schemas/UserLibraryResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfListOfUserProgressionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type:
+            - "null"
+            - array
+          items:
+            $ref: "#/components/schemas/UserProgressionResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfLoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/LoginResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfMangaSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MangaSummaryResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfObject:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data: {}
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfPagedResponseOfMangaSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PagedResponseOfMangaSummaryResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfPagedResponseOfUserLibraryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PagedResponseOfUserLibraryResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfPagedResponseOfUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PagedResponseOfUserResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfUserInfoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/UserInfoResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfUserProgressionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/UserProgressionResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/UserResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ChapterLogsResponse:
+      required:
+        - id
+        - chapterId
+        - chapterNumber
+        - lastReadPage
+        - totalPage
+        - isCompleted
+        - readTimeInSeconds
+        - lastReadAt
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        chapterId:
+          type: string
+          format: uuid
+        chapterNumber:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - number
+            - string
+          format: double
+        lastReadPage:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalPage:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        isCompleted:
+          type: boolean
+        readTimeInSeconds:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        lastReadAt:
+          type:
+            - "null"
+            - string
+          format: date-time
+    ChapterResponse:
+      required:
+        - id
+        - number
+        - link
+        - pages
+        - language
+        - chapterProvider
+        - chapterProviderIcon
+        - uploadDate
+        - totalView
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - number
+            - string
+          format: double
+        link:
+          type:
+            - "null"
+            - string
+        pages:
+          type: array
+          items:
+            type: string
+        language:
+          type: string
+        chapterProvider:
+          type:
+            - "null"
+            - string
+        chapterProviderIcon:
+          type:
+            - "null"
+            - string
+        uploadDate:
+          type: string
+          format: date-time
+        totalView:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+    CreateOrUpdateRecurringJobCommand:
+      required:
+        - jobId
+        - cronExpression
+        - provider
+        - scrapLastTotalPage
+      type: object
+      properties:
+        jobId:
+          type: string
+        cronExpression:
+          type: string
+        provider:
+          type: string
+        scrapLastTotalPage:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+    FirebaseVerifyRequest:
+      required:
+        - idToken
+      type: object
+      properties:
+        idToken:
+          type: string
+    LoginRequest:
+      required:
+        - username
+        - password
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    LoginResponse:
+      required:
+        - token
+        - expiry
+        - username
+        - userId
+      type: object
+      properties:
+        token:
+          type: string
+        expiry:
+          type: string
+          format: date-time
+        username:
+          type: string
+        userId:
+          type: string
+          format: uuid
+    MangaSummaryResponse:
+      required:
+        - id
+        - malId
+        - anilistId
+        - mangaUpdateId
+        - title
+        - author
+        - type
+        - genres
+        - categories
+        - description
+        - imageUrl
+        - localImageUrl
+        - thumbnailSize
+        - rating
+        - popularity
+        - members
+        - releaseDate
+        - nsfw
+        - status
+        - createdAt
+        - updatedAt
+        - url
+        - totalView
+        - latestChapter
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        malId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        anilistId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        mangaUpdateId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int64
+        title:
+          type: string
+        author:
+          type: string
+        type:
+          type: string
+        genres:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        categories:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        description:
+          type:
+            - "null"
+            - string
+        imageUrl:
+          type:
+            - "null"
+            - string
+        localImageUrl:
+          type:
+            - "null"
+            - string
+        thumbnailSize:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int64
+        rating:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - "null"
+            - number
+            - string
+          format: double
+        popularity:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        members:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        releaseDate:
+          type:
+            - "null"
+            - string
+          format: date-time
+        nsfw:
+          type:
+            - "null"
+            - boolean
+        status:
+          type:
+            - "null"
+            - string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        url:
+          type:
+            - "null"
+            - string
+        totalView:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        latestChapter:
+          $ref: "#/components/schemas/ChapterResponse"
+    PagedResponseOfMangaSummaryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MangaSummaryResponse"
+        page:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        pageSize:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalCount:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        hasPreviousPage:
+          type: boolean
+        hasNextPage:
+          type: boolean
+    PagedResponseOfUserLibraryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserLibraryResponse"
+        page:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        pageSize:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalCount:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        hasPreviousPage:
+          type: boolean
+        hasNextPage:
+          type: boolean
+    PagedResponseOfUserResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        page:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        pageSize:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalCount:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        hasPreviousPage:
+          type: boolean
+        hasNextPage:
+          type: boolean
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type:
+            - "null"
+            - string
+        title:
+          type:
+            - "null"
+            - string
+        status:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        detail:
+          type:
+            - "null"
+            - string
+        instance:
+          type:
+            - "null"
+            - string
+    ProviderScrapMangaRequest:
+      type: object
+      properties:
+        mangaUrl:
+          type: string
+        scrapChapterPages:
+          type: boolean
+        linkId:
+          type:
+            - "null"
+            - string
+    RegisterRequest:
+      required:
+        - username
+        - password
+        - email
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+    UpdateMangaCommand:
+      required:
+        - id
+        - malId
+        - anilistId
+        - mangaUpdateId
+        - author
+        - type
+        - genres
+        - categories
+        - description
+        - rating
+        - releaseDate
+        - nsfw
+        - status
+        - totalView
+        - popularity
+        - members
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        malId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        anilistId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        mangaUpdateId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int64
+        author:
+          type: string
+        type:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        categories:
+          type: array
+          items:
+            type: string
+        description:
+          type:
+            - "null"
+            - string
+        rating:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - "null"
+            - number
+            - string
+          format: double
+        releaseDate:
+          type:
+            - "null"
+            - string
+          format: date-time
+        nsfw:
+          type:
+            - "null"
+            - boolean
+        status:
+          type:
+            - "null"
+            - string
+        totalView:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        popularity:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        members:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+    UpdateUserProgressionCommand:
+      required:
+        - userId
+        - mangaId
+        - chapterId
+        - chapterNumber
+        - lastReadPage
+        - totalPages
+        - isCompleted
+        - readingTimeSeconds
+      type: object
+      properties:
+        userId:
+          type: string
+        mangaId:
+          type: string
+          format: uuid
+        chapterId:
+          type: string
+          format: uuid
+        chapterNumber:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - number
+            - string
+          format: double
+        lastReadPage:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        totalPages:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        isCompleted:
+          type: boolean
+        readingTimeSeconds:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+    UserInfoResponse:
+      required:
+        - isAuthenticated
+        - userId
+        - username
+        - email
+        - roles
+        - firebaseUid
+      type: object
+      properties:
+        isAuthenticated:
+          type: boolean
+        userId:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        firebaseUid:
+          type: string
+    UserLibraryResponse:
+      required:
+        - id
+        - userId
+        - mangaId
+        - addedAt
+        - updatedAt
+        - status
+        - isFavorite
+        - manga
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        mangaId:
+          type: string
+          format: uuid
+        addedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        status:
+          type:
+            - "null"
+            - string
+        isFavorite:
+          type:
+            - "null"
+            - boolean
+        manga:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MangaSummaryResponse"
+    UserProgressionResponse:
+      required:
+        - id
+        - userId
+        - mangaId
+        - lastReadAt
+        - totalReadingTime
+        - chapterLogs
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        mangaId:
+          type: string
+          format: uuid
+        lastReadAt:
+          type: string
+          format: date-time
+        totalReadingTime:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        chapterLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChapterLogsResponse"
+    UserResponse:
+      required:
+        - userId
+        - username
+        - email
+        - roles
+        - isActive
+        - firebaseUid
+        - createdAt
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        firebaseUid:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+tags:
+  - name: Manga
+  - name: Images
+  - name: Auth
+  - name: Users
+  - name: UserProgression
+  - name: UserLibrary
+  - name: Scrapper
+  - name: RecurringJobs
+  - name: Providers
+  - name: ProviderScrapers
+  - name: Dashboard
