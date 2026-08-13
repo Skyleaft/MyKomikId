@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../core/config/app_config.dart';
 import '../models/manga_summary.dart';
 import '../models/paged_response.dart';
+import '../models/advanced_recommendation_request.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -213,6 +214,73 @@ class MangaApiService {
         unwrapped,
         (json) => MangaSummary.fromJson(json),
       );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<MangaSummary>> searchSemantic(String query, {int limit = 10}) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/manga/search/semantic',
+        queryParameters: {'q': query, 'limit': limit},
+      );
+      final unwrapped = _unwrap(response.data);
+      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
+      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<MangaSummary>> getSimilarManga(String mangaId, {int limit = 10}) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/manga/$mangaId/similar',
+        queryParameters: {'limit': limit},
+      );
+      final unwrapped = _unwrap(response.data);
+      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
+      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<MangaSummary>> getSimilarMangaFiltered(
+    String mangaId, {
+    String? status,
+    String? type,
+    List<String>? genres,
+    int limit = 10,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/manga/$mangaId/similar/filtered',
+        queryParameters: {
+          if (status != null) 'status': status,
+          if (type != null) 'type': type,
+          if (genres != null && genres.isNotEmpty) 'genres': genres,
+          'limit': limit,
+        },
+      );
+      final unwrapped = _unwrap(response.data);
+      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
+      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<MangaSummary>> getAdvancedRecommendations(AdvancedRecommendationRequest request) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/manga/recommend/advanced',
+        data: request.toMap(),
+      );
+      final unwrapped = _unwrap(response.data);
+      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
+      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
     } catch (e) {
       rethrow;
     }

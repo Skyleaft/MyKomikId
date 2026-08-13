@@ -210,8 +210,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     if (_isLoadingRecommendations) return;
     setState(() => _isLoadingRecommendations = true);
     try {
-      final recommendations = await _apiService.getRecommendations(
-        readingHistoryIds: [manga.id],
+      final recommendations = await _apiService.getSimilarManga(
+        manga.id,
         limit: 10,
       );
       if (mounted) {

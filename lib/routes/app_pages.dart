@@ -6,6 +6,7 @@ import '../presentation/screens/reader/reader_screen.dart';
 import '../presentation/screens/history/history_screen.dart';
 import '../presentation/screens/more/base_api_setting_screen.dart';
 import '../presentation/screens/discover/search_scrap_screen.dart';
+import '../presentation/screens/discover/advanced_recommendation_screen.dart';
 import '../data/models/manga_detail.dart';
 import '../data/models/reader_content.dart';
 
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String history = '/history';
   static const String baseApiSetting = '/base_api_setting';
   static const String searchScrap = '/search_scrap';
+  static const String advancedRecommendation = '/advanced_recommendation';
 
   static Map<String, WidgetBuilder> get routes => {
     login: (context) => const LoginScreen(),
@@ -35,5 +37,6 @@ class AppRoutes {
     history: (context) => const HistoryScreen(),
     baseApiSetting: (context) => const BaseApiSettingScreen(),
     searchScrap: (context) => const SearchScrapScreen(),
+    advancedRecommendation: (context) => const AdvancedRecommendationScreen(),
   };
 }
