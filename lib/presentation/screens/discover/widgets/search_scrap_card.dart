@@ -19,8 +19,8 @@ class SearchScrapCard extends StatelessWidget {
     final cardColor = isDarkMode ? AppColors.cardDark : Colors.white;
     final textColor = isDarkMode ? Colors.white : AppColors.primary;
     final shadowColor = isDarkMode
-        ? Colors.black.withOpacity(0.3)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.black.withValues(alpha: 0.3)
+        : Colors.black.withValues(alpha: 0.08);
 
     final bool inLibrary = item.mangaId != null;
 
@@ -82,10 +82,10 @@ class SearchScrapCard extends StatelessWidget {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.15),
+                                color: AppColors.primary.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.3),
+                                  color: AppColors.primary.withValues(alpha: 0.3),
                                   width: 1,
                                 ),
                               ),
@@ -171,8 +171,8 @@ class SearchScrapCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: isDarkMode
-                                  ? Colors.blue.withOpacity(0.15)
-                                  : Colors.blue.withOpacity(0.1),
+                                  ? Colors.blue.withValues(alpha: 0.15)
+                                  : Colors.blue.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
@@ -210,8 +210,8 @@ class SearchScrapCard extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: isDarkMode
-                                    ? Colors.orange.withOpacity(0.15)
-                                    : Colors.orange.withOpacity(0.1),
+                                    ? Colors.orange.withValues(alpha: 0.15)
+                                    : Colors.orange.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
@@ -326,7 +326,7 @@ class SearchScrapCard extends StatelessWidget {
         color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

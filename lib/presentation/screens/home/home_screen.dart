@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen>
                   (isDark
                           ? AppColors.backgroundDark
                           : AppColors.backgroundLight)
-                      .withOpacity(0.8),
+                      .withValues(alpha: 0.8),
               surfaceTintColor: Colors.transparent,
               expandedHeight: 100,
               toolbarHeight: 0,
@@ -374,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   width: 2,
                 ),
                 image: DecorationImage(
@@ -501,10 +501,10 @@ class _HomeScreenState extends State<HomeScreen>
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: isDark ? AppColors.slate800.withOpacity(0.9) : Colors.white,
+          color: isDark ? AppColors.slate800.withValues(alpha: 0.9) : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.10),
+              color: Colors.black.withValues(alpha: 0.10),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -546,7 +546,7 @@ class _HomeScreenState extends State<HomeScreen>
                       stops: const [0.3, 1.0],
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.88),
+                        Colors.black.withValues(alpha: 0.88),
                       ],
                     ),
                   ),
@@ -561,7 +561,7 @@ class _HomeScreenState extends State<HomeScreen>
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
+                    color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -760,21 +760,21 @@ class _HomeScreenState extends State<HomeScreen>
             decoration: BoxDecoration(
               gradient: isSelected
                   ? LinearGradient(
-                      colors: [tab.color, tab.color.withOpacity(0.75)],
+                      colors: [tab.color, tab.color.withValues(alpha: 0.75)],
                     )
                   : null,
               color: isSelected
                   ? null
                   : (isDark
-                        ? Colors.white.withOpacity(0.07)
-                        : Colors.black.withOpacity(0.06)),
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : Colors.black.withValues(alpha: 0.06)),
               borderRadius: BorderRadius.circular(20),
               border: isSelected
                   ? null
                   : Border.all(
                       color: isDark
                           ? Colors.white12
-                          : Colors.black.withOpacity(0.08),
+                          : Colors.black.withValues(alpha: 0.08),
                     ),
             ),
             child: Row(
@@ -887,12 +887,12 @@ class _HomeScreenState extends State<HomeScreen>
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: tabColor.withOpacity(0.18),
+                    color: tabColor.withValues(alpha: 0.18),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.14),
+                    color: Colors.black.withValues(alpha: 0.14),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -941,7 +941,7 @@ class _HomeScreenState extends State<HomeScreen>
                             stops: const [0.35, 1.0],
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.85),
+                              Colors.black.withValues(alpha: 0.85),
                             ],
                           ),
                         ),
@@ -969,7 +969,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: tabColor.withOpacity(0.85),
+                                  color: tabColor.withValues(alpha: 0.85),
                                   borderRadius: BorderRadius.circular(5),
                                 ),
                                 child: Text(
@@ -1049,8 +1049,8 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     decoration: BoxDecoration(
                       color: rank < 3
-                          ? tabColor.withOpacity(0.82)
-                          : Colors.black.withOpacity(0.50),
+                          ? tabColor.withValues(alpha: 0.82)
+                          : Colors.black.withValues(alpha: 0.50),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -1095,7 +1095,7 @@ class _HomeScreenState extends State<HomeScreen>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.50),
+                        color: Colors.black.withValues(alpha: 0.50),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -1210,7 +1210,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.05),
+          color: AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -1401,7 +1401,7 @@ class _HomeScreenState extends State<HomeScreen>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Row(
@@ -1512,7 +1512,7 @@ class _HomeScreenState extends State<HomeScreen>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(

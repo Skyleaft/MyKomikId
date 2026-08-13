@@ -128,7 +128,7 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
         fit: widget.fit,
         width: widget.width,
         placeholder: (context, url) => widget.placeholder,
-        errorWidget: (context, url, error) {
+        errorBuilder: (context, url, error) {
           return Stack(
             alignment: Alignment.center,
             children: [

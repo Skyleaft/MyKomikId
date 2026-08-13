@@ -239,7 +239,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     (isDark
                             ? AppColors.backgroundDark
                             : AppColors.backgroundLight)
-                        .withOpacity(0.8),
+                        .withValues(alpha: 0.8),
                 surfaceTintColor: Colors.transparent,
                 expandedHeight: 146,
                 toolbarHeight: 0,

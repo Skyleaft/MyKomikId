@@ -141,8 +141,8 @@ class _AlertBannerWidgetState extends State<AlertBannerWidget>
         : const Color(0xFF1E293B); // slate-900
 
     final Color borderColor = isDark
-        ? accentColor.withOpacity(0.4)
-        : accentColor.withOpacity(0.2);
+        ? accentColor.withValues(alpha: 0.4)
+        : accentColor.withValues(alpha: 0.2);
 
     return Positioned(
       top: MediaQuery.of(context).padding.top + 12,
@@ -175,7 +175,7 @@ class _AlertBannerWidgetState extends State<AlertBannerWidget>
                       border: Border.all(color: borderColor, width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
+                          color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
                           blurRadius: 16,
                           offset: const Offset(0, 8),
                         ),
@@ -199,7 +199,7 @@ class _AlertBannerWidgetState extends State<AlertBannerWidget>
                         IconButton(
                           icon: Icon(
                             Icons.close_rounded,
-                            color: textColor.withOpacity(0.5),
+                            color: textColor.withValues(alpha: 0.5),
                             size: 18,
                           ),
                           onPressed: _close,

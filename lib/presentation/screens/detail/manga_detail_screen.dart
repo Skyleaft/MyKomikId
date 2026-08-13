@@ -336,7 +336,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                   leading: Container(
                     margin: const EdgeInsets.only(left: 16, top: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -353,7 +353,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                       Container(
                         margin: const EdgeInsets.only(right: 8, top: 8),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
@@ -368,7 +368,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                     Container(
                       margin: const EdgeInsets.only(right: 16, top: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -387,6 +387,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                               'Read it here: $shareUrl\n'
                               'Or open in app: $customSchemeUrl';
 
+                          // ignore: deprecated_member_use
                           Share.share(
                             shareText,
                             subject: 'Share ${manga.title}',
@@ -418,7 +419,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                         // Divider before genre section
                         Container(
                           height: 1,
-                          color: AppColors.primary.withOpacity(0.2),
+                          color: AppColors.primary.withValues(alpha: 0.2),
                           margin: const EdgeInsets.symmetric(vertical: 8),
                         ),
                         _buildGenreTags(),
@@ -612,7 +613,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -697,7 +698,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         Container(
           height: 32,
           width: 1,
-          color: AppColors.primary.withOpacity(0.2),
+          color: AppColors.primary.withValues(alpha: 0.2),
         ),
         const SizedBox(width: 24),
         // Chapters
@@ -727,7 +728,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         Container(
           height: 32,
           width: 1,
-          color: AppColors.primary.withOpacity(0.2),
+          color: AppColors.primary.withValues(alpha: 0.2),
         ),
         const SizedBox(width: 24),
         // Reads
@@ -766,7 +767,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
@@ -783,7 +784,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -845,19 +846,19 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           ...manga.genres!.map(
             (genre) => _buildTag(
               genre,
-              AppColors.primary.withOpacity(0.2),
+              AppColors.primary.withValues(alpha: 0.2),
               AppColors.primary,
             ),
           ),
         _buildTag(
           manga.status?.toUpperCase() ?? 'ONGOING',
-          Colors.grey.withOpacity(0.2),
+          Colors.grey.withValues(alpha: 0.2),
           Colors.grey,
         ),
         if (manga.releaseDate != null)
           _buildTag(
             'START: ${DateFormat('yyyy').format(manga.releaseDate!)}',
-            Colors.blueAccent.withOpacity(0.2),
+            Colors.blueAccent.withValues(alpha: 0.2),
             Colors.blueAccent,
           ),
       ],
@@ -1567,14 +1568,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.primary.withOpacity(0.4),
-                      AppColors.primary.withOpacity(0.4),
+                      AppColors.primary.withValues(alpha: 0.4),
+                      AppColors.primary.withValues(alpha: 0.4),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
+                      color: AppColors.primary.withValues(alpha: 0.2),
                       blurRadius: 4,
                       spreadRadius: 1,
                       offset: const Offset(0, 2),

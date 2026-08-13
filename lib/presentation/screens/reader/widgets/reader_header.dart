@@ -66,7 +66,7 @@ class ReaderHeader extends StatelessWidget {
                           Text(
                             chapterTitle,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               fontSize: 11,
                             ),
                           ),
@@ -88,7 +88,7 @@ class ReaderHeader extends StatelessWidget {
   Widget _buildGlassIconButton(IconData icon, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white10),
       ),

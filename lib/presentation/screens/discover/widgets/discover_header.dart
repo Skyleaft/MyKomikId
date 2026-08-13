@@ -123,8 +123,8 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                   height: 52,
                   decoration: BoxDecoration(
                     color: widget.isDark
-                        ? AppColors.primary.withOpacity(0.1)
-                        : AppColors.primary.withOpacity(0.1),
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: TextField(
@@ -188,13 +188,13 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
           color: isActive
               ? null
               : widget.isDark
-              ? AppColors.primary.withOpacity(0.1)
-              : AppColors.primary.withOpacity(0.1),
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -220,8 +220,8 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
         color: isActive
             ? AppColors.primary
             : (widget.isDark
-                  ? AppColors.primary.withOpacity(0.1)
-                  : AppColors.primary.withOpacity(0.08)),
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : AppColors.primary.withValues(alpha: 0.08)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: IconButton(

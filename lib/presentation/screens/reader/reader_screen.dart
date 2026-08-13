@@ -519,7 +519,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           builder: (context, setSheetState) {
             return Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
+                color: Colors.black.withValues(alpha: 0.85),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
@@ -603,7 +603,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                           title: 'Auto Scroll',
                           trailing: Switch.adaptive(
                             value: _isAutoScrolling,
-                            activeColor: AppColors.primary,
+                            activeTrackColor: AppColors.primary,
                             onChanged: (val) {
                               _toggleAutoScroll();
                               if (val) {
@@ -665,7 +665,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                           title: 'Hide Mini Progress Bar',
                           trailing: Switch.adaptive(
                             value: _hideMiniProgressBar,
-                            activeColor: AppColors.primary,
+                            activeTrackColor: AppColors.primary,
                             onChanged: (val) {
                               setSheetState(() => _hideMiniProgressBar = val);
                               setState(() {

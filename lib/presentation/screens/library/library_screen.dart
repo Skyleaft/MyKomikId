@@ -87,7 +87,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   (isDark
                           ? AppColors.backgroundDark
                           : AppColors.backgroundLight)
-                      .withOpacity(0.8),
+                      .withValues(alpha: 0.8),
               surfaceTintColor: Colors.transparent,
               expandedHeight: 220,
               toolbarHeight: 0,
@@ -142,8 +142,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             height: 48,
             decoration: BoxDecoration(
               color: isDark
-                  ? AppColors.primary.withOpacity(0.1)
-                  : AppColors.primary.withOpacity(0.1),
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -194,7 +194,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         decoration: BoxDecoration(
           color: isActive
               ? AppColors.primary
-              : Colors.grey[200]!.withOpacity(0.2),
+              : Colors.grey[200]!.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -349,19 +349,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900]!.withOpacity(0.5) : Colors.white,
+          color: isDark ? Colors.grey[900]!.withValues(alpha: 0.5) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
           ],
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.08)
-                : Colors.black.withOpacity(0.05),
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.05),
             width: 1,
           ),
         ),
@@ -377,12 +377,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     Container(
                       width: 105,
                       height: 145,
-                      color: AppColors.primary.withOpacity(0.05),
+                      color: AppColors.primary.withValues(alpha: 0.05),
                       child: displayUrl.isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: displayUrl,
                               fit: BoxFit.cover,
-                              errorWidget: (context, url, error) =>
+                              errorBuilder: (context, url, error) =>
                                   _buildImagePlaceholder(),
                               placeholder: (context, url) =>
                                   _buildImagePlaceholder(),
@@ -396,7 +396,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       right: 0,
                       child: Container(
                         height: 4,
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
                           widthFactor: manga.progressPercentage.clamp(0.0, 1.0),
@@ -548,7 +548,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Center(
       child: Icon(
         Icons.menu_book,
-        color: AppColors.primary.withOpacity(0.4),
+        color: AppColors.primary.withValues(alpha: 0.4),
         size: 28,
       ),
     );
@@ -566,9 +566,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
       ),
       child: Text(
         status.toUpperCase(),

@@ -158,7 +158,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   (isDark
                           ? AppColors.backgroundDark
                           : AppColors.backgroundLight)
-                      .withOpacity(0.8),
+                      .withValues(alpha: 0.8),
               surfaceTintColor: Colors.transparent,
               expandedHeight: 200,
               toolbarHeight: 0,
@@ -221,8 +221,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             height: 48,
             decoration: BoxDecoration(
               color: isDark
-                  ? AppColors.primary.withOpacity(0.1)
-                  : AppColors.primary.withOpacity(0.1),
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
@@ -272,7 +272,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         decoration: BoxDecoration(
           color: isActive
               ? AppColors.primary
-              : Colors.grey[200]!.withOpacity(0.2),
+              : Colors.grey[200]!.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -347,7 +347,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -433,7 +433,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -506,7 +506,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.1),
+                              color: Colors.green.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Text(

@@ -10,8 +10,7 @@ class AppTheme {
         seedColor: AppColors.primary,
         brightness: Brightness.light,
         primary: AppColors.primary,
-        background: AppColors.backgroundLight,
-        surface: Colors.white,
+        surface: AppColors.backgroundLight,
       ),
       scaffoldBackgroundColor: AppColors.backgroundLight,
       textTheme: GoogleFonts.interTextTheme(
@@ -27,8 +26,7 @@ class AppTheme {
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
         primary: AppColors.primary,
-        background: AppColors.backgroundDark,
-        surface: AppColors.slate800,
+        surface: AppColors.backgroundDark,
       ),
       scaffoldBackgroundColor: AppColors.backgroundDark,
       textTheme: GoogleFonts.interTextTheme(

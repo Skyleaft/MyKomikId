@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../../core/config/app_config.dart';
 import '../models/manga_summary.dart';
@@ -78,10 +79,10 @@ class MangaApiService {
                 }
               }
             } catch (error) {
-              print('Token refresh failed: $error');
+              debugPrint('Token refresh failed: $error');
             }
 
-            print('Unauthorized, clearing token...');
+            debugPrint('Unauthorized, clearing token...');
             _jwtToken = null;
             _userId = null;
             _username = null;
@@ -258,8 +259,8 @@ class MangaApiService {
       final response = await _dio.get(
         '/api/v1/manga/$mangaId/similar/filtered',
         queryParameters: {
-          if (status != null) 'status': status,
-          if (type != null) 'type': type,
+          'status': ?status,
+          'type': ?type,
           if (genres != null && genres.isNotEmpty) 'genres': genres,
           'limit': limit,
         },
@@ -434,7 +435,7 @@ class MangaApiService {
         data: {
           'mangaUrl': mangaUrl,
           'scrapChapterPages': scrapChapters,
-          if (linkId != null) 'linkId': linkId,
+          'linkId': ?linkId,
         },
       );
     } catch (e) {

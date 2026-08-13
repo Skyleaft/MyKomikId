@@ -172,8 +172,8 @@ class _AdvancedRecommendationScreenState
                 Container(
                   padding: const EdgeInsets.all(16),
                   color: isDark
-                      ? AppColors.slate700.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.1),
+                      ? AppColors.slate700.withValues(alpha: 0.2)
+                      : Colors.grey.withValues(alpha: 0.1),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -253,7 +253,7 @@ class _AdvancedRecommendationScreenState
                                                     ) ??
                                                     '',
                                                 fit: BoxFit.cover,
-                                                errorWidget: (_, __, ___) =>
+                                                errorBuilder: (_, _, _) =>
                                                     const Icon(
                                                       Icons.broken_image,
                                                       color: Colors.grey,
@@ -272,11 +272,11 @@ class _AdvancedRecommendationScreenState
                                                   begin: Alignment.topCenter,
                                                   end: Alignment.bottomCenter,
                                                   colors: [
-                                                    Colors.black.withOpacity(
-                                                      0.1,
+                                                    Colors.black.withValues(
+                                                      alpha: 0.1,
                                                     ),
-                                                    Colors.black.withOpacity(
-                                                      0.8,
+                                                    Colors.black.withValues(
+                                                      alpha: 0.8,
                                                     ),
                                                   ],
                                                 ),

@@ -50,7 +50,7 @@ class MangaCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -65,7 +65,7 @@ class MangaCard extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: displayUrl,
                         fit: BoxFit.cover,
-                        errorWidget: (context, url, error) =>
+                        errorBuilder: (context, url, error) =>
                             _buildPlaceholder(),
                         placeholder: (context, url) => _buildPlaceholder(),
                       )
@@ -84,12 +84,12 @@ class MangaCard extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: switch (status!.toLowerCase()) {
-                              'reading' => Colors.green.withOpacity(0.8),
-                              'completed' => Colors.blue.withOpacity(0.8),
-                              'onhold' => Colors.orange.withOpacity(0.8),
-                              'dropped' => Colors.red.withOpacity(0.8),
-                              'plantoread' => Colors.purple.withOpacity(0.8),
-                              _ => Colors.grey.withOpacity(0.8),
+                              'reading' => Colors.green.withValues(alpha: 0.8),
+                              'completed' => Colors.blue.withValues(alpha: 0.8),
+                              'onhold' => Colors.orange.withValues(alpha: 0.8),
+                              'dropped' => Colors.red.withValues(alpha: 0.8),
+                              'plantoread' => Colors.purple.withValues(alpha: 0.8),
+                              _ => Colors.grey.withValues(alpha: 0.8),
                             },
                             borderRadius: BorderRadius.circular(4),
                           ),
@@ -115,7 +115,7 @@ class MangaCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -137,7 +137,7 @@ class MangaCard extends StatelessWidget {
                       right: 0,
                       child: Container(
                         height: 4,
-                        color: Colors.black.withOpacity(0.4),
+                        color: Colors.black.withValues(alpha: 0.4),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
                           widthFactor: progress.clamp(0.0, 1.0),
@@ -190,7 +190,7 @@ class MangaCard extends StatelessWidget {
             'Ch. $currentChapter${totalChapters > 0 ? '/$totalChapters' : ''}',
             style: TextStyle(
               fontSize: 10,
-              color: AppColors.primary.withOpacity(0.8),
+              color: AppColors.primary.withValues(alpha: 0.8),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -208,11 +208,11 @@ class MangaCard extends StatelessWidget {
 
   Widget _buildPlaceholder() {
     return Container(
-      color: AppColors.primary.withOpacity(0.1),
+      color: AppColors.primary.withValues(alpha: 0.1),
       child: Center(
         child: Icon(
           Icons.menu_book,
-          color: AppColors.primary.withOpacity(0.5),
+          color: AppColors.primary.withValues(alpha: 0.5),
           size: 32,
         ),
       ),

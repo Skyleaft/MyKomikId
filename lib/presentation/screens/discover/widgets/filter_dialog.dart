@@ -255,7 +255,7 @@ class _FilterDialogState extends State<FilterDialog> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 8,
-                  shadowColor: AppColors.primary.withOpacity(0.5),
+                  shadowColor: AppColors.primary.withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -384,12 +384,12 @@ class _FilterDialogState extends State<FilterDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withOpacity(0.1)
+              ? AppColors.primary.withValues(alpha: 0.1)
               : Colors.transparent,
           border: Border.all(
             color: isSelected
                 ? AppColors.primary
-                : Colors.grey.withOpacity(0.3),
+                : Colors.grey.withValues(alpha: 0.3),
           ),
           borderRadius: BorderRadius.circular(14),
         ),
