@@ -1,18 +1,23 @@
 class MangaSummary {
   final String id;
   final int malId;
+  final int? anilistId;
+  final int? mangaUpdateId;
   final String title;
   final String author;
   final String type;
   final List<String>? genres;
+  final List<String>? categories;
   final String? description;
   final String? imageUrl;
   final String? localImageUrl;
+  final int? thumbnailSize;
   final double? rating;
   final int popularity;
   final int members;
-  final String? status;
   final DateTime? releaseDate;
+  final bool? nsfw;
+  final String? status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? url;
@@ -22,18 +27,23 @@ class MangaSummary {
   MangaSummary({
     required this.id,
     required this.malId,
+    this.anilistId,
+    this.mangaUpdateId,
     required this.title,
     required this.author,
     required this.type,
     this.genres,
+    this.categories,
     this.description,
     this.imageUrl,
     this.localImageUrl,
+    this.thumbnailSize,
     this.rating,
     required this.popularity,
     required this.members,
-    this.status,
     this.releaseDate,
+    this.nsfw,
+    this.status,
     required this.createdAt,
     required this.updatedAt,
     this.url,
@@ -43,31 +53,38 @@ class MangaSummary {
 
   factory MangaSummary.fromJson(Map<String, dynamic> json) {
     return MangaSummary(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? '',
       malId: json['malId'] as int? ?? 0,
-      title: json['title'] as String,
-      author: json['author'] as String,
-      type: json['type'] as String,
+      anilistId: json['anilistId'] as int?,
+      mangaUpdateId: json['mangaUpdateId'] as int?,
+      title: json['title'] as String? ?? 'Unknown Title',
+      author: json['author'] as String? ?? 'Unknown Author',
+      type: json['type'] as String? ?? 'Unknown',
       genres: (json['genres'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      categories: (json['categories'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
       localImageUrl: json['localImageUrl'] as String?,
+      thumbnailSize: json['thumbnailSize'] as int?,
       rating: json['rating'] != null
-          ? (json['rating'] as dynamic).toDouble()
+          ? (json['rating'] as num).toDouble()
           : null,
       popularity: json['popularity'] as int? ?? 0,
       members: json['members'] as int? ?? 0,
-      status: json['status'] as String?,
       releaseDate: json['releaseDate'] != null
-          ? DateTime.parse(json['releaseDate'] as String)
+          ? DateTime.tryParse(json['releaseDate'] as String)
           : null,
+      nsfw: json['nsfw'] as bool?,
+      status: json['status'] as String?,
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+          ? (DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now())
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
+          ? (DateTime.tryParse(json['updatedAt'] as String) ?? DateTime.now())
           : DateTime.now(),
       url: json['url'] as String?,
       totalView: json['totalView'] as int? ?? 0,
@@ -79,10 +96,37 @@ class MangaSummary {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'malId': malId,
+      'anilistId': anilistId,
+      'mangaUpdateId': mangaUpdateId,
+      'title': title,
+      'author': author,
+      'type': type,
+      'genres': genres,
+      'categories': categories,
+      'description': description,
+      'imageUrl': imageUrl,
+      'localImageUrl': localImageUrl,
+      'thumbnailSize': thumbnailSize,
+      'rating': rating,
+      'popularity': popularity,
+      'members': members,
+      'releaseDate': releaseDate?.toIso8601String(),
+      'nsfw': nsfw,
+      'status': status,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'url': url,
+      'totalView': totalView,
+      'latestChapter': latestChapter?.toJson(),
+    };
+  }
+
   String get displayImageUrl {
     if (localImageUrl != null && localImageUrl!.isNotEmpty) {
-      // Assuming the base URL is the same as the API
-      // We will handle the base URL in the service or configuration
       return localImageUrl!;
     }
     return imageUrl ?? '';
@@ -92,36 +136,57 @@ class MangaSummary {
 class LatestChapterSummary {
   final String id;
   final double number;
-  final int totalView;
-  final DateTime uploadDate;
+  final String? link;
+  final List<String> pages;
+  final String language;
   final String? chapterProvider;
   final String? chapterProviderIcon;
-  final int pageCount;
-  final bool isChapterAvailable;
+  final DateTime uploadDate;
+  final int totalView;
 
   LatestChapterSummary({
     required this.id,
     required this.number,
-    required this.totalView,
-    required this.uploadDate,
+    this.link,
+    this.pages = const [],
+    this.language = '',
     this.chapterProvider,
     this.chapterProviderIcon,
-    required this.pageCount,
-    required this.isChapterAvailable,
+    required this.uploadDate,
+    required this.totalView,
   });
 
+  int get pageCount => pages.length;
+  bool get isChapterAvailable => pages.isNotEmpty || (link != null && link!.isNotEmpty);
+
   factory LatestChapterSummary.fromJson(Map<String, dynamic> json) {
+    final rawPages = json['pages'] as List<dynamic>?;
     return LatestChapterSummary(
-      id: json['id'] as String,
-      number: (json['number'] as num? ?? 0).toDouble(),
-      totalView: json['totalView'] as int? ?? 0,
-      uploadDate: json['uploadDate'] != null
-          ? DateTime.parse(json['uploadDate'] as String)
-          : DateTime.now(),
+      id: json['id'] as String? ?? '',
+      number: (json['number'] as num? ?? json['chapterNumber'] as num? ?? 0).toDouble(),
+      link: json['link'] as String?,
+      pages: rawPages?.map((e) => e as String).toList() ?? [],
+      language: json['language'] as String? ?? '',
       chapterProvider: json['chapterProvider'] as String?,
       chapterProviderIcon: json['chapterProviderIcon'] as String?,
-      pageCount: json['pageCount'] as int? ?? 0,
-      isChapterAvailable: json['isChapterAvailable'] as bool? ?? true,
+      uploadDate: json['uploadDate'] != null
+          ? (DateTime.tryParse(json['uploadDate'] as String) ?? DateTime.now())
+          : DateTime.now(),
+      totalView: json['totalView'] as int? ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'number': number,
+      'link': link,
+      'pages': pages,
+      'language': language,
+      'chapterProvider': chapterProvider,
+      'chapterProviderIcon': chapterProviderIcon,
+      'uploadDate': uploadDate.toIso8601String(),
+      'totalView': totalView,
+    };
   }
 }

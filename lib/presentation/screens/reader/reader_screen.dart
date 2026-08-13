@@ -115,9 +115,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   Future<void> _loadInitialReadingTime({String? chapterId}) async {
     final targetChapterId = chapterId ?? _chapterId;
     try {
-      final progression = await _progressionService.getProgression(
-        widget.content.mangaId,
-      );
+      final progression =
+          widget.content.progression ??
+          await _progressionService.getProgression(widget.content.mangaId);
       if (progression != null && mounted) {
         // Find this chapter's existing reading time (if any)
         final chapterLog = progression.chapterLogs
@@ -255,7 +255,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     try {
       final pages = await _apiService.getChapterPages(
         widget.content.mangaId,
-        targetChapter.chapterNumber,
+        targetChapter.id,
       );
 
       // Clear live images to allow eviction of previous chapter images
@@ -270,12 +270,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       setState(() {
         _pageUrls = pages
-            .map(
-              (p) => _apiService.getLocalImageUrl(
-                p['localImageUrl'] as String?,
-                p['imageUrl'] as String?,
-              ),
-            )
+            .map((p) => _apiService.getLocalImageUrl(p, null))
             .toList();
 
         // _chapterTitle = targetChapter.title;
@@ -524,7 +519,7 @@ class _ReaderScreenState extends State<ReaderScreen>
           builder: (context, setSheetState) {
             return Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.85),
+                color: Colors.black.withValues(alpha: 0.85),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
@@ -608,7 +603,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                           title: 'Auto Scroll',
                           trailing: Switch.adaptive(
                             value: _isAutoScrolling,
-                            activeColor: AppColors.primary,
+                            activeTrackColor: AppColors.primary,
                             onChanged: (val) {
                               _toggleAutoScroll();
                               if (val) {
@@ -670,7 +665,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                           title: 'Hide Mini Progress Bar',
                           trailing: Switch.adaptive(
                             value: _hideMiniProgressBar,
-                            activeColor: AppColors.primary,
+                            activeTrackColor: AppColors.primary,
                             onChanged: (val) {
                               setSheetState(() => _hideMiniProgressBar = val);
                               setState(() {
@@ -910,28 +905,62 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Future<void> _saveProgression() async {
-    final isCompleted = _progress >= 0.99;
+    final isCompleted =
+        _pageUrls.isNotEmpty && _currentPage >= _pageUrls.length;
 
-    // Per-chapter reading time: time already stored for this chapter + this session
     final now = DateTime.now();
     final sessionSeconds = now.difference(_sessionStartTime).inSeconds;
 
-    // Reset session start time to prevent double counting
     _sessionStartTime = now;
-
-    // We update the local variable for UI state, but the API and ProgressionService
-    // now expect just the delta (time since last save) to accumulate it correctly.
     _chapterInitialReadingTimeSeconds += sessionSeconds;
 
+    MangaProgression? existingProgression = await _progressionService
+        .getProgression(widget.content.mangaId);
+
+    List<UserChapterLog> logs = existingProgression?.chapterLogs.toList() ?? [];
+    final existingLogIndex = logs.indexWhere((l) => l.chapterId == _chapterId);
+
+    if (existingLogIndex >= 0) {
+      final existingLog = logs[existingLogIndex];
+      logs[existingLogIndex] = UserChapterLog(
+        id: existingLog.id,
+        chapterId: _chapterId,
+        chapterNumber: _currentChapterNumber,
+        lastReadPage: _currentPage,
+        totalPages: _pageUrls.length,
+        isCompleted: isCompleted,
+        readingTimeSeconds: _chapterInitialReadingTimeSeconds,
+        lastReadAt: now,
+      );
+    } else {
+      logs.add(
+        UserChapterLog(
+          id: '',
+          chapterId: _chapterId,
+          chapterNumber: _currentChapterNumber,
+          lastReadPage: _currentPage,
+          totalPages: _pageUrls.length,
+          isCompleted: isCompleted,
+          readingTimeSeconds: _chapterInitialReadingTimeSeconds,
+          lastReadAt: now,
+        ),
+      );
+    }
+
     final progression = MangaProgression(
+      id: existingProgression?.id ?? '',
+      userId: existingProgression?.userId ?? '',
       mangaId: widget.content.mangaId,
+      chapterLogs: logs,
+      lastReadAt: now,
+      totalReadingTime: existingProgression?.totalReadingTime ?? 0,
+      // Pass these for toApiRequest compatibility if needed
       chapterId: _chapterId,
       currentChapter: _currentChapterNumber,
       currentPage: _currentPage,
       totalPages: _pageUrls.length,
-      lastRead: now,
       isCompleted: isCompleted,
-      readingTimeSeconds: sessionSeconds, // Send only the delta
+      readingTimeSeconds: _chapterInitialReadingTimeSeconds,
     );
 
     try {

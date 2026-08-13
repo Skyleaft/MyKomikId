@@ -39,7 +39,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   List<Chapter> _chapters = [];
   bool _isLoadingChapters = true;
   bool _isInLibrary = false;
-  Future<List<MangaProgression>>? _progressionsFuture;
+  Future<MangaProgression?>? _progressionFuture;
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String _searchQuery = '';
@@ -55,7 +55,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void initState() {
     super.initState();
     _chapters = widget.manga.chapters;
-    _progressionsFuture = _progressionService.getAllProgressions();
+    _progressionFuture = _progressionService.getProgression(widget.manga.id);
     _loadChapters();
     _checkIfInLibrary();
 
@@ -96,7 +96,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void _refreshProgressions() {
     if (mounted) {
       setState(() {
-        _progressionsFuture = _progressionService.getAllProgressions();
+        _progressionFuture = _progressionService.getProgression(manga.id);
       });
     }
   }
@@ -210,8 +210,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     if (_isLoadingRecommendations) return;
     setState(() => _isLoadingRecommendations = true);
     try {
-      final recommendations = await _apiService.getRecommendations(
-        readingHistoryIds: [manga.id],
+      final recommendations = await _apiService.getSimilarManga(
+        manga.id,
         limit: 10,
       );
       if (mounted) {
@@ -336,7 +336,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                   leading: Container(
                     margin: const EdgeInsets.only(left: 16, top: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -353,7 +353,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                       Container(
                         margin: const EdgeInsets.only(right: 8, top: 8),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
@@ -368,7 +368,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                     Container(
                       margin: const EdgeInsets.only(right: 16, top: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -387,6 +387,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                               'Read it here: $shareUrl\n'
                               'Or open in app: $customSchemeUrl';
 
+                          // ignore: deprecated_member_use
                           Share.share(
                             shareText,
                             subject: 'Share ${manga.title}',
@@ -418,7 +419,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                         // Divider before genre section
                         Container(
                           height: 1,
-                          color: AppColors.primary.withOpacity(0.2),
+                          color: AppColors.primary.withValues(alpha: 0.2),
                           margin: const EdgeInsets.symmetric(vertical: 8),
                         ),
                         _buildGenreTags(),
@@ -499,10 +500,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     );
 
     try {
-      final pages = await _apiService.getChapterPages(
-        manga.id,
-        chapter.chapterNumber,
-      );
+      final pages = await _apiService.getChapterPages(manga.id, chapter.id);
 
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
@@ -526,12 +524,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           pageUrls: pages
               .map(
                 (p) => _apiService.getLocalImageUrl(
-                  p['localImageUrl'] as String?,
-                  p['imageUrl'] as String?,
+                  p,
+                  null,
                 ),
               )
               .toList(),
           currentPage: startingPage,
+          progression: progression,
         );
 
         await Navigator.pushNamed(
@@ -614,7 +613,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -699,7 +698,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         Container(
           height: 32,
           width: 1,
-          color: AppColors.primary.withOpacity(0.2),
+          color: AppColors.primary.withValues(alpha: 0.2),
         ),
         const SizedBox(width: 24),
         // Chapters
@@ -729,7 +728,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         Container(
           height: 32,
           width: 1,
-          color: AppColors.primary.withOpacity(0.2),
+          color: AppColors.primary.withValues(alpha: 0.2),
         ),
         const SizedBox(width: 24),
         // Reads
@@ -768,7 +767,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
@@ -785,7 +784,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -847,19 +846,19 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           ...manga.genres!.map(
             (genre) => _buildTag(
               genre,
-              AppColors.primary.withOpacity(0.2),
+              AppColors.primary.withValues(alpha: 0.2),
               AppColors.primary,
             ),
           ),
         _buildTag(
           manga.status?.toUpperCase() ?? 'ONGOING',
-          Colors.grey.withOpacity(0.2),
+          Colors.grey.withValues(alpha: 0.2),
           Colors.grey,
         ),
         if (manga.releaseDate != null)
           _buildTag(
             'START: ${DateFormat('yyyy').format(manga.releaseDate!)}',
-            Colors.blueAccent.withOpacity(0.2),
+            Colors.blueAccent.withValues(alpha: 0.2),
             Colors.blueAccent,
           ),
       ],
@@ -910,8 +909,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return FutureBuilder<List<MangaProgression>>(
-      future: _progressionsFuture,
+    return FutureBuilder<MangaProgression?>(
+      future: _progressionFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -919,14 +918,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           );
         }
 
-        if (!snapshot.hasData || snapshot.data == null) {
-          return _buildDefaultActionButtons(context);
-        }
-
-        final progressions = snapshot.data!;
-        final currentProgression = progressions.firstWhereOrNull(
-          (p) => p.mangaId == manga.id,
-        );
+        final currentProgression = snapshot.data;
 
         if (currentProgression != null) {
           return _buildResumeActionButtons(context, currentProgression);
@@ -1553,19 +1545,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Widget _buildCompletionBadge(Chapter chapter) {
-    return FutureBuilder<List<MangaProgression>>(
-      future: _progressionsFuture,
+    return FutureBuilder<MangaProgression?>(
+      future: _progressionFuture,
       builder: (context, snapshot) {
         final double chapterNumber = chapter.chapterNumber;
+        final progression = snapshot.data;
         final bool isRead =
-            snapshot.hasData &&
-            snapshot.data != null &&
-            snapshot.data!.any((p) {
-              if (p.mangaId != manga.id) return false;
-              return p.chapterLogs.any(
-                (log) => log.chapterNumber == chapterNumber && log.isCompleted,
-              );
-            });
+            progression != null &&
+            progression.chapterLogs.any(
+              (log) => log.chapterNumber == chapterNumber && log.isCompleted,
+            );
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -1579,14 +1568,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.primary.withOpacity(0.4),
-                      AppColors.primary.withOpacity(0.4),
+                      AppColors.primary.withValues(alpha: 0.4),
+                      AppColors.primary.withValues(alpha: 0.4),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
+                      color: AppColors.primary.withValues(alpha: 0.2),
                       blurRadius: 4,
                       spreadRadius: 1,
                       offset: const Offset(0, 2),
@@ -1617,8 +1606,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Widget _buildProgressionBar(double chapterNumber) {
-    return FutureBuilder<List<MangaProgression>>(
-      future: _progressionsFuture,
+    return FutureBuilder<MangaProgression?>(
+      future: _progressionFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const LinearProgressIndicator(
@@ -1628,15 +1617,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           );
         }
 
-        if (!snapshot.hasData || snapshot.data == null) {
+        final progression = snapshot.data;
+        if (progression == null) {
           return const SizedBox.shrink();
         }
 
-        final progressions = snapshot.data!;
-        final progression = progressions.firstWhereOrNull(
-          (p) => p.mangaId == manga.id,
-        );
-        final log = progression?.chapterLogs.firstWhereOrNull(
+        final log = progression.chapterLogs.firstWhereOrNull(
           (l) => l.chapterNumber == chapterNumber,
         );
 

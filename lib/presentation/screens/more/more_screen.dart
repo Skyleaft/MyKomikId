@@ -166,7 +166,8 @@ class _MoreScreenState extends State<MoreScreen> {
                 icon: Icons.api_outlined,
                 title: 'Base API Setting',
                 onTap: () {
-                  Navigator.push(
+                  if (!context.mounted) return;
+                            Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const BaseApiSettingScreen(),
@@ -299,7 +300,7 @@ class _MoreScreenState extends State<MoreScreen> {
         margin: const EdgeInsets.only(top: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Center(
@@ -315,13 +316,13 @@ class _MoreScreenState extends State<MoreScreen> {
       margin: const EdgeInsets.only(top: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: isDark
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -501,7 +502,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -663,13 +664,13 @@ class _MoreScreenState extends State<MoreScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: isDark
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -739,13 +740,13 @@ class _MoreScreenState extends State<MoreScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: isDark
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 5,
                   offset: const Offset(0, 2),
                 ),
@@ -784,7 +785,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 Navigator.pushReplacementNamed(context, '/login');
               } catch (e) {
                 // Handle error
-                print('Logout error: $e');
+                debugPrint('Logout error: $e');
               }
             },
             icon: const Icon(Icons.logout),
@@ -799,7 +800,7 @@ class _MoreScreenState extends State<MoreScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
               ),
             ),
           ),

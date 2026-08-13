@@ -141,7 +141,7 @@ class DiscoverCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(borderRadius),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: isDesktop
                         ? 12
                         : isTablet
@@ -187,12 +187,12 @@ class DiscoverCard extends StatelessWidget {
                               padding: statusPadding,
                               decoration: BoxDecoration(
                                 color: status?.toLowerCase() == 'ongoing'
-                                    ? Colors.green.withOpacity(0.8)
+                                    ? Colors.green.withValues(alpha: 0.8)
                                     : status?.toLowerCase() == 'completed' ||
                                           status?.toLowerCase() == 'finished' ||
                                           status?.toLowerCase() == 'end'
-                                    ? Colors.blue.withOpacity(0.8)
-                                    : Colors.orange.withOpacity(0.8),
+                                    ? Colors.blue.withValues(alpha: 0.8)
+                                    : Colors.orange.withValues(alpha: 0.8),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -208,7 +208,7 @@ class DiscoverCard extends StatelessWidget {
                           Container(
                             padding: ratingPadding,
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
+                              color: Colors.black.withValues(alpha: 0.7),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Row(
@@ -252,7 +252,7 @@ class DiscoverCard extends StatelessWidget {
                       child: Container(
                         padding: typePadding,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -290,7 +290,7 @@ class DiscoverCard extends StatelessWidget {
                           Container(
                             padding: chapterPadding,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.9),
+                              color: AppColors.primary.withValues(alpha: 0.9),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -305,7 +305,7 @@ class DiscoverCard extends StatelessWidget {
                           Container(
                             padding: viewsPadding,
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.6),
+                              color: Colors.black.withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Row(
@@ -358,11 +358,11 @@ class DiscoverCard extends StatelessWidget {
 
   Widget _buildPlaceholder(double iconSize) {
     return Container(
-      color: AppColors.primary.withOpacity(0.1),
+      color: AppColors.primary.withValues(alpha: 0.1),
       child: Center(
         child: Icon(
           Icons.image_outlined,
-          color: AppColors.primary.withOpacity(0.5),
+          color: AppColors.primary.withValues(alpha: 0.5),
           size: iconSize,
         ),
       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -26,7 +27,7 @@ class UpdateService {
         }
       }
     } catch (e) {
-      print('Failed to check for updates: $e');
+      debugPrint('Failed to check for updates: $e');
     }
     return null;
   }
@@ -43,7 +44,7 @@ class UpdateService {
         if (part2 < part1) return false;
       }
     } catch (e) {
-      print("Version parse error: $e");
+      debugPrint("Version parse error: $e");
     }
     return false;
   }

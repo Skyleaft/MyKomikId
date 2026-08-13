@@ -372,8 +372,8 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
     final textColor = isDarkMode ? Colors.white : AppColors.primary;
     final cardColor = isDarkMode ? AppColors.cardDark : Colors.white;
     final shadowColor = isDarkMode
-        ? Colors.white.withOpacity(0.1)
-        : Colors.black.withOpacity(0.1);
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: 0.1);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -529,7 +529,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -554,8 +554,8 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isDarkMode
-                      ? Colors.red.withOpacity(0.2)
-                      : Colors.red.withOpacity(0.1),
+                      ? Colors.red.withValues(alpha: 0.2)
+                      : Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -854,7 +854,7 @@ class _ScrapMangaModalState extends State<_ScrapMangaModal> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -930,7 +930,7 @@ class _ScrapMangaModalState extends State<_ScrapMangaModal> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
+                                  color: Colors.blue.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -1008,7 +1008,7 @@ class _ScrapMangaModalState extends State<_ScrapMangaModal> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 border: Border.all(color: Colors.green),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1057,7 +1057,7 @@ class _ScrapMangaModalState extends State<_ScrapMangaModal> {
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     foregroundColor: AppColors.primary,
                     elevation: 0,
                   ),
@@ -1073,7 +1073,7 @@ class _ScrapMangaModalState extends State<_ScrapMangaModal> {
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.withOpacity(0.1),
+                    backgroundColor: Colors.orange.withValues(alpha: 0.1),
                     foregroundColor: Colors.orange,
                     elevation: 0,
                   ),

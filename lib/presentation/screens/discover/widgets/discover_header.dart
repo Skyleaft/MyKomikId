@@ -9,7 +9,10 @@ class DiscoverHeader extends StatefulWidget {
   final VoidCallback onShowQueue;
   final VoidCallback onSearchScrapSource;
   final VoidCallback onFilter;
+  final VoidCallback onAdvancedRecommendation;
   final bool hasFilters;
+  final bool isSemanticSearch;
+  final ValueChanged<bool> onSemanticSearchChanged;
 
   const DiscoverHeader({
     super.key,
@@ -18,7 +21,10 @@ class DiscoverHeader extends StatefulWidget {
     required this.onShowQueue,
     required this.onSearchScrapSource,
     required this.onFilter,
+    required this.onAdvancedRecommendation,
     this.hasFilters = false,
+    this.isSemanticSearch = false,
+    required this.onSemanticSearchChanged,
   });
 
   @override
@@ -44,7 +50,7 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
 
   void _debounceSearch(String value) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       widget.onSearch(value);
     });
   }
@@ -84,6 +90,19 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
               Row(
                 children: [
                   _buildHeaderIconButton(
+                    onPressed: widget.onAdvancedRecommendation,
+                    icon: Icons.auto_awesome_outlined,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeaderIconButton(
+                    onPressed: () => widget.onSemanticSearchChanged(
+                      !widget.isSemanticSearch,
+                    ),
+                    icon: Icons.psychology_outlined,
+                    isActive: widget.isSemanticSearch,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeaderIconButton(
                     onPressed: widget.onSearchScrapSource,
                     icon: Icons.cloud_sync_outlined,
                   ),
@@ -104,8 +123,8 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                   height: 52,
                   decoration: BoxDecoration(
                     color: widget.isDark
-                        ? AppColors.primary.withOpacity(0.1)
-                        : AppColors.primary.withOpacity(0.1),
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: TextField(
@@ -118,7 +137,9 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                       fontSize: 15,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Search manga, manhwa...',
+                      hintText: widget.isSemanticSearch
+                          ? 'Describe what you want (e.g. fantasy with OP MC)...'
+                          : 'Search manga, manhwa...',
                       hintStyle: TextStyle(
                         color: widget.isDark ? Colors.white54 : Colors.grey,
                         fontSize: 14,
@@ -167,13 +188,13 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
           color: isActive
               ? null
               : widget.isDark
-              ? AppColors.primary.withOpacity(0.1)
-              : AppColors.primary.withOpacity(0.1),
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -192,17 +213,24 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
   Widget _buildHeaderIconButton({
     required VoidCallback onPressed,
     required IconData icon,
+    bool isActive = false,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: widget.isDark
-            ? AppColors.primary.withOpacity(0.1)
-            : AppColors.primary.withOpacity(0.08),
+        color: isActive
+            ? AppColors.primary
+            : (widget.isDark
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : AppColors.primary.withValues(alpha: 0.08)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(icon, color: AppColors.primary, size: 22),
+        icon: Icon(
+          icon,
+          color: isActive ? Colors.white : AppColors.primary,
+          size: 22,
+        ),
       ),
     );
   }

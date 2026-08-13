@@ -27,16 +27,16 @@ class UserChapterLog {
       chapterId: map['chapterId'] as String? ?? '',
       chapterNumber: ((map['chapterNumber'] ?? 0.0) as num).toDouble(),
       lastReadPage: (map['lastReadPage'] ?? 0) as int,
-      totalPages: (map['totalPages'] ?? 0) as int,
+      totalPages: (map['totalPage'] ?? map['totalPages'] ?? 0) as int,
       isCompleted: map['isCompleted'] as bool? ?? false,
-      readingTimeSeconds: (map['readingTimeSeconds'] ?? 0) as int,
+      readingTimeSeconds: (map['readTimeInSeconds'] ?? map['readingTimeSeconds'] ?? 0) as int,
       lastReadAt: _parseDate(map['lastReadAt']),
     );
   }
 
   static DateTime _parseDate(dynamic value) {
     if (value == null) return DateTime.now();
-    if (value is String) return DateTime.parse(value);
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
     return DateTime.now();
   }
 
@@ -46,8 +46,10 @@ class UserChapterLog {
       'chapterId': chapterId,
       'chapterNumber': chapterNumber,
       'lastReadPage': lastReadPage,
+      'totalPage': totalPages,
       'totalPages': totalPages,
       'isCompleted': isCompleted,
+      'readTimeInSeconds': readingTimeSeconds,
       'readingTimeSeconds': readingTimeSeconds,
       'lastReadAt': lastReadAt.toIso8601String(),
     };
@@ -77,23 +79,22 @@ class MangaProgression {
     int? totalPages,
     bool? isCompleted,
     int? readingTimeSeconds,
-  }) : lastReadAt = lastReadAt ?? lastRead ?? DateTime.now(),
-       chapterLogs =
-           chapterLogs ??
-           (chapterId != null && chapterId.isNotEmpty
-               ? [
-                   UserChapterLog(
-                     id: '',
-                     chapterId: chapterId,
-                     chapterNumber: currentChapter ?? 0.0,
-                     lastReadPage: currentPage ?? 0,
-                     totalPages: totalPages ?? 0,
-                     isCompleted: isCompleted ?? false,
-                     readingTimeSeconds: readingTimeSeconds ?? 0,
-                     lastReadAt: lastReadAt ?? lastRead ?? DateTime.now(),
-                   ),
-                 ]
-               : []);
+  })  : lastReadAt = lastReadAt ?? lastRead ?? DateTime.now(),
+        chapterLogs = chapterLogs ??
+            (chapterId != null && chapterId.isNotEmpty
+                ? [
+                    UserChapterLog(
+                      id: '',
+                      chapterId: chapterId,
+                      chapterNumber: currentChapter ?? 0.0,
+                      lastReadPage: currentPage ?? 0,
+                      totalPages: totalPages ?? 0,
+                      isCompleted: isCompleted ?? false,
+                      readingTimeSeconds: readingTimeSeconds ?? 0,
+                      lastReadAt: lastReadAt ?? lastRead ?? DateTime.now(),
+                    ),
+                  ]
+                : []);
 
   UserChapterLog? get _latestLog {
     if (chapterLogs.isEmpty) return null;
@@ -114,11 +115,10 @@ class MangaProgression {
     final rawLogs = map['chapterLogs'] as List<dynamic>?;
     final List<UserChapterLog> logs = rawLogs != null
         ? rawLogs
-              .map((e) => UserChapterLog.fromMap(e as Map<String, dynamic>))
-              .toList()
+            .map((e) => UserChapterLog.fromMap(e as Map<String, dynamic>))
+            .toList()
         : [];
 
-    // Also support parsing old format fields if chapterLogs is empty
     if (logs.isEmpty &&
         (map['chapterId'] != null ||
             map['chapterNumber'] != null ||
@@ -129,9 +129,9 @@ class MangaProgression {
               .toDouble();
       final oldLastReadPage =
           (map['lastReadPage'] ?? map['currentPage'] ?? 1) as int;
-      final oldTotalPages = (map['totalPages'] ?? 1) as int;
+      final oldTotalPages = (map['totalPage'] ?? map['totalPages'] ?? 1) as int;
       final oldIsCompleted = map['isCompleted'] as bool? ?? false;
-      final oldReadingTimeSeconds = (map['readingTimeSeconds'] ?? 0) as int;
+      final oldReadingTimeSeconds = (map['readTimeInSeconds'] ?? map['readingTimeSeconds'] ?? 0) as int;
       final oldLastReadAt = _parseDate(map['lastReadAt'] ?? map['lastRead']);
       logs.add(
         UserChapterLog(
@@ -159,7 +159,7 @@ class MangaProgression {
 
   static DateTime _parseDate(dynamic value) {
     if (value == null) return DateTime.now();
-    if (value is String) return DateTime.parse(value);
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
     return DateTime.now();
   }
 
@@ -174,13 +174,16 @@ class MangaProgression {
     };
   }
 
-  Map<String, dynamic> toApiRequest() {
+  /// Format for [UpdateUserProgressionCommand]
+  Map<String, dynamic> toApiRequest([String activeUserId = '']) {
     return {
+      'userId': userId.isNotEmpty ? userId : activeUserId,
       'mangaId': mangaId,
       'chapterId': chapterId,
       'chapterNumber': currentChapter,
       'lastReadPage': currentPage,
       'totalPages': totalPages,
+      'isCompleted': isCompleted,
       'readingTimeSeconds': readingTimeSeconds,
     };
   }

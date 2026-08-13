@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/discover_card.dart';
 import '../../../data/models/manga_detail.dart';
 import '../../../data/models/manga_summary.dart';
+import '../../../data/models/paged_response.dart';
 import '../../../data/services/manga_api_service.dart';
 import '../../../routes/app_pages.dart';
 import 'widgets/discover_header.dart';
@@ -32,6 +33,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   final int _pageSize = 10;
   bool _hasMore = true;
   String? _searchQuery;
+  bool _isSemanticSearch = false;
 
   List<String> _selectedGenres = [];
   String? _selectedType;
@@ -79,23 +81,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
 
     try {
-      final response = await _apiService.getPagedManga(
-        page: _currentPage,
-        pageSize: _pageSize,
-        search: _searchQuery,
-        genres: _selectedGenres.isEmpty ? null : _selectedGenres,
-        type: _selectedType,
-        status: _selectedStatus,
-        sortBy: _sortBy,
-        orderBy: _orderBy,
-      );
+      final PagedResponse<MangaSummary> response;
+      if (_isSemanticSearch && _searchQuery != null && _searchQuery!.isNotEmpty) {
+        final items = await _apiService.searchSemantic(_searchQuery!, limit: _pageSize);
+        response = PagedResponse<MangaSummary>(
+          items: items,
+          page: 1,
+          pageSize: _pageSize,
+          totalCount: items.length,
+          totalPages: 1,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        );
+      } else {
+        response = await _apiService.getPagedManga(
+          page: _currentPage,
+          pageSize: _pageSize,
+          search: _searchQuery,
+          genres: _selectedGenres.isEmpty ? null : _selectedGenres,
+          type: _selectedType,
+          status: _selectedStatus,
+          sortBy: _sortBy,
+          orderBy: _orderBy,
+        );
+      }
 
       if (!mounted) return;
       setState(() {
         _items.addAll(response.items);
         _isLoading = false;
         _isMoreLoading = false;
-        _hasMore = _items.length < response.totalCount;
+        _hasMore = _items.length < response.totalCount && !_isSemanticSearch;
         if (_hasMore) _currentPage++;
       });
     } catch (e) {
@@ -223,7 +239,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     (isDark
                             ? AppColors.backgroundDark
                             : AppColors.backgroundLight)
-                        .withOpacity(0.8),
+                        .withValues(alpha: 0.8),
                 surfaceTintColor: Colors.transparent,
                 expandedHeight: 146,
                 toolbarHeight: 0,
@@ -239,10 +255,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           onShowQueue: _onShowQueue,
                           onSearchScrapSource: _onSearchScrapSource,
                           onFilter: _onFilter,
+                          onAdvancedRecommendation: () => Navigator.pushNamed(context, AppRoutes.advancedRecommendation),
                           hasFilters:
                               _selectedGenres.isNotEmpty ||
                               _selectedType != null ||
                               _selectedStatus != null,
+                          isSemanticSearch: _isSemanticSearch,
+                          onSemanticSearchChanged: (value) {
+                            setState(() {
+                              _isSemanticSearch = value;
+                            });
+                            _fetchData(refresh: true);
+                          },
                         ),
                       ),
                     ),
