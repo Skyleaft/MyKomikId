@@ -20,7 +20,7 @@ dependencies:
   google_fonts: ^8.2.1  
   google_sign_in: ^6.2.1
   http: ^1.2.2
-  intl: ^0.19.0
+  intl: ^0.20.3
   jikan_api: ^2.3.0
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.1
