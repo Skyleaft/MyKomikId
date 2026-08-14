@@ -97,7 +97,7 @@ class MangaDetailAppBar extends StatelessWidget {
                       child: CircularProgressIndicator(color: AppColors.primary),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Container(
+                  errorBuilder: (context, error, stackTrace) => Container(
                     height: 400,
                     color: Colors.grey[800],
                     child: const Center(
@@ -148,7 +148,7 @@ class MangaDetailAppBar extends StatelessWidget {
                           child: CircularProgressIndicator(color: AppColors.primary),
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container(
+                      errorBuilder: (context, error, stackTrace) => Container(
                         color: Colors.grey[300],
                         child: const Center(
                           child: Icon(

@@ -273,8 +273,8 @@ class MangaApiService {
       final response = await _dio.get(
         '/api/v1/manga/$mangaId/similar/filtered',
         queryParameters: {
-          'status': ?status,
-          'type': ?type,
+          if (status != null && status.isNotEmpty) 'status': status,
+          if (type != null && type.isNotEmpty) 'type': type,
           if (genres != null && genres.isNotEmpty) 'genres': genres,
           'limit': limit,
         },
