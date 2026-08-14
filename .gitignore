@@ -48,3 +48,4 @@ app.*.map.json
 .env
 google-services.json
 GoogleService-Info.plist
+android/build/reports/problems/problems-report.html
