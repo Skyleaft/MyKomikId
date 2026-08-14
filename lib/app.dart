@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
+import 'package:protocol_handler/protocol_handler.dart';
 import 'core/di/injection.dart';
 import 'core/network/api_config.dart';
 import 'core/network/manga_api_service.dart';
@@ -40,7 +41,7 @@ class AuthWrapper extends StatefulWidget {
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
+class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
   final AuthService _authService = AuthService();
   bool _isCheckingAuth = true;
   late AppLinks _appLinks;
@@ -50,15 +51,26 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   void initState() {
     super.initState();
+    protocolHandler.addListener(this);
     _initDeepLinks();
     _checkAuthState();
   }
 
   @override
   void dispose() {
+    protocolHandler.removeListener(this);
     _linkSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void onProtocolUrlReceived(String url) {
+    debugPrint('Received protocol url: $url');
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      _handleDeepLink(uri);
+    }
   }
 
   Future<void> _initDeepLinks() async {
@@ -72,17 +84,42 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (initialUri != null) {
       _handleDeepLink(initialUri);
     }
+
+    final initialProtocolUrl = await protocolHandler.getInitialUrl();
+    if (initialProtocolUrl != null && initialProtocolUrl.isNotEmpty) {
+      final uri = Uri.tryParse(initialProtocolUrl);
+      if (uri != null) {
+        _handleDeepLink(uri);
+      }
+    }
   }
 
   Future<void> _handleDeepLink(Uri uri) async {
+    debugPrint(
+      'Received deep link: $uri (scheme: ${uri.scheme}, host: ${uri.host}, path: ${uri.path}, segments: ${uri.pathSegments})',
+    );
+
     String? mangaId;
-    if (uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'manga') {
-      mangaId = uri.pathSegments[1];
-    } else if (uri.host == 'manga' && uri.pathSegments.isNotEmpty) {
-      mangaId = uri.pathSegments[0];
+
+    // Support open-manga-reader://manga/{id} or open-manga-reader://manga/detail/{id}
+    if (uri.host == 'manga') {
+      if (uri.pathSegments.isNotEmpty) {
+        mangaId = uri.pathSegments.last;
+      }
+    }
+    // Support open-manga-reader:///manga/{id} or http(s)://domain.com/manga/{id}
+    else if (uri.pathSegments.contains('manga')) {
+      final mangaIndex = uri.pathSegments.indexOf('manga');
+      if (uri.pathSegments.length > mangaIndex + 1) {
+        mangaId = uri.pathSegments[mangaIndex + 1];
+      }
+    }
+    // Support query parameter fallback e.g. open-manga-reader://manga?id={id}
+    if (mangaId == null || mangaId.isEmpty) {
+      mangaId = uri.queryParameters['id'] ?? uri.queryParameters['mangaId'];
     }
 
-    if (mangaId != null) {
+    if (mangaId != null && mangaId.isNotEmpty) {
       try {
         final apiService = getIt<MangaApiService>();
         final mangaData = await apiService.getMangaDetail(mangaId);
@@ -93,7 +130,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           arguments: manga,
         );
       } catch (e) {
-        debugPrint('Error handling deep link: $e');
+        debugPrint('Error handling deep link for mangaId "$mangaId": $e');
       }
     }
   }
