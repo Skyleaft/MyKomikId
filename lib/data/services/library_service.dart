@@ -46,6 +46,28 @@ class LibraryService {
     }
   }
 
+  Future<void> toggleFavorite(String mangaId) async {
+    final libraryManga = await getLibraryManga(mangaId);
+    if (libraryManga == null) return;
+
+    final updated = libraryManga.copyWith(
+      isFavorite: !libraryManga.isFavorite,
+    );
+
+    // 1. Update local cache
+    await _updateLocalCache(updated, isRemoving: false);
+
+    // 2. Try API
+    final apiService = getIt<MangaApiService>();
+    final payload = updated.toApiRequest(_currentUserId);
+    try {
+      await apiService.addToUserLibrary(payload);
+    } catch (e) {
+      // 3. Queue for sync if failed
+      getIt<SyncService>().enqueueAction('library_add', payload);
+    }
+  }
+
   Future<LibraryManga?> getLibraryManga(String mangaId) async {
     final library = await getAllLibraryMangas();
     try {

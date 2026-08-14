@@ -51,6 +51,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
 
   MangaDetail get manga => widget.manga;
 
+  bool _isFavorite = false;
+
   @override
   void initState() {
     super.initState();
@@ -118,10 +120,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         final freshDetail = MangaDetail(
           id: manga.id,
           malId: manga.malId,
+          anilistId: manga.anilistId,
+          mangaUpdateId: manga.mangaUpdateId,
           title: manga.title,
           author: manga.author,
           type: manga.type,
           genres: manga.genres,
+          categories: manga.categories,
           description: manga.description,
           imageUrl: manga.imageUrl,
           localImageUrl: manga.localImageUrl,
@@ -138,6 +143,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         );
         await _detailService.saveDetail(freshDetail);
         _refreshProgressions();
+        _checkIfInLibrary();
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingChapters = false);
@@ -168,10 +174,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         final freshDetail = MangaDetail(
           id: manga.id,
           malId: manga.malId,
+          anilistId: manga.anilistId,
+          mangaUpdateId: manga.mangaUpdateId,
           title: manga.title,
           author: manga.author,
           type: manga.type,
           genres: manga.genres,
+          categories: manga.categories,
           description: manga.description,
           imageUrl: manga.imageUrl,
           localImageUrl: manga.localImageUrl,
@@ -198,10 +207,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Future<void> _checkIfInLibrary() async {
-    final isInLibrary = await _libraryService.isInLibrary(manga.id);
+    final libraryItem = await _libraryService.getLibraryManga(manga.id);
+    final isInLibrary = libraryItem != null;
     if (mounted) {
       setState(() {
         _isInLibrary = isInLibrary;
+        _isFavorite = libraryItem?.isFavorite ?? false;
       });
     }
   }
@@ -225,10 +236,41 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     }
   }
 
+  Future<void> _toggleFavorite() async {
+    if (!_isInLibrary) return;
+    try {
+      await _libraryService.toggleFavorite(manga.id);
+      if (mounted) {
+        setState(() {
+          _isFavorite = !_isFavorite;
+        });
+        AlertBanner.show(
+          context,
+          _isFavorite ? 'Added to favorites' : 'Removed from favorites',
+          type: AlertBannerType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AlertBanner.show(
+          context,
+          'Error: ${e.toString()}',
+          type: AlertBannerType.error,
+        );
+      }
+    }
+  }
+
   Future<void> _toggleLibrary(BuildContext context) async {
     try {
       if (_isInLibrary) {
         await _libraryService.removeFromLibrary(manga.id);
+        if (mounted) {
+          setState(() {
+            _isInLibrary = false;
+            _isFavorite = false;
+          });
+        }
         AlertBanner.show(
           context,
           'Removed from library',
@@ -248,17 +290,17 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           status: status,
         );
         await _libraryService.addToLibrary(libraryManga);
+        if (mounted) {
+          setState(() {
+            _isInLibrary = true;
+            _isFavorite = libraryManga.isFavorite;
+          });
+        }
         AlertBanner.show(
           context,
           'Added to library as $status',
           type: AlertBannerType.success,
         );
-      }
-
-      if (mounted) {
-        setState(() {
-          _isInLibrary = !_isInLibrary;
-        });
       }
     } catch (e) {
       if (mounted) {
@@ -422,6 +464,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                           color: AppColors.primary.withValues(alpha: 0.2),
                           margin: const EdgeInsets.symmetric(vertical: 8),
                         ),
+                        _buildProviderChips(),
                         _buildGenreTags(),
                         const SizedBox(height: 24),
                         _buildSynopsis(),
@@ -522,12 +565,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           allChapters: _chapters,
           chapterTitle: chapter.title,
           pageUrls: pages
-              .map(
-                (p) => _apiService.getLocalImageUrl(
-                  p,
-                  null,
-                ),
-              )
+              .map((p) => _apiService.getLocalImageUrl(p, null))
               .toList(),
           currentPage: startingPage,
           progression: progression,
@@ -683,7 +721,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
               ],
             ),
             Text(
-              '12.5k reviews',
+              'Rating',
               style: const TextStyle(
                 fontSize: 10,
                 color: Colors.grey,
@@ -837,6 +875,86 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     );
   }
 
+  Widget _buildProviderChips() {
+    final hasMal = manga.malId > 0;
+    final hasAnilist = manga.anilistId != null && manga.anilistId! > 0;
+    final hasMangaUpdates =
+        manga.mangaUpdateId != null && manga.mangaUpdateId! > 0;
+
+    if (!hasMal && !hasAnilist && !hasMangaUpdates) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          if (hasMal)
+            _buildExternalLinkChip(
+              label: 'MAL',
+              icon: Icons.link_rounded,
+              color: const Color(0xFF2E51A2),
+              url: 'https://myanimelist.net/manga/${manga.malId}',
+            ),
+          if (hasAnilist)
+            _buildExternalLinkChip(
+              label: 'AniList',
+              icon: Icons.tv_rounded,
+              color: const Color(0xFF02A9FF),
+              url: 'https://anilist.co/manga/${manga.anilistId}',
+            ),
+          if (hasMangaUpdates)
+            _buildExternalLinkChip(
+              label: 'MangaUpdates',
+              icon: Icons.menu_book_rounded,
+              color: const Color(0xFF8C52FF),
+              url:
+                  'https://www.mangaupdates.com/series.html?id=${manga.mangaUpdateId}',
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExternalLinkChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required String url,
+  }) {
+    return InkWell(
+      onTap: () => launchUrlString(url),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 3),
+            Icon(Icons.open_in_new, size: 11, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildGenreTags() {
     return Wrap(
       spacing: 8,
@@ -848,6 +966,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
               genre,
               AppColors.primary.withValues(alpha: 0.2),
               AppColors.primary,
+            ),
+          ),
+        if (manga.categories != null)
+          ...manga.categories!.map(
+            (category) => _buildTag(
+              category,
+              Colors.tealAccent.withValues(alpha: 0.15),
+              Colors.tealAccent[400] ?? Colors.teal,
             ),
           ),
         _buildTag(
@@ -966,15 +1092,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Container(
           height: 56,
-          width: 64,
+          width: 56,
           decoration: BoxDecoration(
             color: _isInLibrary ? AppColors.primary : Colors.grey[800],
-            borderRadius: BorderRadius.circular(36),
+            borderRadius: BorderRadius.circular(28),
           ),
           child: IconButton(
+            tooltip: _isInLibrary ? 'In Library' : 'Add to Library',
             icon: Icon(
               _isInLibrary ? Icons.library_add_check : Icons.library_add,
               color: Colors.white,
@@ -982,6 +1109,32 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             onPressed: () => _toggleLibrary(context),
           ),
         ),
+        if (_isInLibrary) ...[
+          const SizedBox(width: 10),
+          Container(
+            height: 56,
+            width: 56,
+            decoration: BoxDecoration(
+              color: _isFavorite
+                  ? Colors.redAccent.withValues(alpha: 0.2)
+                  : Colors.grey[800],
+              borderRadius: BorderRadius.circular(28),
+              border: _isFavorite
+                  ? Border.all(color: Colors.redAccent, width: 1.5)
+                  : null,
+            ),
+            child: IconButton(
+              tooltip: _isFavorite
+                  ? 'Remove from Favorites'
+                  : 'Add to Favorites',
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.redAccent : Colors.white,
+              ),
+              onPressed: _toggleFavorite,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1055,15 +1208,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Container(
           height: 56,
-          width: 64,
+          width: 56,
           decoration: BoxDecoration(
             color: _isInLibrary ? AppColors.primary : Colors.grey[800],
-            borderRadius: BorderRadius.circular(36),
+            borderRadius: BorderRadius.circular(28),
           ),
           child: IconButton(
+            tooltip: _isInLibrary ? 'In Library' : 'Add to Library',
             icon: Icon(
               _isInLibrary ? Icons.library_add_check : Icons.library_add,
               color: Colors.white,
@@ -1071,6 +1225,32 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
             onPressed: () => _toggleLibrary(context),
           ),
         ),
+        if (_isInLibrary) ...[
+          const SizedBox(width: 10),
+          Container(
+            height: 56,
+            width: 56,
+            decoration: BoxDecoration(
+              color: _isFavorite
+                  ? Colors.redAccent.withValues(alpha: 0.2)
+                  : Colors.grey[800],
+              borderRadius: BorderRadius.circular(28),
+              border: _isFavorite
+                  ? Border.all(color: Colors.redAccent, width: 1.5)
+                  : null,
+            ),
+            child: IconButton(
+              tooltip: _isFavorite
+                  ? 'Remove from Favorites'
+                  : 'Add to Favorites',
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? Colors.redAccent : Colors.white,
+              ),
+              onPressed: _toggleFavorite,
+            ),
+          ),
+        ],
       ],
     );
   }
