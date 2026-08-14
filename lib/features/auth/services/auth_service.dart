@@ -15,8 +15,14 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   late final GoogleDesktopAuth _desktopAuth = GoogleDesktopAuth(
-    clientId: dotenv.env['GOOGLE_DESKTOP_CLIENT_ID'] ?? '',
-    clientSecret: dotenv.env['GOOGLE_DESKTOP_CLIENT_SECRET'] ?? '',
+    clientId: dotenv.env['GOOGLE_DESKTOP_CLIENT_ID'] ??
+        dotenv.env['GOOGLE_CLIENT_ID'] ??
+        dotenv.env['FIREBASE_WINDOWS_CLIENT_ID'] ??
+        dotenv.env['FIREBASE_WEB_CLIENT_ID'] ??
+        '',
+    clientSecret: dotenv.env['GOOGLE_DESKTOP_CLIENT_SECRET'] ??
+        dotenv.env['GOOGLE_CLIENT_SECRET'] ??
+        '',
   );
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();

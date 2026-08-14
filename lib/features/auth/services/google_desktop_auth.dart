@@ -27,6 +27,13 @@ class GoogleDesktopAuth {
   });
 
   Future<GoogleDesktopAuthResult?> signIn() async {
+    final cleanClientId = clientId.trim();
+    if (cleanClientId.isEmpty) {
+      throw Exception(
+        'Google Desktop Client ID is missing. Please set GOOGLE_DESKTOP_CLIENT_ID in your .env file.',
+      );
+    }
+
     final codeVerifier = _generateCodeVerifier();
     final codeChallenge = _generateCodeChallenge(codeVerifier);
 
@@ -37,7 +44,7 @@ class GoogleDesktopAuth {
     final redirectUri = 'http://127.0.0.1:$port';
 
     final authUri = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
-      'client_id': clientId,
+      'client_id': cleanClientId,
       'redirect_uri': redirectUri,
       'response_type': 'code',
       'scope': 'openid email profile',
@@ -93,8 +100,8 @@ class GoogleDesktopAuth {
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: {
         'code': code,
-        'client_id': clientId,
-        'client_secret': clientSecret,
+        'client_id': clientId.trim(),
+        if (clientSecret.trim().isNotEmpty) 'client_secret': clientSecret.trim(),
         'code_verifier': codeVerifier,
         'redirect_uri': redirectUri,
         'grant_type': 'authorization_code',
