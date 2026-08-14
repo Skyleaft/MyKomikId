@@ -67,9 +67,7 @@ class MangaDetail {
       description: map['description'] as String? ?? 'No description available',
       imageUrl: map['imageUrl'] as String?,
       localImageUrl: map['localImageUrl'] as String?,
-      rating: map['rating'] != null
-          ? (map['rating'] as num).toDouble()
-          : null,
+      rating: map['rating'] != null ? (map['rating'] as num).toDouble() : null,
       popularity: map['popularity'] as int? ?? 0,
       members: map['members'] as int? ?? 0,
       status: map['status'] as String?,
@@ -83,7 +81,8 @@ class MangaDetail {
           ? (DateTime.tryParse(map['updatedAt'] as String) ?? DateTime.now())
           : DateTime.now(),
       url: map['url'] as String?,
-      chapters: (map['chapters'] as List<dynamic>?)
+      chapters:
+          (map['chapters'] as List<dynamic>?)
               ?.map((e) => Chapter.fromMap(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -150,7 +149,7 @@ class Chapter {
     required this.date,
     this.isNew = false,
     this.isRead = false,
-    this.isChapterAvailable = true,
+    this.isChapterAvailable = false,
     this.chapterProvider,
     this.chapterProviderIcon,
     this.link,
@@ -161,6 +160,7 @@ class Chapter {
 
   factory Chapter.fromMap(Map<String, dynamic> map) {
     final rawPages = map['pages'] as List<dynamic>?;
+    final pagesList = rawPages?.map((e) => e as String).toList() ?? [];
     final numVal = map['number'] ?? map['chapterNumber'] ?? 0;
     return Chapter(
       id: map['id'] as String? ?? (numVal.toString()),
@@ -169,15 +169,16 @@ class Chapter {
       date: map['uploadDate'] != null
           ? (DateTime.tryParse(map['uploadDate'] as String) ?? DateTime.now())
           : map['date'] != null
-              ? (DateTime.tryParse(map['date'] as String) ?? DateTime.now())
-              : DateTime.now(),
+          ? (DateTime.tryParse(map['date'] as String) ?? DateTime.now())
+          : DateTime.now(),
       isNew: map['isNew'] as bool? ?? false,
       isRead: map['isRead'] as bool? ?? false,
-      isChapterAvailable: map['isChapterAvailable'] as bool? ?? true,
+      isChapterAvailable:
+          map['isChapterAvailable'] as bool? ?? pagesList.isNotEmpty,
       chapterProvider: map['chapterProvider'] as String?,
       chapterProviderIcon: map['chapterProviderIcon'] as String?,
       link: map['link'] as String?,
-      pages: rawPages?.map((e) => e as String).toList() ?? [],
+      pages: pagesList,
       language: map['language'] as String? ?? '',
       totalView: map['totalView'] as int? ?? 0,
     );

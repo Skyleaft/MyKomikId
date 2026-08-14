@@ -220,29 +220,43 @@ class MangaApiService {
     }
   }
 
-  Future<List<MangaSummary>> searchSemantic(String query, {int limit = 10}) async {
+  Future<List<MangaSummary>> searchSemantic(
+    String query, {
+    int limit = 10,
+  }) async {
     try {
       final response = await _dio.get(
         '/api/v1/manga/search/semantic',
         queryParameters: {'q': query, 'limit': limit},
       );
       final unwrapped = _unwrap(response.data);
-      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
-      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+      final List<dynamic> items = unwrapped is List
+          ? unwrapped
+          : (unwrapped['items'] ?? []);
+      return items
+          .map((json) => MangaSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<List<MangaSummary>> getSimilarManga(String mangaId, {int limit = 10}) async {
+  Future<List<MangaSummary>> getSimilarManga(
+    String mangaId, {
+    int limit = 10,
+  }) async {
     try {
       final response = await _dio.get(
         '/api/v1/manga/$mangaId/similar',
         queryParameters: {'limit': limit},
       );
       final unwrapped = _unwrap(response.data);
-      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
-      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+      final List<dynamic> items = unwrapped is List
+          ? unwrapped
+          : (unwrapped['items'] ?? []);
+      return items
+          .map((json) => MangaSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       rethrow;
     }
@@ -266,22 +280,32 @@ class MangaApiService {
         },
       );
       final unwrapped = _unwrap(response.data);
-      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
-      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+      final List<dynamic> items = unwrapped is List
+          ? unwrapped
+          : (unwrapped['items'] ?? []);
+      return items
+          .map((json) => MangaSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<List<MangaSummary>> getAdvancedRecommendations(AdvancedRecommendationRequest request) async {
+  Future<List<MangaSummary>> getAdvancedRecommendations(
+    AdvancedRecommendationRequest request,
+  ) async {
     try {
       final response = await _dio.post(
         '/api/v1/manga/recommend/advanced',
         data: request.toMap(),
       );
       final unwrapped = _unwrap(response.data);
-      final List<dynamic> items = unwrapped is List ? unwrapped : (unwrapped['items'] ?? []);
-      return items.map((json) => MangaSummary.fromJson(json as Map<String, dynamic>)).toList();
+      final List<dynamic> items = unwrapped is List
+          ? unwrapped
+          : (unwrapped['items'] ?? []);
+      return items
+          .map((json) => MangaSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       rethrow;
     }
@@ -292,11 +316,10 @@ class MangaApiService {
     int limit = 10,
   }) async {
     try {
-      final response = await _dio.post(
-        '/api/v1/manga/recommend/advanced',
-        data: {
-          'likedIds': readingHistoryIds ?? [],
-          'dislikedIds': [],
+      final response = await _dio.get(
+        '/api/v1/manga/recomendations',
+        queryParameters: {
+          'readingHistoryIds': readingHistoryIds ?? [],
           'limit': limit,
         },
       );

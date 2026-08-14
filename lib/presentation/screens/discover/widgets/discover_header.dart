@@ -129,7 +129,11 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                   ),
                   child: TextField(
                     controller: _searchController,
-                    onChanged: _debounceSearch,
+                    onChanged: widget.isSemanticSearch ? null : _debounceSearch,
+                    onSubmitted: (val) {
+                      _debounceTimer?.cancel();
+                      widget.onSearch(val);
+                    },
                     onTapOutside: (_) =>
                         FocusManager.instance.primaryFocus?.unfocus(),
                     style: TextStyle(
@@ -149,6 +153,20 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                         color: widget.isDark ? AppColors.primary : Colors.grey,
                         size: 22,
                       ),
+                      suffixIcon: widget.isSemanticSearch
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.arrow_forward_rounded,
+                                color: widget.isDark
+                                    ? AppColors.primary
+                                    : AppColors.secondary,
+                              ),
+                              onPressed: () {
+                                _debounceTimer?.cancel();
+                                widget.onSearch(_searchController.text);
+                              },
+                            )
+                          : null,
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     ),
