@@ -273,8 +273,8 @@ class MangaApiService {
       final response = await _dio.get(
         '/api/v1/manga/$mangaId/similar/filtered',
         queryParameters: {
-          if (status != null) 'status': status,
-          if (type != null) 'type': type,
+          'status': ?status,
+          'type': ?type,
           if (genres != null && genres.isNotEmpty) 'genres': genres,
           'limit': limit,
         },
@@ -458,7 +458,7 @@ class MangaApiService {
         data: {
           'mangaUrl': mangaUrl,
           'scrapChapterPages': scrapChapters,
-          if (linkId != null) 'linkId': linkId,
+          'linkId': ?linkId,
         },
       );
     } catch (e) {
@@ -496,10 +496,10 @@ class MangaApiService {
       final response = await _dio.get(
         '/api/v1/scrapper/$provider/search',
         queryParameters: {
-          if (keyword != null) 'Keyword': keyword,
+          'Keyword': ?keyword,
           if (genres != null && genres.isNotEmpty) 'Genres': genres,
-          if (status != null) 'Status': status,
-          if (type != null) 'Type': type,
+          'Status': ?status,
+          'Type': ?type,
           'Page': page,
         },
       );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'app_network_image.dart';
 import 'dart:math' as math;
@@ -58,8 +59,8 @@ class ReaderContentWidget extends StatelessWidget {
                 clipBehavior: Clip.none,
                 trackpadScrollCausesScale: false,
                 child: CustomScrollView(
+                  scrollCacheExtent: const ScrollCacheExtent.pixels(3000),
                   controller: scrollController,
-                  cacheExtent: 3000,
                   physics:
                       transformationController.value.getMaxScaleOnAxis() > 1
                       ? const NeverScrollableScrollPhysics()
