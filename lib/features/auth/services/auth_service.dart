@@ -1,0 +1,118 @@
+import 'dart:io' show Platform;
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../../../core/di/injection.dart';
+import '../../../core/network/manga_api_service.dart';
+import '../../history/services/progression_service.dart';
+import '../../library/services/library_service.dart';
+import 'google_desktop_auth.dart';
+
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  late final GoogleDesktopAuth _desktopAuth = GoogleDesktopAuth(
+    clientId: dotenv.env['GOOGLE_DESKTOP_CLIENT_ID'] ?? '',
+    clientSecret: dotenv.env['GOOGLE_DESKTOP_CLIENT_SECRET'] ?? '',
+  );
+
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  User? get currentUser => _auth.currentUser;
+
+  static bool get _isDesktop =>
+      !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+
+  Future<User?> signInWithGoogle() async {
+    try {
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        final userCredential = await _auth.signInWithPopup(provider);
+
+        final idToken = await userCredential.user?.getIdToken();
+        if (idToken != null) {
+          await getIt<MangaApiService>().loginWithFirebase(idToken);
+        }
+
+        await Future.wait([
+          getIt<ProgressionService>().refreshFromApi(),
+          getIt<LibraryService>().refreshFromApi(),
+        ]);
+
+        return userCredential.user;
+      }
+
+      if (_isDesktop) {
+        final result = await _desktopAuth.signIn();
+        if (result == null) return null;
+
+        final credential = GoogleAuthProvider.credential(
+          idToken: result.idToken,
+          accessToken: result.accessToken,
+        );
+
+        final userCredential = await _auth.signInWithCredential(credential);
+
+        final idToken = await userCredential.user?.getIdToken();
+        if (idToken != null) {
+          await getIt<MangaApiService>().loginWithFirebase(idToken);
+        }
+
+        await Future.wait([
+          getIt<ProgressionService>().refreshFromApi(),
+          getIt<LibraryService>().refreshFromApi(),
+        ]);
+
+        return userCredential.user;
+      }
+
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+
+      final idToken = await userCredential.user?.getIdToken();
+      if (idToken != null) {
+        await getIt<MangaApiService>().loginWithFirebase(idToken);
+      }
+
+      await Future.wait([
+        getIt<ProgressionService>().refreshFromApi(),
+        getIt<LibraryService>().refreshFromApi(),
+      ]);
+
+      return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase error: ${e.code}');
+      rethrow;
+    } catch (e) {
+      debugPrint('Unknown error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> signOut() async {
+    if (!kIsWeb && !_isDesktop) {
+      await _googleSignIn.signOut();
+    }
+
+    await getIt<MangaApiService>().logout();
+
+    await Future.wait([
+      getIt<ProgressionService>().clearAllProgressions(),
+      getIt<LibraryService>().clearLibrary(),
+    ]);
+
+    await _auth.signOut();
+  }
+}

@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import '../presentation/screens/auth/login_screen.dart';
-import '../presentation/screens/main/main_screen.dart';
-import '../presentation/screens/detail/manga_detail_screen.dart';
-import '../presentation/screens/reader/reader_screen.dart';
-import '../presentation/screens/history/history_screen.dart';
-import '../presentation/screens/more/base_api_setting_screen.dart';
-import '../presentation/screens/discover/search_scrap_screen.dart';
-import '../presentation/screens/discover/advanced_recommendation_screen.dart';
-import '../data/models/manga_detail.dart';
-import '../data/models/reader_content.dart';
+import '../features/auth/presentation/login_screen.dart';
+import '../features/main/presentation/main_screen.dart';
+import '../features/manga_detail/presentation/manga_detail_screen.dart';
+import '../features/manga_detail/models/manga_detail.dart';
+import '../features/reader/presentation/reader_screen.dart';
+import '../features/reader/models/reader_content.dart';
+import '../features/history/presentation/history_screen.dart';
+import '../features/settings/presentation/base_api_setting_screen.dart';
+import '../features/discover/presentation/search_scrap_screen.dart';
+import '../features/discover/presentation/advanced_recommendation_screen.dart';
 
 class AppRoutes {
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static const String login = '/login';
   static const String home = '/home';
   static const String detail = '/detail';

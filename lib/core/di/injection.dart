@@ -1,10 +1,10 @@
 import 'package:get_it/get_it.dart';
-import '../../data/services/library_service.dart';
-import '../../data/services/manga_api_service.dart';
-import '../../data/services/manga_detail_service.dart';
-import '../../data/services/progression_service.dart';
-import '../../data/services/sync_service.dart';
 import '../config/app_config.dart';
+import '../network/manga_api_service.dart';
+import '../network/sync_service.dart';
+import '../../features/history/services/progression_service.dart';
+import '../../features/library/services/library_service.dart';
+import '../../features/manga_detail/services/manga_detail_service.dart';
 
 final getIt = GetIt.instance;
 
