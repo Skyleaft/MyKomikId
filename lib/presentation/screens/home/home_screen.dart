@@ -221,7 +221,8 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _fetchRecommended() async {
     try {
       final history = await getIt<ProgressionService>().getAllProgressions();
-      List<String> ids = history.map((e) => e.mangaId).toList();
+      history.sort((a, b) => b.lastRead.compareTo(a.lastRead));
+      List<String> ids = history.take(5).map((e) => e.mangaId).toList();
 
       if (ids.isEmpty && _topManga.isNotEmpty) {
         ids = [_topManga.first.id];
@@ -501,7 +502,9 @@ class _HomeScreenState extends State<HomeScreen>
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: isDark ? AppColors.slate800.withValues(alpha: 0.9) : Colors.white,
+          color: isDark
+              ? AppColors.slate800.withValues(alpha: 0.9)
+              : Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.10),

@@ -30,7 +30,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   bool _isLoading = false;
   bool _isMoreLoading = false;
   int _currentPage = 1;
-  final int _pageSize = 10;
+  final int _pageSize = 20;
   bool _hasMore = true;
   String? _searchQuery;
   bool _isSemanticSearch = false;
@@ -82,8 +82,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
     try {
       final PagedResponse<MangaSummary> response;
-      if (_isSemanticSearch && _searchQuery != null && _searchQuery!.isNotEmpty) {
-        final items = await _apiService.searchSemantic(_searchQuery!, limit: _pageSize);
+      if (_isSemanticSearch &&
+          _searchQuery != null &&
+          _searchQuery!.isNotEmpty) {
+        final items = await _apiService.searchSemantic(
+          _searchQuery!,
+          limit: _pageSize,
+        );
         response = PagedResponse<MangaSummary>(
           items: items,
           page: 1,
@@ -255,7 +260,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           onShowQueue: _onShowQueue,
                           onSearchScrapSource: _onSearchScrapSource,
                           onFilter: _onFilter,
-                          onAdvancedRecommendation: () => Navigator.pushNamed(context, AppRoutes.advancedRecommendation),
+                          onAdvancedRecommendation: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.advancedRecommendation,
+                          ),
                           hasFilters:
                               _selectedGenres.isNotEmpty ||
                               _selectedType != null ||
