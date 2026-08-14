@@ -15,7 +15,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_svg: ^2.3.0
-  font_awesome_flutter: ^10.12.0
+  font_awesome_flutter: ^11.0.0
   get_it: ^9.2.1
   google_fonts: ^8.2.1  
   google_sign_in: ^6.2.1
