@@ -2,97 +2,177 @@
 
 ![Open Manga Reader Banner](https://placehold.co/1200x400/212121/white?text=Open+Manga+Reader)
 
-Open Manga Reader is a modern, feature-rich manga reading application built with Flutter. It provides a seamless experience for discovering, reading, and managing your favorite manga titles across multiple platforms.
+Open Manga Reader is a modern, cross-platform manga reading application built with Flutter. Built using **Pure Vertical Slice Architecture (V-Slice)** and **Domain-Driven Design (DDD)** principles, it provides a performant, modular, and maintainable codebase for discovering, reading, and managing manga titles.
+
+---
 
 ## ✨ Features
 
 - **🚀 Multi-Platform**: Native performance on Android, iOS, Windows, macOS, Linux, and Web.
-- **🔍 Advanced Discovery**: Search and explore a vast collection of manga from various sources.
-- **📚 Personal Library**: Organize your favorite titles and track your reading progress.
-- **☁️ Cloud Sync**: Sync your library and progress across all your devices using Firebase.
-- **📖 Immersive Reader**: A customizable reading experience with support for horizontal and vertical scrolling.
-- **🌘 Dynamic Themes**: Beautiful light and dark modes that adapt to your system settings.
-- **🔐 Secure Auth**: Built-in authentication using Firebase to keep your data safe.
-- **💾 Offline Support**: Cache your favorite manga for reading anytime, anywhere.
-- **📈 Progress Tracking**: Automatically track which chapters you've read and resume where you left off.
+- **🔍 Advanced Discovery & Scraping**: Search across sources, scrap metadata and chapters on demand, and filter by genre, status, and type.
+- **🤖 AI-Powered Recommendations**: Personalized manga recommendations driven by your reading history and preferences.
+- **📚 Personal Library**: Organize manga into Reading, Completed, On-Hold, and Dropped statuses with offline caching.
+- **📖 Immersive Reader**: High-performance reader supporting both standard and continuous webtoon scroll modes.
+- **☁️ Cloud Sync & Offline-First**: Local storage paired with seamless cloud synchronization and queued offline mutations.
+- **📈 Progression Tracking**: Real-time chapter reading time tracking, progress history, and statistics.
+- **🔐 Secure Authentication**: Firebase Auth with Google Sign-In support across Mobile, Web, and Desktop (PKCE OAuth).
+- **🌘 Dynamic Themes**: Curated light and dark modes adhering to modern design aesthetics.
+- **⚙️ Custom API Management**: Dynamically switch and configure backend API endpoints with connection testing.
+
+---
+
+## 🏗️ Architecture: Pure Vertical Slice (V-Slice)
+
+The project follows a **Pure Vertical Slice Architecture**. Features are isolated, self-contained slices containing their own domain models, state controllers, services, and single-responsibility presentation widgets.
+
+```text
+lib/
+├── core/                               # Cross-cutting infrastructure & shared kernel
+│   ├── config/                         # App configuration
+│   ├── constants/                      # Theme colors and style constants
+│   ├── di/                             # GetIt service locator setup
+│   ├── models/                         # Shared DTOs (MangaSummary, PagedResponse)
+│   ├── network/                        # Centralized Dio API client, ApiConfig, and SyncService
+│   ├── theme/                          # Material light & dark themes
+│   ├── utils/                          # Common formatters and helpers
+│   └── widgets/                        # Shared reusable widgets (AppBottomNav, AlertBanner, DiscoverCard, MangaCard)
+│
+├── features/                           # Pure Vertical Feature Slices
+│   ├── auth/                           # Authentication slice (Google Desktop PKCE, Firebase)
+│   │   ├── services/
+│   │   └── presentation/
+│   │
+│   ├── home/                           # Home dashboard slice
+│   │   ├── models/
+│   │   ├── controllers/
+│   │   └── presentation/
+│   │       ├── home_screen.dart        # Thin coordinator (~150 lines)
+│   │       └── widgets/                # Single-responsibility section widgets
+│   │
+│   ├── manga_detail/                   # Manga details & chapter list slice
+│   │   ├── models/
+│   │   ├── services/
+│   │   ├── controllers/
+│   │   └── presentation/
+│   │       ├── manga_detail_screen.dart # Thin coordinator (~250 lines)
+│   │       └── widgets/                # Modular sub-widgets (AppBar, Info, Stats, Chapters, Recs)
+│   │
+│   ├── reader/                         # Manga reader & webtoon viewer slice
+│   │   ├── models/
+│   │   └── presentation/
+│   │       ├── reader_screen.dart
+│   │       └── widgets/                # Header, BottomBar, Content viewport
+│   │
+│   ├── library/                        # User library slice
+│   │   ├── models/
+│   │   ├── services/
+│   │   ├── controllers/
+│   │   └── presentation/
+│   │
+│   ├── history/                        # Reading history & progression slice
+│   │   ├── models/
+│   │   ├── services/
+│   │   ├── controllers/
+│   │   └── presentation/
+│   │
+│   ├── discover/                       # Discover, search scrap, and AI recommendation slice
+│   │   ├── models/
+│   │   └── presentation/
+│   │       ├── discover_screen.dart
+│   │       ├── search_scrap_screen.dart
+│   │       ├── advanced_recommendation_screen.dart
+│   │       └── widgets/
+│   │
+│   ├── settings/                       # Settings, reading statistics, and API config slice
+│   │   ├── services/
+│   │   └── presentation/
+│   │       ├── more_screen.dart
+│   │       └── base_api_setting_screen.dart
+│   │
+│   └── main/                           # Root navigation container slice
+│       └── presentation/
+│           └── main_screen.dart
+│
+└── routes/
+    └── app_pages.dart                  # Central route definitions and navigation arguments
+```
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Flutter](https://flutter.dev/)
-- **State Management**: [Provider](https://pub.dev/packages/provider)
-- **Backend & Auth**: [Firebase](https://firebase.google.com/) & [MangaScrapper API](https://github.com/Skyleaft/MangaScrapper)
-- **Dependency Injection**: [GetIt](https://pub.dev/packages/get_it) & [Injectable](https://pub.dev/packages/injectable)
-- **Networking**: [Dio](https://pub.dev/packages/dio) / [HTTP](https://pub.dev/packages/http)
+- **Framework**: [Flutter](https://flutter.dev/) (Dart 3+)
+- **Architecture**: Vertical Slice Architecture (V-Slice) + DDD
+- **State Management**: [ChangeNotifier](https://api.flutter.dev/flutter/foundation/ChangeNotifier-class.html) + [Provider](https://pub.dev/packages/provider)
+- **Dependency Injection**: [GetIt](https://pub.dev/packages/get_it)
+- **Networking**: [Dio](https://pub.dev/packages/dio) & [HTTP](https://pub.dev/packages/http)
+- **Image Caching**: [CachedNetworkImageCE](https://pub.dev/packages/cached_network_image_ce)
+- **Backend & Auth**: [Firebase Auth](https://firebase.google.com/) & [MangaScrapper API](https://github.com/Skyleaft/MangaScrapper)
+- **Desktop OAuth**: Custom loopback authorization with PKCE (RFC 7636 / RFC 8252)
 - **Typography**: [Google Fonts](https://fonts.google.com/)
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) (Latest stable version)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (3.24+ recommended)
 - Dart SDK
-- Android Studio / VS Code with Flutter extension
+- IDE with Flutter extension (VS Code, Android Studio)
 - Firebase CLI (for configuration)
 
 ### Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/yourusername/open_manga_reader.git
-    cd open_manga_reader
-    ```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Skyleaft/open-manga-reader.git
+   cd open-manga-reader
+   ```
 
-2.  **Install dependencies:**
-    ```bash
-    flutter pub get
-    ```
+2. **Install dependencies:**
+   ```bash
+   flutter pub get
+   ```
 
-3.  **Run build runner (if applicable):**
-    ```bash
-    flutter pub run build_runner build --delete-conflicting-outputs
-    ```
+3. **Set up Environment Variables:**
+   Create a `.env` file in the project root:
+   ```env
+   GOOGLE_DESKTOP_CLIENT_ID=your_desktop_client_id
+   GOOGLE_DESKTOP_CLIENT_SECRET=your_desktop_client_secret
+   ```
 
-4.  **Configure Firebase:**
-    Ensure you have your `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) in the appropriate directories. You can also use the FlutterFire CLI to reconfigure:
-    ```bash
-    flutterfire configure
-    ```
+4. **Configure Firebase:**
+   ```bash
+   flutterfire configure
+   ```
 
-5.  **Run the app:**
-    ```bash
-    flutter run
-    ```
+5. **Run the application:**
+   ```bash
+   flutter run
+   ```
 
-## 🏗️ Project Structure
+---
 
-```text
-lib/
-├── core/           # Constants, themes, dependency injection, and utilities
-├── data/           # Models, services, and API configurations
-├── presentation/   # UI screens, widgets, and state management logic
-├── routes/         # App routing and navigation definitions
-└── slicing/        # UI design mockups and HTML slicing
+## 🧪 Code Quality & Verification
+
+Run static analysis to ensure code conforms to linting and architectural boundaries:
+
+```bash
+flutter analyze
 ```
 
-## 📱 Screenshots
-
-| Home | Discover | Reader |
-|:---:|:---:|:---:|
-| ![Home](https://placehold.co/300x600/212121/white?text=Home+Screen) | ![Discover](https://placehold.co/300x600/212121/white?text=Discover+Screen) | ![Reader](https://placehold.co/300x600/212121/white?text=Reader+Screen) |
+---
 
 ## 🤝 Contributing
 
-Contributions are welcome! If you'd like to improve the app, feel free to fork the repository and submit a pull request.
+Contributions are welcome! Please follow the vertical slice architecture pattern when introducing new features or modifying existing domains:
+1. Place feature-specific models, services, controllers, and widgets inside `lib/features/<feature_name>/`.
+2. Keep screen coordinators thin and split UI into single-responsibility widgets under `presentation/widgets/`.
+3. Place cross-cutting infrastructure into `lib/core/`.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-Built with ❤️ by the Open Manga Reader Team.

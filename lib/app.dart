@@ -2,15 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:my_manga_reader/data/services/auth_service.dart';
-import 'package:my_manga_reader/data/models/api_config.dart';
-import 'core/theme/app_theme.dart';
-import 'routes/app_pages.dart';
-import 'presentation/screens/auth/login_screen.dart';
 import 'package:app_links/app_links.dart';
-import 'data/services/manga_api_service.dart';
-import 'data/models/manga_detail.dart';
 import 'core/di/injection.dart';
+import 'core/network/api_config.dart';
+import 'core/network/manga_api_service.dart';
+import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/services/auth_service.dart';
+import 'features/manga_detail/models/manga_detail.dart';
+import 'routes/app_pages.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -64,12 +64,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Future<void> _initDeepLinks() async {
     _appLinks = AppLinks();
 
-    // Handle links when app is already open
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       _handleDeepLink(uri);
     });
 
-    // Handle link that opened the app
     final initialUri = await _appLinks.getInitialLink();
     if (initialUri != null) {
       _handleDeepLink(initialUri);
@@ -77,7 +75,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _handleDeepLink(Uri uri) async {
-    // Expected format: /manga/id or skyleaft-manga://manga/id
     String? mangaId;
     if (uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'manga') {
       mangaId = uri.pathSegments[1];
@@ -103,15 +100,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuthState() async {
     try {
-      // Listen to auth state changes
       _authSubscription = _authService.authStateChanges.listen(
         (User? user) async {
           if (mounted) {
             if (user != null) {
-              // User is signed in, check API configuration
               await _checkApiConfiguration();
             } else {
-              // No user signed in, show login screen
               setState(() {
                 _isCheckingAuth = false;
               });
@@ -119,7 +113,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
           }
         },
         onError: (error) {
-          // In case of error, show login screen
           if (mounted) {
             setState(() {
               _isCheckingAuth = false;
@@ -128,7 +121,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         },
       );
 
-      // Add a timeout to prevent getting stuck
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted && _isCheckingAuth) {
           setState(() {
@@ -137,7 +129,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
       });
     } catch (e) {
-      // In case of error, show login screen
       if (mounted) {
         setState(() {
           _isCheckingAuth = false;
@@ -148,22 +139,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkApiConfiguration() async {
     try {
-      // Check if there are any API configurations
       final configs = await ApiConfigManager.loadApiConfigs();
 
       if (configs.isEmpty) {
-        // No API configuration found, redirect to base API setting screen
         if (mounted) {
           Navigator.pushReplacementNamed(context, AppRoutes.baseApiSetting);
         }
       } else {
-        // API configuration exists, redirect to home screen
         if (mounted) {
           Navigator.pushReplacementNamed(context, AppRoutes.home);
         }
       }
     } catch (e) {
-      // In case of error checking API config, redirect to base API setting screen
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.baseApiSetting);
       }
@@ -173,7 +160,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isCheckingAuth) {
-      // Show a loading screen while checking auth state
       return Scaffold(
         body: Center(
           child: Column(
@@ -191,7 +177,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    // Return the login screen as the default route with Provider
     return Provider<AuthService>(
       create: (_) => _authService,
       child: const LoginScreen(),
