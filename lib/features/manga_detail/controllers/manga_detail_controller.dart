@@ -23,6 +23,10 @@ class MangaDetailController extends ChangeNotifier {
   MangaProgression? _progression;
   List<MangaSummary> _recommendations = [];
   bool _isLoadingRecommendations = false;
+  String? _recommendationErrorMessage;
+  String? _recommendationStatus;
+  String? _recommendationType;
+  List<String> _recommendationGenres = [];
   bool _isAscending = false;
   String _searchQuery = '';
 
@@ -33,6 +37,16 @@ class MangaDetailController extends ChangeNotifier {
   MangaProgression? get progression => _progression;
   List<MangaSummary> get recommendations => _recommendations;
   bool get isLoadingRecommendations => _isLoadingRecommendations;
+  String? get recommendationErrorMessage => _recommendationErrorMessage;
+  String? get recommendationStatus => _recommendationStatus;
+  String? get recommendationType => _recommendationType;
+  List<String> get recommendationGenres =>
+      List.unmodifiable(_recommendationGenres);
+  int get recommendationFilterCount =>
+      (_recommendationStatus != null ? 1 : 0) +
+      (_recommendationType != null ? 1 : 0) +
+      _recommendationGenres.length;
+  bool get hasRecommendationFilters => recommendationFilterCount > 0;
   bool get isAscending => _isAscending;
   String get searchQuery => _searchQuery;
 
@@ -42,10 +56,10 @@ class MangaDetailController extends ChangeNotifier {
     ProgressionService? progressionService,
     LibraryService? libraryService,
     MangaDetailService? detailService,
-  })  : _apiService = apiService ?? getIt<MangaApiService>(),
-        _progressionService = progressionService ?? getIt<ProgressionService>(),
-        _libraryService = libraryService ?? getIt<LibraryService>(),
-        _detailService = detailService ?? getIt<MangaDetailService>() {
+  }) : _apiService = apiService ?? getIt<MangaApiService>(),
+       _progressionService = progressionService ?? getIt<ProgressionService>(),
+       _libraryService = libraryService ?? getIt<LibraryService>(),
+       _detailService = detailService ?? getIt<MangaDetailService>() {
     _chapters = List.from(manga.chapters);
     _sortChapters();
   }
@@ -61,7 +75,9 @@ class MangaDetailController extends ChangeNotifier {
   List<Chapter> get filteredChapters {
     if (_searchQuery.isEmpty) return _chapters;
     return _chapters.where((c) {
-      final titleMatch = c.title.toLowerCase().contains(_searchQuery.toLowerCase());
+      final titleMatch = c.title.toLowerCase().contains(
+        _searchQuery.toLowerCase(),
+      );
       final numberMatch = c.chapterNumber.toString().contains(_searchQuery);
       return titleMatch || numberMatch;
     }).toList();
@@ -154,19 +170,81 @@ class MangaDetailController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadRecommendations() async {
-    if (_isLoadingRecommendations || _recommendations.isNotEmpty) return;
+  Future<void> loadRecommendations({bool forceReload = false}) async {
+    if (_isLoadingRecommendations) return;
+    if (!forceReload && _recommendations.isNotEmpty) return;
+
     _isLoadingRecommendations = true;
+    _recommendationErrorMessage = null;
     notifyListeners();
 
     try {
-      final recs = await _apiService.getSimilarManga(manga.id, limit: 10);
+      final recs = await _apiService.getSimilarMangaFiltered(
+        manga.id,
+        status: _recommendationStatus,
+        type: _recommendationType,
+        genres: _recommendationGenres.isNotEmpty ? _recommendationGenres : null,
+        limit: 20,
+      );
       _recommendations = recs;
-    } catch (_) {
+    } catch (e) {
+      _recommendationErrorMessage = e.toString();
     } finally {
       _isLoadingRecommendations = false;
       notifyListeners();
     }
+  }
+
+  Future<void> setRecommendationFilters({
+    String? status,
+    String? type,
+    List<String>? genres,
+  }) async {
+    _recommendationStatus = status;
+    _recommendationType = type;
+    _recommendationGenres = genres != null ? List.from(genres) : [];
+    await loadRecommendations(forceReload: true);
+  }
+
+  Future<void> toggleRecommendationGenre(String genre) async {
+    if (_recommendationGenres.contains(genre)) {
+      _recommendationGenres.remove(genre);
+    } else {
+      _recommendationGenres.add(genre);
+    }
+    await loadRecommendations(forceReload: true);
+  }
+
+  Future<void> removeRecommendationGenre(String genre) async {
+    if (_recommendationGenres.remove(genre)) {
+      await loadRecommendations(forceReload: true);
+    }
+  }
+
+  Future<void> setRecommendationType(String? type) async {
+    if (_recommendationType == type) {
+      _recommendationType = null;
+    } else {
+      _recommendationType = type;
+    }
+    await loadRecommendations(forceReload: true);
+  }
+
+  Future<void> setRecommendationStatus(String? status) async {
+    if (_recommendationStatus == status) {
+      _recommendationStatus = null;
+    } else {
+      _recommendationStatus = status;
+    }
+    await loadRecommendations(forceReload: true);
+  }
+
+  Future<void> clearRecommendationFilters() async {
+    if (!hasRecommendationFilters) return;
+    _recommendationStatus = null;
+    _recommendationType = null;
+    _recommendationGenres = [];
+    await loadRecommendations(forceReload: true);
   }
 
   Future<bool> toggleFavorite() async {

@@ -18,6 +18,8 @@ import 'widgets/manga_detail_tab_bar.dart';
 import 'widgets/manga_detail_chapter_header.dart';
 import 'widgets/manga_detail_chapter_tile.dart';
 import 'widgets/manga_detail_recommendations_grid.dart';
+import 'widgets/manga_detail_recommendations_header.dart';
+import 'widgets/similar_manga_filter_sheet.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final MangaDetail manga;
@@ -125,12 +127,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
 
     try {
       final detailData = await _apiService.getMangaDetail(item.id);
-      if (!mounted) return;
+      if (!context.mounted) return;
       Navigator.pop(context);
       final mangaDetail = MangaDetail.fromMap(detailData);
       Navigator.pushNamed(context, AppRoutes.detail, arguments: mangaDetail);
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       Navigator.pop(context);
       AlertBanner.show(
         context,
@@ -318,13 +320,59 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                 // Tab Content (Chapters or Recommendations)
                 if (_tabController.index == 0)
                   _buildChapterList(isDark)
-                else
+                else ...[
+                  SliverToBoxAdapter(
+                    child: Container(
+                      color: isDark
+                          ? AppColors.backgroundDark
+                          : AppColors.backgroundLight,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      child: MangaDetailRecommendationsHeader(
+                        manga: widget.manga,
+                        totalCount: _controller.recommendations.length,
+                        isLoading: _controller.isLoadingRecommendations,
+                        selectedStatus: _controller.recommendationStatus,
+                        selectedType: _controller.recommendationType,
+                        selectedGenres: _controller.recommendationGenres,
+                        onOpenFilter: () {
+                          SimilarMangaFilterSheet.show(
+                            context,
+                            currentGenres: _controller.recommendationGenres,
+                            currentType: _controller.recommendationType,
+                            currentStatus: _controller.recommendationStatus,
+                            mangaGenres: widget.manga.genres ?? [],
+                            onApply: (genres, type, status) {
+                              _controller.setRecommendationFilters(
+                                genres: genres,
+                                type: type,
+                                status: status,
+                              );
+                            },
+                          );
+                        },
+                        onClearFilters: _controller.clearRecommendationFilters,
+                        onRemoveGenre: _controller.removeRecommendationGenre,
+                        onRemoveType: () => _controller.setRecommendationType(null),
+                        onRemoveStatus: () => _controller.setRecommendationStatus(null),
+                        onQuickToggleGenre: _controller.toggleRecommendationGenre,
+                        onRefresh: () => _controller.loadRecommendations(forceReload: true),
+                      ),
+                    ),
+                  ),
                   MangaDetailRecommendationsGrid(
                     recommendations: _controller.recommendations,
                     isLoading: _controller.isLoadingRecommendations,
+                    errorMessage: _controller.recommendationErrorMessage,
+                    hasFilters: _controller.hasRecommendationFilters,
+                    onClearFilters: _controller.clearRecommendationFilters,
+                    onRetry: () => _controller.loadRecommendations(forceReload: true),
                     onSelectRecommendation: (item) =>
                         _navigateToDetail(context, item),
                   ),
+                ],
 
                 SliverToBoxAdapter(
                   child: Container(
