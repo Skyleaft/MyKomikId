@@ -20,6 +20,7 @@ class LibraryManga {
   final int currentPage;
   final int totalPages;
   final bool isCompleted;
+  final MangaSummary? manga;
 
   LibraryManga({
     required this.id,
@@ -38,6 +39,7 @@ class LibraryManga {
     required this.currentPage,
     required this.totalPages,
     required this.isCompleted,
+    this.manga,
   }) : updatedAt = updatedAt ?? addedAt;
 
   factory LibraryManga.fromMangaDetail(
@@ -119,6 +121,7 @@ class LibraryManga {
       currentPage: map['currentPage'] as int? ?? 1,
       totalPages: map['totalPages'] as int? ?? 1,
       isCompleted: map['isCompleted'] as bool? ?? false,
+      manga: mangaSummary,
     );
   }
 
@@ -147,6 +150,7 @@ class LibraryManga {
       'currentPage': currentPage,
       'totalPages': totalPages,
       'isCompleted': isCompleted,
+      if (manga != null) 'manga': manga!.toJson(),
     };
   }
 
@@ -182,6 +186,7 @@ class LibraryManga {
     int? currentPage,
     int? totalPages,
     bool? isCompleted,
+    MangaSummary? manga,
   }) {
     return LibraryManga(
       id: id ?? this.id,
@@ -200,6 +205,7 @@ class LibraryManga {
       currentPage: currentPage ?? this.currentPage,
       totalPages: totalPages ?? this.totalPages,
       isCompleted: isCompleted ?? this.isCompleted,
+      manga: manga ?? this.manga,
     );
   }
 

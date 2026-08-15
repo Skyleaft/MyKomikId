@@ -9,6 +9,7 @@ import '../../auth/services/auth_service.dart';
 import '../../history/models/progression.dart';
 import '../../history/services/progression_service.dart';
 import '../../library/models/library_manga.dart';
+import '../../manga_detail/services/manga_detail_service.dart';
 import 'base_api_setting_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -42,6 +43,7 @@ class _MoreScreenState extends State<MoreScreen> {
     try {
       final progressions = await _progressionService.getAllProgressions();
 
+      final detailService = getIt<MangaDetailService>();
       final libraryData = await _apiService.getUserLibrary();
       final libraryMap = <String, LibraryManga>{};
       for (final json in libraryData) {
@@ -51,21 +53,46 @@ class _MoreScreenState extends State<MoreScreen> {
         } catch (_) {}
       }
 
-      final uniqueMangaIds = progressions.map((p) => p.mangaId).toSet();
       final Map<String, Map<String, dynamic>> detailsMap = {};
+      final missingMangaIds = <String>{};
 
-      await Future.wait(
-        uniqueMangaIds.map((mangaId) async {
-          try {
-            final libManga = libraryMap[mangaId];
-            if (libManga != null) {
-              detailsMap[mangaId] = {
-                'title': libManga.title,
-                'author': libManga.author,
-                'imageUrl': libManga.imageUrl,
-                'localImageUrl': libManga.imageUrl,
-              };
-            } else {
+      for (final p in progressions) {
+        if (detailsMap.containsKey(p.mangaId)) continue;
+
+        if (p.manga != null) {
+          detailsMap[p.mangaId] = {
+            'title': p.manga!.title,
+            'author': p.manga!.author,
+            'imageUrl': p.manga!.imageUrl ?? '',
+            'localImageUrl': p.manga!.localImageUrl,
+          };
+        } else if (libraryMap.containsKey(p.mangaId)) {
+          final libManga = libraryMap[p.mangaId]!;
+          detailsMap[p.mangaId] = {
+            'title': libManga.title,
+            'author': libManga.author,
+            'imageUrl': libManga.imageUrl,
+            'localImageUrl': libManga.imageUrl,
+          };
+        } else {
+          final cached = await detailService.getDetail(p.mangaId);
+          if (cached != null) {
+            detailsMap[p.mangaId] = {
+              'title': cached.title,
+              'author': cached.author,
+              'imageUrl': cached.imageUrl ?? '',
+              'localImageUrl': cached.localImageUrl,
+            };
+          } else {
+            missingMangaIds.add(p.mangaId);
+          }
+        }
+      }
+
+      if (missingMangaIds.isNotEmpty) {
+        await Future.wait(
+          missingMangaIds.map((mangaId) async {
+            try {
               final detailJson = await _apiService.getMangaDetail(mangaId);
               detailsMap[mangaId] = {
                 'title': detailJson['title'] ?? 'Unknown Title',
@@ -73,17 +100,17 @@ class _MoreScreenState extends State<MoreScreen> {
                 'imageUrl': detailJson['imageUrl'] ?? '',
                 'localImageUrl': detailJson['localImageUrl'],
               };
+            } catch (_) {
+              detailsMap[mangaId] = {
+                'title': 'Manga ID: $mangaId',
+                'author': 'Unknown Author',
+                'imageUrl': '',
+                'localImageUrl': null,
+              };
             }
-          } catch (_) {
-            detailsMap[mangaId] = {
-              'title': 'Manga ID: $mangaId',
-              'author': 'Unknown Author',
-              'imageUrl': '',
-              'localImageUrl': null,
-            };
-          }
-        }),
-      );
+          }),
+        );
+      }
 
       int totalChapters = 0;
       int totalSeconds = 0;

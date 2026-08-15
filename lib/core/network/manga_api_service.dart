@@ -632,7 +632,8 @@ class MangaApiService {
     String? userId,
   ]) async {
     try {
-      final endpoint = '/api/v1/user-progression/$userId';
+      final uid = (userId != null && userId.isNotEmpty) ? userId : _userId;
+      final endpoint = '/api/v1/user-progression/$uid';
       final response = await _dio.get(endpoint);
       final unwrapped = _unwrap(response.data);
       if (unwrapped is List) {
@@ -649,7 +650,8 @@ class MangaApiService {
     String mangaId,
   ) async {
     try {
-      final endpoint = '/api/v1/user-progression/$userId/$mangaId';
+      final uid = (userId != null && userId.isNotEmpty) ? userId : _userId;
+      final endpoint = '/api/v1/user-progression/$uid/$mangaId';
       final response = await _dio.get(endpoint);
       if (response.statusCode == 204) return null;
       final unwrapped = _unwrap(response.data);
@@ -671,6 +673,18 @@ class MangaApiService {
         data['userId'] = _userId;
       }
       final response = await _dio.post('/api/v1/user-progression', data: data);
+      final unwrapped = _unwrap(response.data);
+      return unwrapped is Map<String, dynamic> ? unwrapped : {};
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- User Heartbeat ---
+
+  Future<Map<String, dynamic>> patchUserHeartbeat() async {
+    try {
+      final response = await _dio.patch('/api/v1/users/heartbeat');
       final unwrapped = _unwrap(response.data);
       return unwrapped is Map<String, dynamic> ? unwrapped : {};
     } catch (e) {

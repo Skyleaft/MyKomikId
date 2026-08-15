@@ -38,7 +38,13 @@ class MangaDetailAppBar extends StatelessWidget {
         ),
         child: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
         ),
       ),
       actions: [
@@ -64,7 +70,8 @@ class MangaDetailAppBar extends StatelessWidget {
             icon: const Icon(Icons.share, color: Colors.white, size: 20),
             onPressed: () {
               final String shareUrl = '${AppConfig.baseUrl}/manga/${manga.id}';
-              final String customSchemeUrl = 'skyleaft-manga://manga/${manga.id}';
+              final String customSchemeUrl =
+                  'open-manga-reader://manga/${manga.id}';
               final String shareText =
                   'Check out ${manga.title} on My Manga Reader!\n\n'
                   'Read it here: $shareUrl\n'
@@ -94,7 +101,9 @@ class MangaDetailAppBar extends StatelessWidget {
                     height: 400,
                     color: Colors.grey[800],
                     child: const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                   errorBuilder: (context, error, stackTrace) => Container(
@@ -145,7 +154,9 @@ class MangaDetailAppBar extends StatelessWidget {
                       placeholder: (context, url) => Container(
                         color: Colors.grey[300],
                         child: const Center(
-                          child: CircularProgressIndicator(color: AppColors.primary),
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       errorBuilder: (context, error, stackTrace) => Container(

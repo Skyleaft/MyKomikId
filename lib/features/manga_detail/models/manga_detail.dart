@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../core/models/manga_summary.dart';
 
 class MangaDetail {
   final String id;
@@ -87,6 +88,33 @@ class MangaDetail {
               .toList() ??
           [],
       totalView: map['totalView'] as int? ?? 0,
+    );
+  }
+
+  factory MangaDetail.fromMangaSummary(MangaSummary summary) {
+    return MangaDetail(
+      id: summary.id,
+      malId: summary.malId,
+      anilistId: summary.anilistId,
+      mangaUpdateId: summary.mangaUpdateId,
+      title: summary.title,
+      author: summary.author,
+      type: summary.type,
+      genres: summary.genres,
+      categories: summary.categories,
+      description: summary.description ?? 'No description available',
+      imageUrl: summary.imageUrl,
+      localImageUrl: summary.localImageUrl,
+      rating: summary.rating,
+      popularity: summary.popularity,
+      members: summary.members,
+      status: summary.status,
+      releaseDate: summary.releaseDate,
+      createdAt: summary.createdAt,
+      updatedAt: summary.updatedAt,
+      url: summary.url,
+      chapters: [],
+      totalView: summary.totalView,
     );
   }
 

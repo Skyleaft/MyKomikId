@@ -41,16 +41,19 @@ class AuthWrapper extends StatefulWidget {
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
+class _AuthWrapperState extends State<AuthWrapper>
+    with ProtocolListener, WidgetsBindingObserver {
   final AuthService _authService = AuthService();
   bool _isCheckingAuth = true;
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   StreamSubscription<User?>? _authSubscription;
+  Timer? _heartbeatTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     protocolHandler.addListener(this);
     _initDeepLinks();
     _checkAuthState();
@@ -58,10 +61,49 @@ class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopHeartbeat();
     protocolHandler.removeListener(this);
     _linkSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _sendHeartbeat();
+      _startHeartbeat();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _stopHeartbeat();
+    }
+  }
+
+  void _startHeartbeat() {
+    _stopHeartbeat();
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      _sendHeartbeat();
+    });
+  }
+
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+  }
+
+  Future<void> _sendHeartbeat() async {
+    final user = _authService.currentUser;
+    if (user != null) {
+      try {
+        final apiService = getIt<MangaApiService>();
+        if (apiService.jwtToken != null) {
+          await apiService.patchUserHeartbeat();
+        }
+      } catch (e) {
+        debugPrint('Failed to send heartbeat: $e');
+      }
+    }
   }
 
   @override
@@ -72,6 +114,8 @@ class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
       _handleDeepLink(uri);
     }
   }
+
+  Uri? _pendingDeepLink;
 
   Future<void> _initDeepLinks() async {
     _appLinks = AppLinks();
@@ -98,6 +142,12 @@ class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
     debugPrint(
       'Received deep link: $uri (scheme: ${uri.scheme}, host: ${uri.host}, path: ${uri.path}, segments: ${uri.pathSegments})',
     );
+
+    // If app is still checking auth or initializing navigation, queue it
+    if (_isCheckingAuth) {
+      _pendingDeepLink = uri;
+      return;
+    }
 
     String? mangaId;
 
@@ -141,8 +191,11 @@ class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
         (User? user) async {
           if (mounted) {
             if (user != null) {
+              _startHeartbeat();
+              _sendHeartbeat();
               await _checkApiConfiguration();
             } else {
+              _stopHeartbeat();
               setState(() {
                 _isCheckingAuth = false;
               });
@@ -180,15 +233,31 @@ class _AuthWrapperState extends State<AuthWrapper> with ProtocolListener {
 
       if (configs.isEmpty) {
         if (mounted) {
+          setState(() {
+            _isCheckingAuth = false;
+          });
           Navigator.pushReplacementNamed(context, AppRoutes.baseApiSetting);
         }
       } else {
         if (mounted) {
+          setState(() {
+            _isCheckingAuth = false;
+          });
           Navigator.pushReplacementNamed(context, AppRoutes.home);
+          if (_pendingDeepLink != null) {
+            final link = _pendingDeepLink!;
+            _pendingDeepLink = null;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _handleDeepLink(link);
+            });
+          }
         }
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isCheckingAuth = false;
+        });
         Navigator.pushReplacementNamed(context, AppRoutes.baseApiSetting);
       }
     }
