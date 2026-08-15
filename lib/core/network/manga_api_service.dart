@@ -677,4 +677,16 @@ class MangaApiService {
       rethrow;
     }
   }
+
+  // --- User Heartbeat ---
+
+  Future<Map<String, dynamic>> patchUserHeartbeat() async {
+    try {
+      final response = await _dio.patch('/api/v1/users/heartbeat');
+      final unwrapped = _unwrap(response.data);
+      return unwrapped is Map<String, dynamic> ? unwrapped : {};
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

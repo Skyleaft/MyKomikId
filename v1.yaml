@@ -3,7 +3,7 @@ info:
   title: MangaScrapper.Api | v1
   version: 1.0.0
 servers:
-  - url: https://localhost:7234/
+  - url: http://11.1.1.4:5009/
 paths:
   /api/v1/manga/{id}:
     patch:
@@ -129,35 +129,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseOfPagedResponseOfMangaSummaryResponse"
-  /api/v1/manga/{mangaId}/similar:
-    get:
-      tags:
-        - Manga
-      summary: Get mangas semantically similar to a given manga using vector search
-      operationId: GetSimilarManga
-      parameters:
-        - name: mangaId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: limit
-          in: query
-          schema:
-            pattern: ^-?(?:0|[1-9]\d*)$
-            type:
-              - integer
-              - string
-            format: int32
-            default: 10
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
   /api/v1/manga/{mangaId}/similar/filtered:
     get:
       tags:
@@ -185,6 +156,35 @@ paths:
             type: array
             items:
               type: string
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/{mangaId}/similar:
+    get:
+      tags:
+        - Manga
+      summary: Get mangas semantically similar to a given manga using vector search
+      operationId: GetSimilarManga
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
         - name: limit
           in: query
           schema:
@@ -552,28 +552,24 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-  /api/v1/users/{userId}:
+  /api/v1/users/heartbeat:
     patch:
       tags:
         - Users
-      operationId: PatchUserActivity
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      description: Patch user heartbeat
+      operationId: PatchUserHearthbeat
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponseOfboolean"
+                $ref: "#/components/schemas/ApiResponseOfUserHeartbeatResponse"
+  /api/v1/users/{userId}:
     get:
       tags:
         - Users
+      description: Get user by id
       operationId: GetUserById
       parameters:
         - name: userId
@@ -593,6 +589,7 @@ paths:
     get:
       tags:
         - Users
+      description: Get paged users
       operationId: GetPagedUser
       parameters:
         - name: search
@@ -932,20 +929,6 @@ paths:
       responses:
         "200":
           description: OK
-  /api/v1/providers/{fileName}:
-    get:
-      tags:
-        - Providers
-      operationId: GetProviderConfig
-      parameters:
-        - name: fileName
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
   /api/v1/scrapper/mangadex:
     post:
       tags:
@@ -1190,6 +1173,20 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/providers/{fileName}:
+    get:
+      tags:
+        - Providers
+      operationId: GetProviderConfig
+      parameters:
+        - name: fileName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
   /api/v1/dashboard/sync-storage:
     post:
       tags:
@@ -1260,26 +1257,6 @@ components:
             - integer
             - string
           format: int32
-    ApiResponseOfboolean:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: boolean
-        message:
-          type:
-            - "null"
-            - string
-        errors:
-          type:
-            - "null"
-            - array
-          items:
-            type: string
-        timestamp:
-          type: string
-          format: date-time
     ApiResponseOfChapterResponse:
       type: object
       properties:
@@ -1538,6 +1515,28 @@ components:
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/PagedResponseOfUserResponse"
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ApiResponseOfUserHeartbeatResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/UserHeartbeatResponse"
         message:
           type:
             - "null"
@@ -2205,6 +2204,21 @@ components:
             - integer
             - string
           format: int32
+    UserHeartbeatResponse:
+      required:
+        - userId
+        - username
+        - lastActiveAt
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        lastActiveAt:
+          type: string
+          format: date-time
     UserInfoResponse:
       required:
         - isAuthenticated
@@ -2298,6 +2312,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChapterLogsResponse"
+        manga:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MangaSummaryResponse"
     UserResponse:
       required:
         - userId
@@ -2307,6 +2325,7 @@ components:
         - isActive
         - firebaseUid
         - createdAt
+        - lastActiveAt
       type: object
       properties:
         userId:
@@ -2323,9 +2342,16 @@ components:
         isActive:
           type: boolean
         firebaseUid:
-          type: string
+          type:
+            - "null"
+            - string
         createdAt:
           type: string
+          format: date-time
+        lastActiveAt:
+          type:
+            - "null"
+            - string
           format: date-time
 tags:
   - name: Manga
@@ -2336,6 +2362,6 @@ tags:
   - name: UserLibrary
   - name: Scrapper
   - name: RecurringJobs
-  - name: Providers
   - name: ProviderScrapers
+  - name: Providers
   - name: Dashboard
