@@ -173,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               height: MediaQuery.of(context).size.height * 0.4,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
                 children: [
@@ -185,7 +185,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: isDark ? AppColors.slate800 : Colors.white,
                     textColor: isDark ? Colors.white : AppColors.slate800,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(context, AppRoutes.baseApiSetting);
+                    },
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      "Configure API Server",
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                   const Spacer(),
                   Text.rich(
                     TextSpan(
@@ -215,6 +233,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
+              ),
+            ),
+          ),
+
+          // Top Settings Action Button
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.white, size: 22),
+                    tooltip: 'API Settings',
+                    onPressed: () {
+                      Navigator.pushNamed(context, AppRoutes.baseApiSetting);
+                    },
+                  ),
+                ),
               ),
             ),
           ),
