@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../core/models/manga_summary.dart';
 
 class UserChapterLog {
   final String id;
@@ -63,6 +64,7 @@ class MangaProgression {
   final DateTime lastReadAt;
   final List<UserChapterLog> chapterLogs;
   final int totalReadingTime;
+  final MangaSummary? manga;
 
   MangaProgression({
     this.id = '',
@@ -72,6 +74,7 @@ class MangaProgression {
     DateTime? lastRead,
     List<UserChapterLog>? chapterLogs,
     this.totalReadingTime = 0,
+    this.manga,
     String? chapterId,
     double? currentChapter,
     int? currentPage,
@@ -146,6 +149,10 @@ class MangaProgression {
       );
     }
 
+    final mangaObj = map['manga'] != null && map['manga'] is Map<String, dynamic>
+        ? MangaSummary.fromJson(map['manga'] as Map<String, dynamic>)
+        : null;
+
     return MangaProgression(
       id: map['id'] as String? ?? '',
       userId: map['userId'] as String? ?? '',
@@ -153,6 +160,7 @@ class MangaProgression {
       lastReadAt: _parseDate(map['lastReadAt'] ?? map['lastRead']),
       chapterLogs: logs,
       totalReadingTime: map['totalReadingTime'] as int? ?? 0,
+      manga: mangaObj,
     );
   }
 
@@ -170,6 +178,7 @@ class MangaProgression {
       'lastReadAt': lastReadAt.toIso8601String(),
       'chapterLogs': chapterLogs.map((e) => e.toMap()).toList(),
       'totalReadingTime': totalReadingTime,
+      if (manga != null) 'manga': manga!.toJson(),
     };
   }
 
@@ -198,6 +207,7 @@ class MangaProgression {
     DateTime? lastReadAt,
     List<UserChapterLog>? chapterLogs,
     int? totalReadingTime,
+    MangaSummary? manga,
   }) {
     return MangaProgression(
       id: id ?? this.id,
@@ -206,6 +216,7 @@ class MangaProgression {
       lastReadAt: lastReadAt ?? this.lastReadAt,
       chapterLogs: chapterLogs ?? this.chapterLogs,
       totalReadingTime: totalReadingTime ?? this.totalReadingTime,
+      manga: manga ?? this.manga,
     );
   }
 

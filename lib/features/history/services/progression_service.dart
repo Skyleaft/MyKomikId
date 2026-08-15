@@ -147,6 +147,7 @@ class ProgressionService {
           chapterLogs: updatedLogs,
           totalReadingTime: totalReadingTime,
           lastReadAt: progression.lastReadAt,
+          manga: progression.manga ?? existing.manga,
         );
       }
     } else {

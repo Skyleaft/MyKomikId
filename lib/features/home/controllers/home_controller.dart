@@ -50,10 +50,12 @@ class HomeController extends ChangeNotifier {
 
   Future<void> fetchAllData() async {
     await Future.wait([
-      fetchHistory(),
-      fetchTrendingForTab(0),
-      fetchLatest(),
-      fetchTop().then((_) => fetchRecommended()),
+      fetchHistory().catchError((e) => debugPrint('Error fetching history: $e')),
+      fetchTrendingForTab(0).catchError((e) => debugPrint('Error fetching trending: $e')),
+      fetchLatest().catchError((e) => debugPrint('Error fetching latest: $e')),
+      fetchTop()
+          .then((_) => fetchRecommended())
+          .catchError((e) => debugPrint('Error fetching top/recommended: $e')),
     ]);
   }
 
@@ -75,7 +77,8 @@ class HomeController extends ChangeNotifier {
         pageSize: 10,
       );
       _trendingByTab[tabIdx] = response.items;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('fetchTrendingForTab error: $e');
     } finally {
       _trendingLoadingByTab[tabIdx] = false;
       notifyListeners();
@@ -93,6 +96,11 @@ class HomeController extends ChangeNotifier {
 
       final detailsMap = <String, MangaDetail>{};
       for (final p in recent) {
+        if (p.manga != null) {
+          detailsMap[p.mangaId] = MangaDetail.fromMangaSummary(p.manga!);
+          continue;
+        }
+
         try {
           final cached = await _detailService.getDetail(p.mangaId);
           if (cached != null) {
@@ -108,7 +116,8 @@ class HomeController extends ChangeNotifier {
 
       _recentProgressions = recent;
       _historyDetailsMap = detailsMap;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('fetchHistory error: $e');
     } finally {
       _isLoadingHistory = false;
       notifyListeners();
