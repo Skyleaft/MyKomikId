@@ -115,6 +115,8 @@ class _AuthWrapperState extends State<AuthWrapper>
     }
   }
 
+  Uri? _pendingDeepLink;
+
   Future<void> _initDeepLinks() async {
     _appLinks = AppLinks();
 
@@ -140,6 +142,12 @@ class _AuthWrapperState extends State<AuthWrapper>
     debugPrint(
       'Received deep link: $uri (scheme: ${uri.scheme}, host: ${uri.host}, path: ${uri.path}, segments: ${uri.pathSegments})',
     );
+
+    // If app is still checking auth or initializing navigation, queue it
+    if (_isCheckingAuth) {
+      _pendingDeepLink = uri;
+      return;
+    }
 
     String? mangaId;
 
@@ -225,15 +233,31 @@ class _AuthWrapperState extends State<AuthWrapper>
 
       if (configs.isEmpty) {
         if (mounted) {
+          setState(() {
+            _isCheckingAuth = false;
+          });
           Navigator.pushReplacementNamed(context, AppRoutes.baseApiSetting);
         }
       } else {
         if (mounted) {
+          setState(() {
+            _isCheckingAuth = false;
+          });
           Navigator.pushReplacementNamed(context, AppRoutes.home);
+          if (_pendingDeepLink != null) {
+            final link = _pendingDeepLink!;
+            _pendingDeepLink = null;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _handleDeepLink(link);
+            });
+          }
         }
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isCheckingAuth = false;
+        });
         Navigator.pushReplacementNamed(context, AppRoutes.baseApiSetting);
       }
     }
