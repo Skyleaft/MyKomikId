@@ -82,7 +82,7 @@ class _AuthWrapperState extends State<AuthWrapper>
 
   void _startHeartbeat() {
     _stopHeartbeat();
-    _heartbeatTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+    _heartbeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _sendHeartbeat();
     });
   }
