@@ -7,6 +7,7 @@ class ReaderBottomBar extends StatelessWidget {
   final int currentPage;
   final int totalPages;
   final bool isSliderScrolling;
+  final bool isRtlMode;
   final ValueChanged<double> onProgressChanged;
   final ValueChanged<double> onProgressChangeStart;
   final ValueChanged<double> onProgressChangeEnd;
@@ -19,6 +20,7 @@ class ReaderBottomBar extends StatelessWidget {
     required this.currentPage,
     required this.totalPages,
     required this.isSliderScrolling,
+    this.isRtlMode = false,
     required this.onProgressChanged,
     required this.onProgressChangeStart,
     required this.onProgressChangeEnd,
@@ -28,6 +30,12 @@ class ReaderBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // In RTL mode, "Previous" button goes to logically earlier chapter which is visually forward or swapped
+    final prevChapterAction = isRtlMode ? onNextChapter : onPreviousChapter;
+    final nextChapterAction = isRtlMode ? onPreviousChapter : onNextChapter;
+    final prevTooltip = isRtlMode ? 'Next Chapter' : 'Previous Chapter';
+    final nextTooltip = isRtlMode ? 'Previous Chapter' : 'Next Chapter';
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
@@ -47,6 +55,7 @@ class ReaderBottomBar extends StatelessWidget {
                 child: _SegmentedProgressBar(
                   totalPages: totalPages,
                   currentPage: currentPage,
+                  isRtlMode: isRtlMode,
                   onChanged: onProgressChanged,
                   onChangeStart: onProgressChangeStart,
                   onChangeEnd: onProgressChangeEnd,
@@ -58,8 +67,8 @@ class ReaderBottomBar extends StatelessWidget {
                 children: [
                   _buildNavButton(
                     icon: Icons.skip_previous_rounded,
-                    onTap: onPreviousChapter,
-                    tooltip: 'Previous Chapter',
+                    onTap: prevChapterAction,
+                    tooltip: prevTooltip,
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -72,7 +81,7 @@ class ReaderBottomBar extends StatelessWidget {
                       border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                     ),
                     child: Text(
-                      'PAGE $currentPage OF $totalPages  •  ${((progress * 100).toInt())}%',
+                      'PAGE $currentPage OF $totalPages  •  ${((progress * 100).toInt())}%${isRtlMode ? " (RTL)" : ""}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 11,
@@ -83,8 +92,8 @@ class ReaderBottomBar extends StatelessWidget {
                   ),
                   _buildNavButton(
                     icon: Icons.skip_next_rounded,
-                    onTap: onNextChapter,
-                    tooltip: 'Next Chapter',
+                    onTap: nextChapterAction,
+                    tooltip: nextTooltip,
                   ),
                 ],
               ),
@@ -120,6 +129,7 @@ class ReaderBottomBar extends StatelessWidget {
 class _SegmentedProgressBar extends StatefulWidget {
   final int totalPages;
   final int currentPage;
+  final bool isRtlMode;
   final ValueChanged<double> onChanged;
   final ValueChanged<double> onChangeStart;
   final ValueChanged<double> onChangeEnd;
@@ -127,6 +137,7 @@ class _SegmentedProgressBar extends StatefulWidget {
   const _SegmentedProgressBar({
     required this.totalPages,
     required this.currentPage,
+    this.isRtlMode = false,
     required this.onChanged,
     required this.onChangeStart,
     required this.onChangeEnd,
@@ -156,6 +167,9 @@ class _SegmentedProgressBarState extends State<_SegmentedProgressBar> {
                 1,
                 widget.totalPages,
               );
+          final visualProgress =
+              widget.isRtlMode ? (1.0 - _dragProgress) : _dragProgress;
+
           return Positioned(
             width: 42,
             height: 42,
@@ -164,7 +178,7 @@ class _SegmentedProgressBarState extends State<_SegmentedProgressBar> {
               showWhenUnlinked: false,
               targetAnchor: Alignment.topLeft,
               followerAnchor: Alignment.topLeft,
-              offset: Offset(_dragProgress * width, 6),
+              offset: Offset(visualProgress * width, 6),
               child: IgnorePointer(
                 child: FractionalTranslation(
                   translation: const Offset(-0.5, -1.0),
@@ -224,8 +238,8 @@ class _SegmentedProgressBarState extends State<_SegmentedProgressBar> {
 
   void _handleGesture(Offset localPosition, double width) {
     if (width <= 0 || widget.totalPages <= 1) return;
-    double progress = localPosition.dx / width;
-    progress = progress.clamp(0.0, 1.0);
+    double rawProgress = (localPosition.dx / width).clamp(0.0, 1.0);
+    double progress = widget.isRtlMode ? (1.0 - rawProgress) : rawProgress;
 
     setState(() {
       _dragProgress = progress;
@@ -247,6 +261,39 @@ class _SegmentedProgressBarState extends State<_SegmentedProgressBar> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
+
+        final segments = List.generate(widget.totalPages, (index) {
+          final isPassed = index < widget.currentPage;
+          final isCurrent = index == (widget.currentPage - 1);
+
+          return Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: EdgeInsets.symmetric(
+                horizontal: widget.totalPages > 50 ? 0.5 : 1.5,
+              ),
+              height: isCurrent ? 8.0 : 4.0,
+              decoration: BoxDecoration(
+                color: isPassed ? AppColors.primary : Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+                boxShadow: isCurrent
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(
+                            alpha: 0.5,
+                          ),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
+              ),
+            ),
+          );
+        });
+
+        final displaySegments =
+            widget.isRtlMode ? segments.reversed.toList() : segments;
 
         return CompositedTransformTarget(
           link: _layerLink,
@@ -279,35 +326,7 @@ class _SegmentedProgressBarState extends State<_SegmentedProgressBar> {
               height: 32,
               alignment: Alignment.center,
               child: Row(
-                children: List.generate(widget.totalPages, (index) {
-                  final isPassed = index < widget.currentPage;
-                  final isCurrent = index == (widget.currentPage - 1);
-
-                  return Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      margin: EdgeInsets.symmetric(
-                        horizontal: widget.totalPages > 50 ? 0.5 : 1.5,
-                      ),
-                      height: isCurrent ? 8.0 : 4.0,
-                      decoration: BoxDecoration(
-                        color: isPassed ? AppColors.primary : Colors.white24,
-                        borderRadius: BorderRadius.circular(2),
-                        boxShadow: isCurrent
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  blurRadius: 4,
-                                  spreadRadius: 1,
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                  );
-                }),
+                children: displaySegments,
               ),
             ),
           ),

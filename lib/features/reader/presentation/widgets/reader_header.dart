@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'reader_status_bar_info.dart';
 
 class ReaderHeader extends StatelessWidget {
   final String mangaTitle;
@@ -23,6 +24,9 @@ class ReaderHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 400;
+
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -48,14 +52,14 @@ class ReaderHeader extends StatelessWidget {
                     onBack,
                     tooltip: 'Back (Esc)',
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: InkWell(
                       onTap: onChapterListTap,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 14,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
@@ -75,34 +79,45 @@ class ReaderHeader extends StatelessWidget {
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      fontSize: 13,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  Text(
-                                    chapterTitle,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      fontSize: 11,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                  const SizedBox(height: 1),
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          chapterTitle,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.7),
+                                            fontSize: 11,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (onChapterListTap != null) ...[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Colors.white.withValues(alpha: 0.6),
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
-                            if (onChapterListTap != null) ...[
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.format_list_bulleted_rounded,
-                                color: Colors.white.withValues(alpha: 0.6),
-                                size: 16,
-                              ),
-                            ],
                           ],
                         ),
                       ),
                     ),
                   ),
+                  if (!isCompact) ...[
+                    const SizedBox(width: 8),
+                    const ReaderStatusBarInfo(),
+                  ],
                   if (onToggleFullscreen != null) ...[
                     const SizedBox(width: 8),
                     _buildGlassIconButton(
@@ -151,4 +166,3 @@ class ReaderHeader extends StatelessWidget {
     return button;
   }
 }
-

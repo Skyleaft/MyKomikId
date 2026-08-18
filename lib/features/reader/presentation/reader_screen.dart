@@ -731,6 +731,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                       currentPage: _currentPage,
                       totalPages: _pageUrls.length,
                       isSliderScrolling: _isSliderScrolling,
+                      isRtlMode: _isRtlMode,
                       onProgressChanged: (value) {
                         setState(() {
                           _progress = value;
