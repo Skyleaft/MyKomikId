@@ -11,6 +11,8 @@ class LibraryMangaCard extends StatelessWidget {
   final bool isDark;
   final MangaApiService apiService;
   final VoidCallback onTap;
+  final VoidCallback? onQuickRead;
+  final VoidCallback? onLongPress;
 
   const LibraryMangaCard({
     super.key,
@@ -19,6 +21,8 @@ class LibraryMangaCard extends StatelessWidget {
     required this.isDark,
     required this.apiService,
     required this.onTap,
+    this.onQuickRead,
+    this.onLongPress,
   });
 
   @override
@@ -28,24 +32,38 @@ class LibraryMangaCard extends StatelessWidget {
       manga.imageUrl,
     );
 
-    String excerpt = '';
-    if (detail?.description != null && detail!.description!.isNotEmpty) {
-      excerpt = detail!.description!;
-    } else {
-      excerpt = 'No description available';
-    }
-
-    final int totalChapters = detail?.chapters.length ?? 0;
     final String displayAuthor = (detail != null &&
             detail!.author.isNotEmpty &&
             detail!.author != 'Unknown Author')
         ? detail!.author
         : manga.author;
 
+    final String displayDescription = (detail?.description != null &&
+            detail!.description!.isNotEmpty &&
+            detail!.description != 'No description available')
+        ? detail!.description!
+        : (manga.manga?.description != null && manga.manga!.description!.isNotEmpty)
+            ? manga.manga!.description!
+            : '';
+
+    final String displayType = detail?.type.isNotEmpty == true
+        ? detail!.type
+        : manga.type.isNotEmpty
+            ? manga.type
+            : (manga.manga?.type ?? 'Manga');
+
+    final double? rating = detail?.rating ?? manga.manga?.rating;
+    final List<String> genres = (detail?.genres != null && detail!.genres!.isNotEmpty)
+        ? detail!.genres!
+        : (manga.manga?.genres != null && manga.manga!.genres!.isNotEmpty)
+            ? manga.manga!.genres!
+            : [];
+
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[900]!.withValues(alpha: 0.5) : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -73,8 +91,8 @@ class LibraryMangaCard extends StatelessWidget {
                 Stack(
                   children: [
                     Container(
-                      width: 105,
-                      height: 145,
+                      width: 110,
+                      height: 165,
                       color: AppColors.primary.withValues(alpha: 0.05),
                       child: displayUrl.isNotEmpty
                           ? CachedNetworkImage(
@@ -125,12 +143,29 @@ class LibraryMangaCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                    if (manga.isFavorite)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.favorite,
+                            color: Colors.red,
+                            size: 12,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 // Information details Right
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -139,94 +174,187 @@ class LibraryMangaCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Text(
                                     manga.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 15,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       height: 1.2,
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                _buildStatusBadge(manga.status),
+                                if (rating != null && rating > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.star_rounded,
+                                        size: 15,
+                                        color: Colors.amber,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        rating.toStringAsFixed(1),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'By $displayAuthor • ${manga.type}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        // Description Excerpt
-                        Expanded(
-                          child: Text(
-                            excerpt,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark
-                                  ? Colors.grey[300]
-                                  : Colors.grey[700],
-                              height: 1.3,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Genres Row & Progress Text
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: detail?.genres != null &&
-                                      detail!.genres!.isNotEmpty
-                                  ? Text(
-                                      detail!.genres!.join(', '),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: isDark
-                                            ? Colors.grey[500]
-                                            : Colors.grey[600],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : Text(
-                                      'No genres loaded',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: isDark
-                                            ? Colors.grey[600]
-                                            : Colors.grey[500],
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    displayAuthor,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: (isDark ? Colors.white70 : Colors.black54)
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ),
+                                if (displayType.isNotEmpty && displayType != 'Unknown')
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      displayType.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
                                       ),
                                     ),
+                                  ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Ch. ${manga.currentChapter.toInt()}${totalChapters > 0 ? '/$totalChapters' : ''}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
+                            if (genres.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 2,
+                                children: genres.take(3).map((g) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04)),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      g,
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        color: (isDark ? Colors.white70 : Colors.black87),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               ),
+                            ],
+                            if (displayDescription.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                displayDescription,
+                                maxLines: genres.isNotEmpty ? 1 : 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: (isDark ? Colors.white60 : Colors.black45),
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        // Bottom badges & Quick Action
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (manga.hasStartedReading)
+                                  Text(
+                                    'Ch. ${manga.currentChapter % 1 == 0 ? manga.currentChapter.toInt() : manga.currentChapter} (Pg. ${manga.currentPage})',
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                else
+                                  Text(
+                                    'Not Started',
+                                    style: TextStyle(
+                                      color: Colors.grey.withValues(alpha: 0.8),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(manga.status)
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    manga.status,
+                                    style: TextStyle(
+                                      color: _getStatusColor(manga.status),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+                            if (onQuickRead != null)
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  tooltip: 'Continue Reading',
+                                  icon: const Icon(
+                                    Icons.play_arrow_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                  onPressed: onQuickRead,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 36,
+                                    minHeight: 36,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
                           ],
                         ),
                       ],
@@ -241,40 +369,28 @@ class LibraryMangaCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImagePlaceholder() {
-    return Center(
-      child: Icon(
-        Icons.menu_book,
-        color: AppColors.primary.withValues(alpha: 0.4),
-        size: 28,
-      ),
-    );
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'reading':
+        return AppColors.primary;
+      case 'completed':
+        return Colors.green;
+      case 'onhold':
+        return Colors.amber;
+      case 'dropped':
+        return Colors.red;
+      case 'plantoread':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
   }
 
-  Widget _buildStatusBadge(String status) {
-    final color = switch (status.toLowerCase()) {
-      'reading' => Colors.green,
-      'completed' => Colors.blue,
-      'onhold' => Colors.orange,
-      'dropped' => Colors.red,
-      'plantoread' => Colors.purple,
-      _ => Colors.grey,
-    };
+  Widget _buildImagePlaceholder() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: color,
-          fontSize: 8.5,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-        ),
+      color: Colors.grey[850],
+      child: const Center(
+        child: Icon(Icons.image_not_supported, color: Colors.white30, size: 28),
       ),
     );
   }

@@ -213,4 +213,6 @@ class LibraryManga {
     if (totalPages <= 0) return 0.0;
     return (currentPage / totalPages).clamp(0.0, 1.0);
   }
+
+  bool get hasStartedReading => currentChapter > 0 || currentPage > 1;
 }

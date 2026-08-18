@@ -27,6 +27,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Open Manga Reader',
         navigatorKey: AppRoutes.navigatorKey,
+        navigatorObservers: [AppRoutes.routeObserver],
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
