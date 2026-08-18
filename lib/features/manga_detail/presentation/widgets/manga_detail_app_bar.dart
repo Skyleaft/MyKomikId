@@ -17,8 +17,98 @@ class MangaDetailAppBar extends StatelessWidget {
     required this.heroImageUrl,
   });
 
+  void _showExternalLinksSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'External Links & Databases',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (manga.malId > 0)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFF2E51A2),
+                    child: Text('MAL', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  title: const Text('MyAnimeList'),
+                  subtitle: Text('ID: ${manga.malId}'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () {
+                    Navigator.pop(context);
+                    launchUrlString('https://myanimelist.net/manga/${manga.malId}');
+                  },
+                ),
+              if (manga.anilistId != null && manga.anilistId! > 0)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFF02A9FF),
+                    child: Text('AL', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  title: const Text('AniList'),
+                  subtitle: Text('ID: ${manga.anilistId}'),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () {
+                    Navigator.pop(context);
+                    launchUrlString('https://anilist.co/manga/${manga.anilistId}');
+                  },
+                ),
+              if (manga.url != null && manga.url!.isNotEmpty)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.primary,
+                    child: Icon(Icons.public, color: Colors.white, size: 20),
+                  ),
+                  title: const Text('Source Website'),
+                  subtitle: Text(manga.url!, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+                  onTap: () {
+                    Navigator.pop(context);
+                    launchUrlString(manga.url!);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasExternalLinks =
+        (manga.malId > 0) ||
+        (manga.anilistId != null && manga.anilistId! > 0) ||
+        (manga.url != null && manga.url!.isNotEmpty);
+
     return SliverAppBar(
       expandedHeight: 400,
       floating: false,
@@ -48,7 +138,7 @@ class MangaDetailAppBar extends StatelessWidget {
         ),
       ),
       actions: [
-        if (manga.url != null && manga.url!.isNotEmpty)
+        if (hasExternalLinks)
           Container(
             margin: const EdgeInsets.only(right: 8, top: 8),
             decoration: BoxDecoration(
@@ -56,8 +146,9 @@ class MangaDetailAppBar extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(Icons.public, color: Colors.white, size: 20),
-              onPressed: () => launchUrlString(manga.url!),
+              tooltip: 'External Links (MAL, AniList, Web)',
+              icon: const Icon(Icons.link_rounded, color: Colors.white, size: 20),
+              onPressed: () => _showExternalLinksSheet(context),
             ),
           ),
         Container(
@@ -67,13 +158,14 @@ class MangaDetailAppBar extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: IconButton(
+            tooltip: 'Share Manga',
             icon: const Icon(Icons.share, color: Colors.white, size: 20),
             onPressed: () {
               final String shareUrl = '${AppConfig.baseUrl}/manga/${manga.id}';
               final String customSchemeUrl =
                   'open-manga-reader://manga/${manga.id}';
               final String shareText =
-                  'Check out ${manga.title} on My Manga Reader!\n\n'
+                  'Check out ${manga.title} on Open Manga Reader!\n\n'
                   'Read it here: $shareUrl\n'
                   'Or open in app: $customSchemeUrl';
 

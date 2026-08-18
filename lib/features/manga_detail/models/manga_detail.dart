@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../../core/models/manga_summary.dart';
+import '../../history/models/progression.dart';
 
 class MangaDetail {
   final String id;
@@ -49,6 +50,56 @@ class MangaDetail {
     this.url,
     required this.chapters,
   });
+
+  MangaDetail copyWith({
+    String? id,
+    int? malId,
+    int? anilistId,
+    int? mangaUpdateId,
+    String? title,
+    String? author,
+    String? type,
+    List<String>? genres,
+    List<String>? categories,
+    String? description,
+    String? imageUrl,
+    String? localImageUrl,
+    double? rating,
+    int? popularity,
+    int? members,
+    int? totalView,
+    String? status,
+    DateTime? releaseDate,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? url,
+    List<Chapter>? chapters,
+  }) {
+    return MangaDetail(
+      id: id ?? this.id,
+      malId: malId ?? this.malId,
+      anilistId: anilistId ?? this.anilistId,
+      mangaUpdateId: mangaUpdateId ?? this.mangaUpdateId,
+      title: title ?? this.title,
+      author: author ?? this.author,
+      type: type ?? this.type,
+      genres: genres ?? this.genres,
+      categories: categories ?? this.categories,
+      description: description ?? this.description,
+      imageUrl: imageUrl ?? this.imageUrl,
+      localImageUrl: localImageUrl ?? this.localImageUrl,
+      rating: rating ?? this.rating,
+      popularity: popularity ?? this.popularity,
+      members: members ?? this.members,
+      totalView: totalView ?? this.totalView,
+      status: status ?? this.status,
+      releaseDate: releaseDate ?? this.releaseDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      url: url ?? this.url,
+      chapters: chapters ?? this.chapters,
+    );
+  }
 
   factory MangaDetail.fromMap(Map<String, dynamic> map) {
     return MangaDetail(
@@ -122,6 +173,44 @@ class MangaDetail {
     return localImageUrl ?? imageUrl ?? '';
   }
 
+  Chapter? getFirstChapter() {
+    if (chapters.isEmpty) return null;
+    return chapters.reduce((a, b) => a.chapterNumber < b.chapterNumber ? a : b);
+  }
+
+  Chapter? getLatestChapter() {
+    if (chapters.isEmpty) return null;
+    return chapters.reduce((a, b) => a.chapterNumber > b.chapterNumber ? a : b);
+  }
+
+  Chapter? getNextUnreadChapter(MangaProgression? progression) {
+    if (chapters.isEmpty) return null;
+    if (progression == null) return getFirstChapter();
+
+    // Sort ascending by chapter number
+    final sorted = List<Chapter>.from(chapters)
+      ..sort((a, b) => a.chapterNumber.compareTo(b.chapterNumber));
+
+    // Find first chapter after current reading or with uncompleted log
+    for (final ch in sorted) {
+      final log = progression.chapterLogs
+          .where((l) => l.chapterId == ch.id || l.chapterNumber == ch.chapterNumber)
+          .firstOrNull;
+
+      if (log == null || !log.isCompleted) {
+        return ch;
+      }
+    }
+
+    return sorted.lastOrNull;
+  }
+
+  double getReadPercentage(MangaProgression? progression) {
+    if (chapters.isEmpty || progression == null) return 0.0;
+    final readCount = progression.chapterLogs.where((l) => l.isCompleted).length;
+    return (readCount / chapters.length).clamp(0.0, 1.0);
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -185,6 +274,38 @@ class Chapter {
     this.language = '',
     this.totalView = 0,
   });
+
+  Chapter copyWith({
+    String? id,
+    String? title,
+    double? chapterNumber,
+    DateTime? date,
+    bool? isNew,
+    bool? isRead,
+    bool? isChapterAvailable,
+    String? chapterProvider,
+    String? chapterProviderIcon,
+    String? link,
+    List<String>? pages,
+    String? language,
+    int? totalView,
+  }) {
+    return Chapter(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      chapterNumber: chapterNumber ?? this.chapterNumber,
+      date: date ?? this.date,
+      isNew: isNew ?? this.isNew,
+      isRead: isRead ?? this.isRead,
+      isChapterAvailable: isChapterAvailable ?? this.isChapterAvailable,
+      chapterProvider: chapterProvider ?? this.chapterProvider,
+      chapterProviderIcon: chapterProviderIcon ?? this.chapterProviderIcon,
+      link: link ?? this.link,
+      pages: pages ?? this.pages,
+      language: language ?? this.language,
+      totalView: totalView ?? this.totalView,
+    );
+  }
 
   factory Chapter.fromMap(Map<String, dynamic> map) {
     final rawPages = map['pages'] as List<dynamic>?;

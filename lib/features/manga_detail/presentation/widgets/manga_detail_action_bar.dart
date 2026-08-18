@@ -38,20 +38,18 @@ class MangaDetailActionBar extends StatelessWidget {
 
   Widget _buildDefaultActionButtons(BuildContext context) {
     final availableChapters = chapters.where((c) => c.isChapterAvailable).toList();
+    final firstChapter = availableChapters.isNotEmpty ? availableChapters.last : null;
 
     return Row(
       children: [
         Expanded(
           flex: 4,
           child: ElevatedButton.icon(
-            onPressed: isLoadingChapters || availableChapters.isEmpty
+            onPressed: isLoadingChapters || firstChapter == null
                 ? null
-                : () {
-                    // Earliest chapter
-                    onReadChapter(availableChapters.last);
-                  },
+                : () => onReadChapter(firstChapter),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isLoadingChapters || availableChapters.isEmpty
+              backgroundColor: isLoadingChapters || firstChapter == null
                   ? Colors.grey[700]
                   : AppColors.primary,
               foregroundColor: Colors.white,
@@ -62,7 +60,7 @@ class MangaDetailActionBar extends StatelessWidget {
             ),
             icon: const Icon(Icons.menu_book),
             label: const Text(
-              'Read First Chapter',
+              'Start Chapter 1',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ),
@@ -81,61 +79,35 @@ class MangaDetailActionBar extends StatelessWidget {
     BuildContext context,
     MangaProgression currentProgression,
   ) {
-    Chapter? exactChapter;
+    // Find exact or next uncompleted chapter
+    Chapter? targetChapter;
     for (final c in chapters) {
-      if (c.isChapterAvailable && c.chapterNumber == currentProgression.currentChapter) {
-        exactChapter = c;
+      if (c.chapterNumber == currentProgression.currentChapter) {
+        targetChapter = c;
         break;
       }
     }
 
-    Chapter? nextChapter;
-    for (final c in chapters) {
-      if (c.isChapterAvailable && c.chapterNumber > currentProgression.currentChapter) {
-        nextChapter = c;
-        break;
-      }
-    }
+    targetChapter ??= chapters.isNotEmpty ? chapters.last : null;
 
-    Chapter? prevChapter;
-    for (int i = chapters.length - 1; i >= 0; i--) {
-      final c = chapters[i];
-      if (c.isChapterAvailable && c.chapterNumber < currentProgression.currentChapter) {
-        prevChapter = c;
-        break;
-      }
-    }
+    final String numStr = targetChapter != null
+        ? (targetChapter.chapterNumber % 1 == 0
+            ? targetChapter.chapterNumber.toInt().toString()
+            : targetChapter.chapterNumber.toString())
+        : (currentProgression.currentChapter % 1 == 0
+            ? currentProgression.currentChapter.toInt().toString()
+            : currentProgression.currentChapter.toString());
 
-    Chapter? firstAvail;
-    for (final c in chapters) {
-      if (c.isChapterAvailable) {
-        firstAvail = c;
-        break;
-      }
-    }
-
-    final targetChapter = exactChapter ?? nextChapter ?? prevChapter ?? firstAvail;
-
-    final buttonText = targetChapter != null
-        ? 'Resume Chapter ${targetChapter.chapterNumber % 1 == 0 ? targetChapter.chapterNumber.toInt() : targetChapter.chapterNumber}'
-        : 'Resume Chapter ${currentProgression.currentChapter % 1 == 0 ? currentProgression.currentChapter.toInt() : currentProgression.currentChapter}';
+    final buttonText = 'Resume Ch. $numStr (Pg. ${currentProgression.currentPage})';
 
     return Row(
       children: [
         Expanded(
           flex: 4,
           child: ElevatedButton.icon(
-            onPressed: () {
-              if (targetChapter != null) {
-                onReadChapter(targetChapter);
-              } else {
-                final availableChapters =
-                    chapters.where((c) => c.isChapterAvailable).toList();
-                if (availableChapters.isNotEmpty) {
-                  onReadChapter(availableChapters.last);
-                }
-              }
-            },
+            onPressed: targetChapter != null
+                ? () => onReadChapter(targetChapter!)
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -144,10 +116,11 @@ class MangaDetailActionBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(36),
               ),
             ),
-            icon: const Icon(Icons.play_arrow),
+            icon: const Icon(Icons.play_arrow_rounded),
             label: Text(
               buttonText,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ),
@@ -163,25 +136,24 @@ class MangaDetailActionBar extends StatelessWidget {
 
   Widget _buildLibraryButton(BuildContext context) {
     return Container(
-      height: 56,
-      width: 56,
       decoration: BoxDecoration(
-        color: isInLibrary ? AppColors.primary : Colors.grey[800],
-        borderRadius: BorderRadius.circular(28),
+        color: isInLibrary
+            ? AppColors.primary.withValues(alpha: 0.15)
+            : Colors.grey[800],
+        shape: BoxShape.circle,
       ),
       child: IconButton(
-        tooltip: isInLibrary ? 'In Library' : 'Add to Library',
         icon: Icon(
-          isInLibrary ? Icons.library_add_check : Icons.library_add,
-          color: Colors.white,
+          isInLibrary ? Icons.bookmark : Icons.bookmark_border,
+          color: isInLibrary ? AppColors.primary : Colors.white70,
         ),
         onPressed: () async {
           if (isInLibrary) {
             onRemoveFromLibrary();
           } else {
-            final status = await StatusSelectionSheet.show(context);
-            if (status != null) {
-              onAddToLibrary(status);
+            final selected = await StatusSelectionSheet.show(context);
+            if (selected != null) {
+              onAddToLibrary(selected);
             }
           }
         },
@@ -191,22 +163,16 @@ class MangaDetailActionBar extends StatelessWidget {
 
   Widget _buildFavoriteButton() {
     return Container(
-      height: 56,
-      width: 56,
       decoration: BoxDecoration(
         color: isFavorite
-            ? Colors.redAccent.withValues(alpha: 0.2)
+            ? Colors.red.withValues(alpha: 0.15)
             : Colors.grey[800],
-        borderRadius: BorderRadius.circular(28),
-        border: isFavorite
-            ? Border.all(color: Colors.redAccent, width: 1.5)
-            : null,
+        shape: BoxShape.circle,
       ),
       child: IconButton(
-        tooltip: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
         icon: Icon(
           isFavorite ? Icons.favorite : Icons.favorite_border,
-          color: isFavorite ? Colors.redAccent : Colors.white,
+          color: isFavorite ? Colors.red : Colors.white70,
         ),
         onPressed: onToggleFavorite,
       ),
