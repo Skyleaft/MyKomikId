@@ -1,18 +1,24 @@
-import 'dart:ui' show ImageFilter;
+import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
+
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/alert_banner.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
+import '../../../core/widgets/alert_banner.dart';
 import '../../history/models/progression.dart';
 import '../../history/services/progression_service.dart';
+import '../../manga_detail/models/manga_detail.dart';
 import '../models/reader_content.dart';
-import 'widgets/reader_header.dart';
 import 'widgets/reader_bottom_bar.dart';
+import 'widgets/reader_chapter_picker_sheet.dart';
 import 'widgets/reader_content.dart';
+import 'widgets/reader_header.dart';
+import 'widgets/reader_settings_sheet.dart';
 
 class ReaderScreen extends StatefulWidget {
   final ReaderContent content;
@@ -27,6 +33,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     with TickerProviderStateMixin {
   final MangaApiService _apiService = getIt<MangaApiService>();
   final ProgressionService _progressionService = getIt<ProgressionService>();
+
   bool _showUI = true;
   bool _isLoading = false;
   Timer? _debounceTimer;
@@ -44,6 +51,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       TransformationController();
   final ScrollController _scrollController = ScrollController();
   late AnimationController _animationController;
+  late PageController _pageController;
 
   late List<String> _pageUrls;
   late String _chapterId;
@@ -57,8 +65,9 @@ class _ReaderScreenState extends State<ReaderScreen>
   late DateTime _sessionStartTime;
 
   bool _isWebtoonMode = true;
+  bool _isRtlMode = false;
   bool _hideMiniProgressBar = false;
-  late PageController _pageController;
+  bool _isFullscreen = false;
 
   @override
   void initState() {
@@ -72,9 +81,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     _pageController = PageController(
       initialPage:
           widget.content.currentPage > 1 &&
-              widget.content.currentPage <= _pageUrls.length
-          ? widget.content.currentPage - 1
-          : 0,
+                  widget.content.currentPage <= _pageUrls.length
+              ? widget.content.currentPage - 1
+              : 0,
     );
 
     if (widget.content.currentPage > 1 &&
@@ -103,6 +112,19 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     _sessionStartTime = DateTime.now();
     _loadInitialReadingTime();
+    _checkInitialFullscreen();
+  }
+
+  Future<void> _checkInitialFullscreen() async {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      try {
+        final isFull = await windowManager.isFullScreen();
+        if (mounted) setState(() => _isFullscreen = isFull);
+      } catch (e) {
+        debugPrint('Window manager full screen check error: $e');
+      }
+    }
   }
 
   Future<void> _loadInitialReadingTime({String? chapterId}) async {
@@ -116,9 +138,10 @@ class _ReaderScreenState extends State<ReaderScreen>
             .where((l) => l.chapterId == targetChapterId)
             .fold<UserChapterLog?>(
               null,
-              (prev, l) => prev == null || l.lastReadAt.isAfter(prev.lastReadAt)
-                  ? l
-                  : prev,
+              (prev, l) =>
+                  prev == null || l.lastReadAt.isAfter(prev.lastReadAt)
+                      ? l
+                      : prev,
             );
         setState(() {
           _chapterInitialReadingTimeSeconds =
@@ -139,6 +162,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _transformationController.removeListener(_onTransformationChanged);
     _transformationController.dispose();
     _animationController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -232,7 +256,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
 
     final targetChapter = chapters[targetIndex];
+    await _loadChapter(targetChapter);
+  }
 
+  Future<void> _loadChapter(Chapter targetChapter) async {
     setState(() => _isLoading = true);
 
     try {
@@ -390,7 +417,53 @@ class _ReaderScreenState extends State<ReaderScreen>
     _animationController.forward();
   }
 
+  Future<void> _toggleFullscreen() async {
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      final isFull = await windowManager.isFullScreen();
+      await windowManager.setFullScreen(!isFull);
+      if (mounted) setState(() => _isFullscreen = !isFull);
+    } else {
+      if (_isFullscreen) {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      } else {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
+      if (mounted) setState(() => _isFullscreen = !_isFullscreen);
+    }
+  }
+
   void _handleKeyboard(LogicalKeyboardKey key) {
+    // Global actions
+    if (key == LogicalKeyboardKey.keyF) {
+      _toggleFullscreen();
+      return;
+    }
+
+    if (key == LogicalKeyboardKey.space) {
+      _toggleAutoScroll();
+      return;
+    }
+
+    if (key == LogicalKeyboardKey.escape) {
+      if (_isFullscreen) {
+        _toggleFullscreen();
+      } else {
+        Navigator.pop(context);
+      }
+      return;
+    }
+
+    if (key == LogicalKeyboardKey.bracketLeft) {
+      _changeChapter(false);
+      return;
+    }
+
+    if (key == LogicalKeyboardKey.bracketRight) {
+      _changeChapter(true);
+      return;
+    }
+
     if (_isWebtoonMode) {
       if (!_scrollController.hasClients) return;
 
@@ -398,24 +471,41 @@ class _ReaderScreenState extends State<ReaderScreen>
       final double pageAmount = MediaQuery.of(context).size.height * 0.8;
       final double currentOffset = _scrollController.offset;
 
-      if (key == LogicalKeyboardKey.arrowDown) {
+      if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyS) {
         _scrollSmoothly(currentOffset + scrollAmount);
-      } else if (key == LogicalKeyboardKey.arrowUp) {
+      } else if (key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.keyW) {
         _scrollSmoothly(currentOffset - scrollAmount);
       } else if (key == LogicalKeyboardKey.pageDown) {
         _scrollSmoothly(currentOffset + pageAmount);
       } else if (key == LogicalKeyboardKey.pageUp) {
         _scrollSmoothly(currentOffset - pageAmount);
-      } else if (key == LogicalKeyboardKey.arrowRight) {
+      } else if (key == LogicalKeyboardKey.arrowRight ||
+          key == LogicalKeyboardKey.keyD) {
         _changeChapter(true);
-      } else if (key == LogicalKeyboardKey.arrowLeft) {
+      } else if (key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.keyA) {
         _changeChapter(false);
       }
     } else {
       if (!_pageController.hasClients) return;
-      if (key == LogicalKeyboardKey.arrowDown ||
-          key == LogicalKeyboardKey.arrowRight ||
-          key == LogicalKeyboardKey.pageDown) {
+
+      // Handle forward & backward paging considering RTL mode
+      final bool isForward = _isRtlMode
+          ? (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyA)
+          : (key == LogicalKeyboardKey.arrowRight ||
+              key == LogicalKeyboardKey.arrowDown ||
+              key == LogicalKeyboardKey.pageDown ||
+              key == LogicalKeyboardKey.keyD);
+
+      final bool isBackward = _isRtlMode
+          ? (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.keyD)
+          : (key == LogicalKeyboardKey.arrowLeft ||
+              key == LogicalKeyboardKey.arrowUp ||
+              key == LogicalKeyboardKey.pageUp ||
+              key == LogicalKeyboardKey.keyA);
+
+      if (isForward) {
         if (_currentPage < _pageUrls.length) {
           _pageController.animateToPage(
             _currentPage,
@@ -425,9 +515,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         } else {
           _changeChapter(true);
         }
-      } else if (key == LogicalKeyboardKey.arrowUp ||
-          key == LogicalKeyboardKey.arrowLeft ||
-          key == LogicalKeyboardKey.pageUp) {
+      } else if (isBackward) {
         if (_currentPage > 1) {
           _pageController.animateToPage(
             _currentPage - 2,
@@ -474,220 +562,49 @@ class _ReaderScreenState extends State<ReaderScreen>
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.85),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-                border: const Border(top: BorderSide(color: Colors.white10)),
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 4,
-                            margin: const EdgeInsets.only(bottom: 24),
-                            decoration: BoxDecoration(
-                              color: Colors.white24,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                        const Text(
-                          'Reading Settings',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSettingRow(
-                          icon: Icons.chrome_reader_mode_outlined,
-                          title: 'Reading Mode',
-                          trailing: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white10,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.all(2),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildModeSegment(
-                                  label: 'Webtoon',
-                                  isSelected: _isWebtoonMode,
-                                  onTap: () {
-                                    setSheetState(() => _isWebtoonMode = true);
-                                    setState(() {
-                                      _isWebtoonMode = true;
-                                    });
-                                  },
-                                ),
-                                _buildModeSegment(
-                                  label: 'Manga',
-                                  isSelected: !_isWebtoonMode,
-                                  onTap: () {
-                                    setSheetState(() => _isWebtoonMode = false);
-                                    setState(() {
-                                      _isWebtoonMode = false;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildSettingRow(
-                          icon: Icons.play_arrow_outlined,
-                          title: 'Auto Scroll',
-                          trailing: Switch.adaptive(
-                            value: _isAutoScrolling,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              _toggleAutoScroll();
-                              if (val) {
-                                Navigator.pop(context);
-                              } else {
-                                setSheetState(() {});
-                              }
-                            },
-                          ),
-                        ),
-                        if (_isAutoScrolling) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.speed,
-                                color: Colors.white38,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Speed',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Expanded(
-                                child: Slider(
-                                  value: _autoScrollSpeed,
-                                  min: 0.5,
-                                  max: 3.0,
-                                  divisions: 5,
-                                  activeColor: AppColors.primary,
-                                  inactiveColor: Colors.white10,
-                                  label: '${_autoScrollSpeed}x',
-                                  onChanged: (val) {
-                                    setSheetState(() => _autoScrollSpeed = val);
-                                    setState(() {
-                                      _autoScrollSpeed = val;
-                                    });
-                                  },
-                                ),
-                              ),
-                              Text(
-                                '${_autoScrollSpeed}x',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        _buildSettingRow(
-                          icon: Icons.linear_scale,
-                          title: 'Hide Mini Progress Bar',
-                          trailing: Switch.adaptive(
-                            value: _hideMiniProgressBar,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              setSheetState(() => _hideMiniProgressBar = val);
-                              setState(() {
-                                _hideMiniProgressBar = val;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
+        return ReaderSettingsSheet(
+          isWebtoonMode: _isWebtoonMode,
+          isRtlMode: _isRtlMode,
+          isAutoScrolling: _isAutoScrolling,
+          autoScrollSpeed: _autoScrollSpeed,
+          hideMiniProgressBar: _hideMiniProgressBar,
+          onWebtoonModeChanged: (val) {
+            setState(() => _isWebtoonMode = val);
+            Navigator.pop(context);
+          },
+          onRtlModeChanged: (val) {
+            setState(() => _isRtlMode = val);
+            Navigator.pop(context);
+          },
+          onAutoScrollChanged: (val) {
+            _toggleAutoScroll();
+            Navigator.pop(context);
+          },
+          onAutoScrollSpeedChanged: (val) {
+            setState(() => _autoScrollSpeed = val);
+          },
+          onHideMiniProgressBarChanged: (val) {
+            setState(() => _hideMiniProgressBar = val);
           },
         );
       },
     );
   }
 
-  Widget _buildSettingRow({
-    required IconData icon,
-    required String title,
-    required Widget trailing,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white70, size: 22),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const Spacer(),
-        trailing,
-      ],
-    );
-  }
-
-  Widget _buildModeSegment({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white60,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
+  void _showChapterPickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return ReaderChapterPickerSheet(
+          chapters: widget.content.allChapters,
+          currentChapterNumber: _currentChapterNumber,
+          onChapterSelected: (chapter) {
+            _loadChapter(chapter);
+          },
+        );
+      },
     );
   }
 
@@ -731,6 +648,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                 scrollController: _scrollController,
                 pageController: _pageController,
                 isWebtoonMode: _isWebtoonMode,
+                isRtlMode: _isRtlMode,
                 onPageChanged: _onPageChanged,
                 onTap: _toggleUI,
                 onDoubleTapDown: _handleDoubleTapDown,
@@ -746,10 +664,58 @@ class _ReaderScreenState extends State<ReaderScreen>
               child: ReaderHeader(
                 mangaTitle: widget.content.mangaTitle,
                 chapterTitle: 'Chapter $currentChapterStr / $maxChapterStr',
+                isFullscreen: _isFullscreen,
                 onBack: () => Navigator.pop(context),
                 onSettings: _showSettingsBottomSheet,
+                onChapterListTap: _showChapterPickerSheet,
+                onToggleFullscreen: _toggleFullscreen,
               ),
             ),
+            // Floating Auto-Scroll HUD
+            if (_isAutoScrolling)
+              Positioned(
+                top: 80,
+                right: 20,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.play_circle_fill_rounded,
+                        color: AppColors.primary,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Auto-scroll ${_autoScrollSpeed}x',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _toggleAutoScroll,
+                        child: const Icon(
+                          Icons.pause_circle_outline_rounded,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               bottom: _showUI ? 20 : -350,
