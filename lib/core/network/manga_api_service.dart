@@ -336,9 +336,15 @@ class MangaApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getMangaDetail(String mangaId) async {
+  Future<Map<String, dynamic>> getMangaDetail(
+    String mangaId, {
+    CancelToken? cancelToken,
+  }) async {
     try {
-      final response = await _dio.get('/api/v1/manga/$mangaId');
+      final response = await _dio.get(
+        '/api/v1/manga/$mangaId',
+        cancelToken: cancelToken,
+      );
       final unwrapped = _unwrap(response.data);
       return unwrapped as Map<String, dynamic>;
     } catch (e) {
@@ -346,9 +352,15 @@ class MangaApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getMangaChapters(String mangaId) async {
+  Future<List<Map<String, dynamic>>> getMangaChapters(
+    String mangaId, {
+    CancelToken? cancelToken,
+  }) async {
     try {
-      final response = await _dio.get('/api/v1/manga/$mangaId/chapters');
+      final response = await _dio.get(
+        '/api/v1/manga/$mangaId/chapters',
+        cancelToken: cancelToken,
+      );
       final unwrapped = _unwrap(response.data);
       if (unwrapped is List) {
         return unwrapped.map((e) => e as Map<String, dynamic>).toList();
@@ -391,11 +403,13 @@ class MangaApiService {
 
   Future<List<String>> getChapterPages(
     String mangaId,
-    dynamic chapterId,
-  ) async {
+    dynamic chapterId, {
+    CancelToken? cancelToken,
+  }) async {
     try {
       final response = await _dio.get(
         '/api/v1/manga/$mangaId/chapters/$chapterId',
+        cancelToken: cancelToken,
       );
       final unwrapped = _unwrap(response.data);
       if (unwrapped is Map<String, dynamic>) {

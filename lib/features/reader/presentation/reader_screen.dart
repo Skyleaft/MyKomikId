@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -68,6 +69,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   bool _isRtlMode = false;
   bool _hideMiniProgressBar = false;
   bool _isFullscreen = false;
+  CancelToken? _chapterCancelToken;
 
   @override
   void initState() {
@@ -155,6 +157,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   void dispose() {
+    _chapterCancelToken?.cancel();
     _autoScrollTicker.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -260,12 +263,16 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Future<void> _loadChapter(Chapter targetChapter) async {
+    _chapterCancelToken?.cancel();
+    _chapterCancelToken = CancelToken();
+
     setState(() => _isLoading = true);
 
     try {
       final pages = await _apiService.getChapterPages(
         widget.content.mangaId,
         targetChapter.id,
+        cancelToken: _chapterCancelToken,
       );
 
       PaintingBinding.instance.imageCache.clearLiveImages();
@@ -296,6 +303,9 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       _loadInitialReadingTime(chapterId: targetChapter.id);
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) {
+        return;
+      }
       setState(() => _isLoading = false);
       if (mounted) {
         AlertBanner.show(
@@ -642,6 +652,7 @@ class _ReaderScreenState extends State<ReaderScreen>
               },
               child: ReaderContentWidget(
                 pageUrls: _pageUrls,
+                httpHeaders: widget.content.httpHeaders,
                 isLoading: _isLoading,
                 showUI: _showUI,
                 transformationController: _transformationController,
