@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
+  battery_plus
   firebase_auth
   firebase_core
   protocol_handler_windows

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'app_network_image.dart';
 import 'dart:math' as math;
 
-class ReaderContentWidget extends StatelessWidget {
+class ReaderContentWidget extends StatefulWidget {
   final List<String> pageUrls;
   final bool isLoading;
   final bool showUI;
@@ -18,6 +19,7 @@ class ReaderContentWidget extends StatelessWidget {
   final GestureTapDownCallback onDoubleTapDown;
   final GestureTapCallback onDoubleTap;
   final VoidCallback onToggleUI;
+  final Map<String, String>? httpHeaders;
 
   const ReaderContentWidget({
     super.key,
@@ -34,7 +36,42 @@ class ReaderContentWidget extends StatelessWidget {
     required this.onDoubleTapDown,
     required this.onDoubleTap,
     required this.onToggleUI,
+    this.httpHeaders,
   });
+
+  @override
+  State<ReaderContentWidget> createState() => _ReaderContentWidgetState();
+}
+
+class _ReaderContentWidgetState extends State<ReaderContentWidget> {
+  final Set<String> _precachedUrls = {};
+
+  @override
+  void didUpdateWidget(covariant ReaderContentWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pageUrls != widget.pageUrls) {
+      _precachedUrls.clear();
+    }
+  }
+
+  void _precacheNearbyPages(int currentIndex) {
+    if (widget.pageUrls.isEmpty) return;
+
+    // Precache next 3 pages and previous 1 page
+    for (int offset = -1; offset <= 3; offset++) {
+      final targetIndex = currentIndex + offset;
+      if (targetIndex >= 0 && targetIndex < widget.pageUrls.length) {
+        final url = widget.pageUrls[targetIndex];
+        if (!_precachedUrls.contains(url)) {
+          _precachedUrls.add(url);
+          precacheImage(
+            CachedNetworkImageProvider(url, headers: widget.httpHeaders),
+            context,
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,35 +79,39 @@ class ReaderContentWidget extends StatelessWidget {
 
     return Positioned.fill(
       child: GestureDetector(
-        onTap: onTap,
-        onDoubleTapDown: onDoubleTapDown,
-        onDoubleTap: onDoubleTap,
-        child: isLoading
+        onTap: widget.onTap,
+        onDoubleTapDown: widget.onDoubleTapDown,
+        onDoubleTap: widget.onDoubleTap,
+        child: widget.isLoading
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               )
-            : isWebtoonMode
+            : widget.isWebtoonMode
             ? InteractiveViewer(
-                transformationController: transformationController,
+                transformationController: widget.transformationController,
                 minScale: 1.0,
                 maxScale: 5.0,
                 scaleEnabled: false,
                 panEnabled:
-                    transformationController.value.getMaxScaleOnAxis() > 1,
+                    widget.transformationController.value.getMaxScaleOnAxis() >
+                    1,
                 boundaryMargin: EdgeInsets.zero,
                 clipBehavior: Clip.none,
                 trackpadScrollCausesScale: false,
                 child: CustomScrollView(
                   scrollCacheExtent: const ScrollCacheExtent.pixels(3000),
-                  controller: scrollController,
+                  controller: widget.scrollController,
                   physics:
-                      transformationController.value.getMaxScaleOnAxis() > 1
-                      ? const NeverScrollableScrollPhysics()
-                      : const BouncingScrollPhysics(),
+                      widget.transformationController.value
+                                  .getMaxScaleOnAxis() >
+                              1
+                          ? const NeverScrollableScrollPhysics()
+                          : const BouncingScrollPhysics(),
                   slivers: [
                     SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
-                        final url = pageUrls[index];
+                        _precacheNearbyPages(index);
+                        final url = widget.pageUrls[index];
 
                         final contentWidth = math.min(screenWidth, 800.0);
                         final imageHeight = contentWidth * 1.5;
@@ -81,6 +122,7 @@ class ReaderContentWidget extends StatelessWidget {
                             width: contentWidth,
                             child: AppNetworkImage(
                               imageUrl: url,
+                              httpHeaders: widget.httpHeaders,
                               fit: BoxFit.fitWidth,
                               width: contentWidth,
                               gaplessPlayback: true,
@@ -105,7 +147,7 @@ class ReaderContentWidget extends StatelessWidget {
                             ),
                           ),
                         );
-                      }, childCount: pageUrls.isEmpty ? 0 : pageUrls.length),
+                      }, childCount: widget.pageUrls.isEmpty ? 0 : widget.pageUrls.length),
                     ),
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -136,12 +178,15 @@ class ReaderContentWidget extends StatelessWidget {
                 ),
               )
             : PageView.builder(
-                controller: pageController,
-                reverse: isRtlMode,
-                onPageChanged: onPageChanged,
-                itemCount: pageUrls.isEmpty ? 0 : pageUrls.length + 1,
+                controller: widget.pageController,
+                reverse: widget.isRtlMode,
+                onPageChanged: (index) {
+                  _precacheNearbyPages(index);
+                  widget.onPageChanged(index);
+                },
+                itemCount: widget.pageUrls.isEmpty ? 0 : widget.pageUrls.length + 1,
                 itemBuilder: (context, index) {
-                  if (index == pageUrls.length) {
+                  if (index == widget.pageUrls.length) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -172,14 +217,16 @@ class ReaderContentWidget extends StatelessWidget {
                       ),
                     );
                   }
-                  final url = pageUrls[index];
-                  final contentWidth = math.min(screenWidth, 800.0);
+                  _precacheNearbyPages(index);
+                  final url = widget.pageUrls[index];
                   return Center(
-                    child: SingleChildScrollView(
+                    child: InteractiveViewer(
+                      minScale: 1.0,
+                      maxScale: 4.0,
                       child: AppNetworkImage(
                         imageUrl: url,
+                        httpHeaders: widget.httpHeaders,
                         fit: BoxFit.contain,
-                        width: contentWidth,
                         gaplessPlayback: true,
                         placeholder: Container(
                           color: Colors.black,
