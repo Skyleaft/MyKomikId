@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
 import '../../../core/models/manga_summary.dart';
@@ -8,6 +10,12 @@ import '../../library/models/library_manga.dart';
 import '../../library/services/library_service.dart';
 import '../models/manga_detail.dart';
 import '../services/manga_detail_service.dart';
+
+enum ChapterFilterOption {
+  all,
+  unreadOnly,
+  readOnly,
+}
 
 class MangaDetailController extends ChangeNotifier {
   final MangaDetail manga;
@@ -29,6 +37,11 @@ class MangaDetailController extends ChangeNotifier {
   List<String> _recommendationGenres = [];
   bool _isAscending = false;
   String _searchQuery = '';
+  ChapterFilterOption _chapterFilter = ChapterFilterOption.all;
+
+  Timer? _searchDebounce;
+  CancelToken? _chaptersCancelToken;
+  CancelToken? _recommendationsCancelToken;
 
   List<Chapter> get chapters => _chapters;
   bool get isLoadingChapters => _isLoadingChapters;
@@ -49,6 +62,7 @@ class MangaDetailController extends ChangeNotifier {
   bool get hasRecommendationFilters => recommendationFilterCount > 0;
   bool get isAscending => _isAscending;
   String get searchQuery => _searchQuery;
+  ChapterFilterOption get chapterFilter => _chapterFilter;
 
   MangaDetailController({
     required this.manga,
@@ -72,20 +86,66 @@ class MangaDetailController extends ChangeNotifier {
     ]);
   }
 
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _chaptersCancelToken?.cancel();
+    _recommendationsCancelToken?.cancel();
+    super.dispose();
+  }
+
   List<Chapter> get filteredChapters {
-    if (_searchQuery.isEmpty) return _chapters;
     return _chapters.where((c) {
-      final titleMatch = c.title.toLowerCase().contains(
-        _searchQuery.toLowerCase(),
-      );
-      final numberMatch = c.chapterNumber.toString().contains(_searchQuery);
-      return titleMatch || numberMatch;
+      // 1. Search Query Filter
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final titleMatch = c.title.toLowerCase().contains(query);
+        final numberMatch = c.chapterNumber.toString().contains(query);
+        if (!titleMatch && !numberMatch) return false;
+      }
+
+      // 2. Read / Unread Status Filter
+      if (_chapterFilter != ChapterFilterOption.all) {
+        final isRead = isChapterRead(c);
+        if (_chapterFilter == ChapterFilterOption.unreadOnly && isRead) {
+          return false;
+        }
+        if (_chapterFilter == ChapterFilterOption.readOnly && !isRead) {
+          return false;
+        }
+      }
+
+      return true;
     }).toList();
   }
 
-  void setSearchQuery(String query) {
-    _searchQuery = query;
+  bool isChapterRead(Chapter chapter) {
+    if (_progression == null) return false;
+    final log = _progression!.chapterLogs
+        .where((l) => l.chapterId == chapter.id || l.chapterNumber == chapter.chapterNumber)
+        .firstOrNull;
+    return log?.isCompleted ?? false;
+  }
+
+  Chapter? get nextUnreadChapter {
+    return manga.copyWith(chapters: _chapters).getNextUnreadChapter(_progression);
+  }
+
+  double get readProgressPercentage {
+    return manga.copyWith(chapters: _chapters).getReadPercentage(_progression);
+  }
+
+  void setChapterFilter(ChapterFilterOption filter) {
+    _chapterFilter = filter;
     notifyListeners();
+  }
+
+  void setSearchQuery(String query) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 200), () {
+      _searchQuery = query.trim();
+      notifyListeners();
+    });
   }
 
   void toggleSort() {
@@ -124,17 +184,30 @@ class MangaDetailController extends ChangeNotifier {
       notifyListeners();
     }
 
-    // 2. Background sync from API
+    final isStale = await _detailService.isCacheStale(manga.id);
+    if (!isStale && _chapters.isNotEmpty) {
+      return;
+    }
+
+    // 2. Background sync from API with CancelToken
+    _chaptersCancelToken?.cancel();
+    _chaptersCancelToken = CancelToken();
+
     try {
-      final chaptersData = await _apiService.getMangaChapters(manga.id);
+      final chaptersData = await _apiService.getMangaChapters(
+        manga.id,
+        cancelToken: _chaptersCancelToken,
+      );
       _chapters = chaptersData.map((e) => Chapter.fromMap(e)).toList();
       _sortChapters();
       _isLoadingChapters = false;
 
       final freshDetail = _buildUpdatedDetail(_chapters);
       await _detailService.saveDetail(freshDetail);
+      await _detailService.pruneOldCache();
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) return;
       if (_chapters.isEmpty) {
         _isLoadingChapters = false;
         notifyListeners();
@@ -146,8 +219,14 @@ class MangaDetailController extends ChangeNotifier {
     _isLoadingChapters = true;
     notifyListeners();
 
+    _chaptersCancelToken?.cancel();
+    _chaptersCancelToken = CancelToken();
+
     try {
-      final chaptersData = await _apiService.getMangaChapters(manga.id);
+      final chaptersData = await _apiService.getMangaChapters(
+        manga.id,
+        cancelToken: _chaptersCancelToken,
+      );
       _chapters = chaptersData.map((e) => Chapter.fromMap(e)).toList();
       _sortChapters();
       _isLoadingChapters = false;
@@ -157,7 +236,8 @@ class MangaDetailController extends ChangeNotifier {
       await refreshProgression();
       await _checkIfInLibrary();
       notifyListeners();
-    } catch (_) {
+    } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) return;
       _isLoadingChapters = false;
       notifyListeners();
     }
@@ -178,6 +258,9 @@ class MangaDetailController extends ChangeNotifier {
     _recommendationErrorMessage = null;
     notifyListeners();
 
+    _recommendationsCancelToken?.cancel();
+    _recommendationsCancelToken = CancelToken();
+
     try {
       final recs = await _apiService.getSimilarMangaFiltered(
         manga.id,
@@ -188,6 +271,7 @@ class MangaDetailController extends ChangeNotifier {
       );
       _recommendations = recs;
     } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) return;
       _recommendationErrorMessage = e.toString();
     } finally {
       _isLoadingRecommendations = false;
@@ -279,29 +363,6 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   MangaDetail _buildUpdatedDetail(List<Chapter> freshChapters) {
-    return MangaDetail(
-      id: manga.id,
-      malId: manga.malId,
-      anilistId: manga.anilistId,
-      mangaUpdateId: manga.mangaUpdateId,
-      title: manga.title,
-      author: manga.author,
-      type: manga.type,
-      genres: manga.genres,
-      categories: manga.categories,
-      description: manga.description,
-      imageUrl: manga.imageUrl,
-      localImageUrl: manga.localImageUrl,
-      rating: manga.rating,
-      popularity: manga.popularity,
-      members: manga.members,
-      totalView: manga.totalView,
-      status: manga.status,
-      releaseDate: manga.releaseDate,
-      createdAt: manga.createdAt,
-      updatedAt: manga.updatedAt,
-      url: manga.url,
-      chapters: freshChapters,
-    );
+    return manga.copyWith(chapters: freshChapters);
   }
 }

@@ -286,6 +286,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                       ),
                       child: MangaDetailChapterHeader(
                         isAscending: _controller.isAscending,
+                        currentFilter: _controller.chapterFilter,
+                        onFilterChanged: _controller.setChapterFilter,
                         onToggleSort: _controller.toggleSort,
                         onSearchChanged: _controller.setSearchQuery,
                         onScrapChapters: () async {
@@ -302,6 +304,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                                 'Chapter scraping queued successfully!',
                                 type: AlertBannerType.success,
                               );
+                              _controller.refresh();
                             }
                           } catch (e) {
                             if (context.mounted) {
