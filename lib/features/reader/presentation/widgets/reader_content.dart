@@ -12,6 +12,7 @@ class ReaderContentWidget extends StatelessWidget {
   final ScrollController scrollController;
   final PageController pageController;
   final bool isWebtoonMode;
+  final bool isRtlMode;
   final ValueChanged<int> onPageChanged;
   final VoidCallback onTap;
   final GestureTapDownCallback onDoubleTapDown;
@@ -27,6 +28,7 @@ class ReaderContentWidget extends StatelessWidget {
     required this.scrollController,
     required this.pageController,
     required this.isWebtoonMode,
+    this.isRtlMode = false,
     required this.onPageChanged,
     required this.onTap,
     required this.onDoubleTapDown,
@@ -135,6 +137,7 @@ class ReaderContentWidget extends StatelessWidget {
               )
             : PageView.builder(
                 controller: pageController,
+                reverse: isRtlMode,
                 onPageChanged: onPageChanged,
                 itemCount: pageUrls.isEmpty ? 0 : pageUrls.length + 1,
                 itemBuilder: (context, index) {
