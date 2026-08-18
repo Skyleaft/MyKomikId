@@ -71,6 +71,7 @@ class _AuthWrapperState extends State<AuthWrapper>
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       windowManager.removeListener(this);
     }
+    _windowSaveDebounce?.cancel();
     _stopHeartbeat();
     protocolHandler.removeListener(this);
     _linkSubscription?.cancel();
@@ -104,24 +105,33 @@ class _AuthWrapperState extends State<AuthWrapper>
     }
   }
 
+  Timer? _windowSaveDebounce;
+
   @override
   void onWindowResized() {
-    _saveWindowState();
+    _debounceSaveWindowState();
   }
 
   @override
   void onWindowMoved() {
-    _saveWindowState();
+    _debounceSaveWindowState();
   }
 
   @override
   void onWindowMaximize() {
-    _saveWindowState();
+    _debounceSaveWindowState();
   }
 
   @override
   void onWindowUnmaximize() {
-    _saveWindowState();
+    _debounceSaveWindowState();
+  }
+
+  void _debounceSaveWindowState() {
+    _windowSaveDebounce?.cancel();
+    _windowSaveDebounce = Timer(const Duration(milliseconds: 300), () {
+      _saveWindowState();
+    });
   }
 
   Future<void> _saveWindowState() async {
