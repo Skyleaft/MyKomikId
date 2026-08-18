@@ -8,16 +8,37 @@ Open Manga Reader is a modern, cross-platform manga reading application built wi
 
 ## ✨ Features
 
-- **🚀 Multi-Platform**: Native performance on Android, iOS, Windows, macOS, Linux, and Web.
-- **🔍 Advanced Discovery & Scraping**: Search across sources, scrap metadata and chapters on demand, and filter by genre, status, and type.
+- **🚀 Multi-Platform**: Native performance on Android, iOS, Windows, macOS, Linux, and Web with Desktop window state persistence.
+- **🔍 Advanced Discovery & Scraping**: Search across sources, scrape metadata and chapters on demand, and filter by genre, status, and type.
 - **🤖 AI-Powered Recommendations**: Personalized manga recommendations driven by your reading history and preferences.
 - **📚 Personal Library**: Organize manga into Reading, Completed, On-Hold, and Dropped statuses with offline caching.
-- **📖 Immersive Reader**: High-performance reader supporting both standard and continuous webtoon scroll modes.
-- **☁️ Cloud Sync & Offline-First**: Local storage paired with seamless cloud synchronization and queued offline mutations.
+- **📖 Immersive & Smart Reader**:
+  - Continuous **Webtoon** vertical scrolling and **Paged** horizontal mode (with **LTR** and **RTL Manga** directions).
+  - Fluid desktop window resizing and double-tap / pinch zooming (`InteractiveViewer`).
+  - **Ahead-of-Time Page Pre-caching** for instant rendering and zero-stutter scrolling.
+  - **Smart Image Retry & CDN Referrer Headers** support.
+  - Live **Battery Level & Clock** status overlay.
+  - **Auto-Scroll HUD** with adjustable speed multiplier.
+  - **Keyboard & Hotkey Navigation** on Desktop & Web (`F`, `Space`, `Escape`, `[`/`]`, `W/A/S/D`, arrow keys).
+- **☁️ Cloud Sync & Offline-First**: Local storage paired with seamless cloud synchronization, debounced updates, and queued offline mutations.
 - **📈 Progression Tracking**: Real-time chapter reading time tracking, progress history, and statistics.
-- **🔐 Secure Authentication**: Firebase Auth with Google Sign-In support across Mobile, Web, and Desktop (PKCE OAuth).
+- **🔐 Secure Authentication**: Firebase Auth with Google Sign-In support across Mobile, Web, and Desktop (PKCE OAuth with custom loopback).
 - **🌘 Dynamic Themes**: Curated light and dark modes adhering to modern design aesthetics.
 - **⚙️ Custom API Management**: Dynamically switch and configure backend API endpoints with connection testing.
+
+---
+
+## ⌨️ Desktop & Web Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| **`F`** | Toggle Fullscreen Mode |
+| **`Space`** | Toggle Auto-Scrolling |
+| **`Esc`** | Exit Fullscreen or Close Reader |
+| **`[` / `]`** | Previous / Next Chapter |
+| **`W` / `S`** or **`↑` / `↓`** | Smooth scroll up / down (Webtoon mode) |
+| **`A` / `D`** or **`←` / `→`** | Turn page backward / forward (adapts to LTR / RTL mode) |
+| **`PageUp` / `PageDown`** | Jump scroll / page by screen height |
 
 ---
 
@@ -28,7 +49,7 @@ The project follows a **Pure Vertical Slice Architecture**. Features are isolate
 ```text
 lib/
 ├── core/                               # Cross-cutting infrastructure & shared kernel
-│   ├── config/                         # App configuration
+│   ├── config/                         # App configuration (Base URL persistence)
 │   ├── constants/                      # Theme colors and style constants
 │   ├── di/                             # GetIt service locator setup
 │   ├── models/                         # Shared DTOs (MangaSummary, PagedResponse)
@@ -58,10 +79,10 @@ lib/
 │   │       └── widgets/                # Modular sub-widgets (AppBar, Info, Stats, Chapters, Recs)
 │   │
 │   ├── reader/                         # Manga reader & webtoon viewer slice
-│   │   ├── models/
+│   │   ├── models/                     # ReaderContent with copyWith & CDN header support
 │   │   └── presentation/
-│   │       ├── reader_screen.dart
-│   │       └── widgets/                # Header, BottomBar, Content viewport
+│   │       ├── reader_screen.dart      # Main reader view with CancelToken management
+│   │       └── widgets/                # Header, BottomBar, Content viewport, SettingsSheet, ChapterPickerSheet, StatusBarInfo, AppNetworkImage
 │   │
 │   ├── library/                        # User library slice
 │   │   ├── models/
@@ -75,7 +96,7 @@ lib/
 │   │   ├── controllers/
 │   │   └── presentation/
 │   │
-│   ├── discover/                       # Discover, search scrap, and AI recommendation slice
+│   ├── discover/                       # Discover, search scrape, and AI recommendation slice
 │   │   ├── models/
 │   │   └── presentation/
 │   │       ├── discover_screen.dart
@@ -105,10 +126,13 @@ lib/
 - **Architecture**: Vertical Slice Architecture (V-Slice) + DDD
 - **State Management**: [ChangeNotifier](https://api.flutter.dev/flutter/foundation/ChangeNotifier-class.html) + [Provider](https://pub.dev/packages/provider)
 - **Dependency Injection**: [GetIt](https://pub.dev/packages/get_it)
-- **Networking**: [Dio](https://pub.dev/packages/dio) & [HTTP](https://pub.dev/packages/http)
-- **Image Caching**: [CachedNetworkImageCE](https://pub.dev/packages/cached_network_image_ce)
+- **Networking**: [Dio](https://pub.dev/packages/dio) & [HTTP](https://pub.dev/packages/http) with `CancelToken` request lifecycle cancellation
+- **Image Caching & Preloading**: [CachedNetworkImageCE](https://pub.dev/packages/cached_network_image_ce)
+- **Desktop Window Management**: [window_manager](https://pub.dev/packages/window_manager)
+- **Hardware Integration**: [battery_plus](https://pub.dev/packages/battery_plus)
 - **Backend & Auth**: [Firebase Auth](https://firebase.google.com/) & [MangaScrapper API](https://github.com/Skyleaft/MangaScrapper)
 - **Desktop OAuth**: Custom loopback authorization with PKCE (RFC 7636 / RFC 8252)
+- **Deep Linking**: [app_links](https://pub.dev/packages/app_links) & [protocol_handler](https://pub.dev/packages/protocol_handler)
 - **Typography**: [Google Fonts](https://fonts.google.com/)
 
 ---
