@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:protocol_handler/protocol_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import 'core/di/injection.dart';
 import 'core/network/api_config.dart';
 import 'core/network/manga_api_service.dart';
@@ -42,7 +46,7 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper>
-    with ProtocolListener, WidgetsBindingObserver {
+    with ProtocolListener, WidgetsBindingObserver, WindowListener {
   final AuthService _authService = AuthService();
   bool _isCheckingAuth = true;
   late AppLinks _appLinks;
@@ -55,6 +59,7 @@ class _AuthWrapperState extends State<AuthWrapper>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     protocolHandler.addListener(this);
+    _initWindowState();
     _initDeepLinks();
     _checkAuthState();
   }
@@ -62,11 +67,81 @@ class _AuthWrapperState extends State<AuthWrapper>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      windowManager.removeListener(this);
+    }
     _stopHeartbeat();
     protocolHandler.removeListener(this);
     _linkSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _initWindowState() async {
+    if (!kIsWeb && Platform.isWindows) {
+      windowManager.addListener(this);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final width = prefs.getDouble('window_width');
+        final height = prefs.getDouble('window_height');
+        final posX = prefs.getDouble('window_pos_x');
+        final posY = prefs.getDouble('window_pos_y');
+        final isMaximized = prefs.getBool('window_is_maximized') ?? false;
+
+        if (width != null && height != null && width > 0 && height > 0) {
+          await windowManager.setSize(Size(width, height));
+        }
+        if (posX != null && posY != null) {
+          await windowManager.setPosition(Offset(posX, posY));
+        }
+        if (isMaximized) {
+          await windowManager.maximize();
+        }
+      } catch (e) {
+        debugPrint('Error restoring window state: $e');
+      }
+    }
+  }
+
+  @override
+  void onWindowResized() {
+    _saveWindowState();
+  }
+
+  @override
+  void onWindowMoved() {
+    _saveWindowState();
+  }
+
+  @override
+  void onWindowMaximize() {
+    _saveWindowState();
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    _saveWindowState();
+  }
+
+  Future<void> _saveWindowState() async {
+    if (!kIsWeb && Platform.isWindows) {
+      try {
+        final isMaximized = await windowManager.isMaximized();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('window_is_maximized', isMaximized);
+
+        if (!isMaximized) {
+          final size = await windowManager.getSize();
+          final position = await windowManager.getPosition();
+          await prefs.setDouble('window_width', size.width);
+          await prefs.setDouble('window_height', size.height);
+          await prefs.setDouble('window_pos_x', position.dx);
+          await prefs.setDouble('window_pos_y', position.dy);
+        }
+      } catch (e) {
+        debugPrint('Error saving window state: $e');
+      }
+    }
   }
 
   @override

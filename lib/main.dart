@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:protocol_handler/protocol_handler.dart';
+import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/di/injection.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,6 +17,11 @@ void main() async {
   // Register custom protocol handler for Windows/Linux/macOS
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     await protocolHandler.register('open-manga-reader');
+  }
+
+  // Initialize window manager for desktop platforms
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+    await windowManager.ensureInitialized();
   }
 
   // Load .env file (ignored if missing in debug; always present in release bundle)
