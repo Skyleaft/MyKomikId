@@ -13,6 +13,8 @@ import '../features/discover/presentation/advanced_recommendation_screen.dart';
 class AppRoutes {
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
+  static final RouteObserver<PageRoute> routeObserver =
+      RouteObserver<PageRoute>();
 
   static const String login = '/login';
   static const String home = '/home';

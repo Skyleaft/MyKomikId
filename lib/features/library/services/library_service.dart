@@ -11,7 +11,7 @@ class LibraryService {
   String get _currentUserId => getIt<MangaApiService>().userId ?? '';
 
   Future<void> addToLibrary(LibraryManga manga) async {
-    // 1. Update local cache
+    // 1. Update local cache immediately
     await _updateLocalCache(manga, isRemoving: false);
 
     // 2. Try API
@@ -25,13 +25,35 @@ class LibraryService {
     }
   }
 
+  Future<void> updateStatus(String mangaId, String newStatus) async {
+    final libraryManga = await getLibraryManga(mangaId);
+    if (libraryManga == null) return;
+
+    final updated = libraryManga.copyWith(
+      status: newStatus,
+      updatedAt: DateTime.now(),
+    );
+
+    // 1. Update local cache immediately
+    await _updateLocalCache(updated, isRemoving: false);
+
+    // 2. Try API
+    final apiService = getIt<MangaApiService>();
+    final payload = updated.toApiRequest(_currentUserId);
+    try {
+      await apiService.addToUserLibrary(payload);
+    } catch (e) {
+      getIt<SyncService>().enqueueAction('library_add', payload);
+    }
+  }
+
   Future<void> removeFromLibrary(String mangaId) async {
     final libraryManga = await getLibraryManga(mangaId);
     final targetId = (libraryManga?.userLibraryId.isNotEmpty ?? false)
         ? libraryManga!.userLibraryId
         : mangaId;
 
-    // 1. Update local cache
+    // 1. Update local cache immediately
     await _updateLocalCacheById(mangaId, isRemoving: true);
 
     // 2. Try API
@@ -52,9 +74,10 @@ class LibraryService {
 
     final updated = libraryManga.copyWith(
       isFavorite: !libraryManga.isFavorite,
+      updatedAt: DateTime.now(),
     );
 
-    // 1. Update local cache
+    // 1. Update local cache immediately
     await _updateLocalCache(updated, isRemoving: false);
 
     // 2. Try API
