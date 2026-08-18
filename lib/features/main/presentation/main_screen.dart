@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../discover/presentation/discover_screen.dart';
 import '../../home/presentation/home_screen.dart';
@@ -14,30 +16,23 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
+class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  int _previousIndex = 0;
-  late AnimationController _animationController;
-  Animation<Offset>? _slideAnimation;
-  Animation<double>? _fadeAnimation;
   String? _discoverSortBy;
   String? _discoverSearch;
+  DateTime? _lastBackPressTime;
 
   void _navigateToDiscover({String? sortBy, String? search}) {
     setState(() {
       _discoverSortBy = sortBy;
       _discoverSearch = search;
+      _currentIndex = 2;
     });
-    _navigateTo(2);
   }
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
     _checkForUpdate();
   }
 
@@ -87,8 +82,21 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
-  List<Widget> _buildScreens() {
-    return [
+  void _navigateTo(int index) {
+    if (index != _currentIndex) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 1024;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final screens = [
       HomeScreen(
         key: const ValueKey('home'),
         onNavigateToDiscover: _navigateToDiscover,
@@ -101,120 +109,131 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       ),
       const MoreScreen(key: ValueKey('more')),
     ];
-  }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
 
-  void _navigateTo(int index) {
-    if (index != _currentIndex) {
-      final isMovingForward = index > _currentIndex;
+        // If not on Home tab, switch to Home first
+        if (_currentIndex != 0) {
+          setState(() {
+            _currentIndex = 0;
+          });
+          return;
+        }
 
-      _slideAnimation =
-          Tween<Offset>(
-            begin: isMovingForward ? const Offset(1, 0) : const Offset(-1, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(
-              parent: _animationController,
-              curve: Curves.easeInOut,
+        // Double back to exit handler
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
             ),
           );
-
-      _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-      );
-
-      _animationController.reset();
-      _animationController.forward();
-
-      setState(() {
-        _previousIndex = _currentIndex;
-        _currentIndex = index;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth >= 1024;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          if (_previousIndex != _currentIndex)
-            SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: Offset.zero,
-                    end: _currentIndex > _previousIndex
-                        ? const Offset(-1, 0)
-                        : const Offset(1, 0),
-                  ).animate(
-                    CurvedAnimation(
-                      parent: _animationController,
-                      curve: const Interval(0.0, 0.7, curve: Curves.easeInOut),
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: Row(
+          children: [
+            if (isDesktop)
+              NavigationRail(
+                selectedIndex: _currentIndex,
+                onDestinationSelected: _navigateTo,
+                backgroundColor: isDark
+                    ? AppColors.backgroundDark
+                    : AppColors.backgroundLight,
+                labelType: NavigationRailLabelType.all,
+                selectedIconTheme: const IconThemeData(color: AppColors.primary),
+                selectedLabelTextStyle: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                unselectedLabelTextStyle: TextStyle(
+                  color: isDark ? Colors.white60 : Colors.black54,
+                  fontSize: 12,
+                ),
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 40,
+                    height: 40,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.auto_stories_rounded,
+                      color: AppColors.primary,
+                      size: 32,
                     ),
                   ),
-              child: FadeTransition(
-                opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
-                  CurvedAnimation(
-                    parent: _animationController,
-                    curve: const Interval(0.0, 0.7, curve: Curves.easeInOut),
-                  ),
                 ),
-                child: _buildScreens()[_previousIndex],
-              ),
-            ),
-
-          SlideTransition(
-            position:
-                _slideAnimation ??
-                Tween<Offset>(
-                  begin: Offset.zero,
-                  end: Offset.zero,
-                ).animate(_animationController),
-            child: FadeTransition(
-              opacity:
-                  _fadeAnimation ??
-                  Tween<double>(
-                    begin: 1.0,
-                    end: 1.0,
-                  ).animate(_animationController),
-              child: _buildScreens()[_currentIndex],
-            ),
-          ),
-
-          if (isDesktop)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Center(
-                child: SizedBox(
-                  width: 600,
-                  child: AppBottomNav(
-                    currentIndex: _currentIndex,
-                    onTap: _navigateTo,
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: Text('Home'),
                   ),
-                ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.collections_bookmark_outlined),
+                    selectedIcon: Icon(Icons.collections_bookmark_rounded),
+                    label: Text('Library'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.explore_outlined),
+                    selectedIcon: Icon(Icons.explore_rounded),
+                    label: Text('Discover'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.more_horiz_rounded),
+                    selectedIcon: Icon(Icons.more_horiz_rounded),
+                    label: Text('More'),
+                  ),
+                ],
               ),
-            )
-          else
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: AppBottomNav(
-                currentIndex: _currentIndex,
-                onTap: _navigateTo,
+            Expanded(
+              child: Stack(
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.0, 0.03),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(_currentIndex),
+                      child: screens[_currentIndex],
+                    ),
+                  ),
+                  if (!isDesktop)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: AppBottomNav(
+                        currentIndex: _currentIndex,
+                        onTap: _navigateTo,
+                      ),
+                    ),
+                ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
