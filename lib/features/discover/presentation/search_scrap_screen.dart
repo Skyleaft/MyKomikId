@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/alert_banner.dart';
 import '../../../core/di/injection.dart';
-import '../../../core/models/manga_summary.dart';
 import '../../../core/network/manga_api_service.dart';
-import '../../manga_detail/models/manga_detail.dart';
 import '../models/search_result.dart';
 import 'widgets/search_scrap_card.dart';
+import 'widgets/scrap_manga_modal.dart';
 
 class SearchScrapScreen extends StatefulWidget {
   const SearchScrapScreen({super.key});
@@ -30,7 +29,6 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
   String? _error;
 
   String _selectedProviderName = '';
-
   String _searchQuery = '';
   int _currentPage = 1;
   bool _hasMoreResults = true;
@@ -38,6 +36,10 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
   Timer? _debounceTimer;
   CancelToken? _searchCancelToken;
   int _searchRequestCounter = 0;
+
+  // Cached filter lists to avoid repeated network roundtrips
+  List<String>? _cachedGenres;
+  List<String>? _cachedTypes;
 
   @override
   void initState() {
@@ -62,12 +64,11 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
       if (_providers.isNotEmpty) {
         _selectedProviderName = _providers[0]['providerName'];
       }
-    } catch (e) {
+    } catch (_) {
       _providers = [
         {'providerName': 'Komiku'},
         {'providerName': 'Kiryuu'},
       ];
-
       _selectedProviderName = 'Komiku';
     }
 
@@ -76,7 +77,17 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
   }
 
   void _onSearchChanged() {
-    _searchQuery = _searchController.text;
+    final query = _searchController.text;
+    if (_searchQuery == query) return;
+    _searchQuery = query;
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      _currentPage = 1;
+      _hasMoreResults = true;
+      _performSearch();
+    });
   }
 
   Future<void> _performSearch() async {
@@ -105,31 +116,26 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
         provider: _selectedProviderName,
       );
 
-      if (currentRequestCounter != _searchRequestCounter) {
-        return;
-      }
-
+      if (currentRequestCounter != _searchRequestCounter) return;
       if (!mounted) return;
 
       setState(() {
+        final newItems = results.map((e) => SearchResult.fromJson(e)).toList();
         if (_currentPage == 1) {
-          _searchResults = results
-              .map((e) => SearchResult.fromJson(e))
-              .toList();
+          _searchResults = newItems;
         } else {
-          _searchResults.addAll(
-            results.map((e) => SearchResult.fromJson(e)).toList(),
-          );
+          _searchResults.addAll(newItems);
         }
 
         _isLoadingSearch = false;
-        _hasMoreResults = results.isNotEmpty;
+        _hasMoreResults = newItems.isNotEmpty;
       });
     } catch (e) {
       if (e is DioException && e.type == DioExceptionType.cancel) {
         return;
       }
 
+      if (currentRequestCounter != _searchRequestCounter) return;
       if (!mounted) return;
 
       setState(() {
@@ -150,7 +156,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
           backgroundColor: Theme.of(context).brightness == Brightness.dark
               ? AppColors.backgroundDark
               : AppColors.backgroundLight,
-          child: _ScrapMangaModal(
+          child: ScrapMangaModal(
             item: item,
             provider: _selectedProviderName,
             apiService: _apiService,
@@ -185,7 +191,6 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
       );
 
       if (!mounted) return;
-
       Navigator.pop(context);
 
       AlertBanner.show(
@@ -197,7 +202,6 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-
       Navigator.pop(context);
 
       AlertBanner.show(
@@ -216,107 +220,137 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
   }
 
   Future<void> _showFilterDialog() async {
-    final genres = await _apiService.getAllGenres();
-    final types = await _apiService.getAllTypes();
+    List<String> genres = _cachedGenres ?? [];
+    List<String> types = _cachedTypes ?? [];
+
+    if (genres.isEmpty || types.isEmpty) {
+      try {
+        final fetchedGenres = await _apiService.getAllGenres();
+        final fetchedTypes = await _apiService.getAllTypes();
+        _cachedGenres = fetchedGenres;
+        _cachedTypes = fetchedTypes;
+        genres = fetchedGenres;
+        types = fetchedTypes;
+      } catch (_) {}
+    }
 
     if (!mounted) return;
 
-    final selectedGenres = <String>[];
-    final selectedTypes = <String>[];
-    String? selectedStatus;
+    final selectedGenres = List<String>.from(_selectedGenres ?? []);
+    final selectedTypes = _selectedType != null ? [_selectedType!] : <String>[];
+    String? selectedStatus = _selectedStatus;
 
     await showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Filter Results'),
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Filter Source Results'),
           content: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Genres',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: genres.map((genre) {
-                    return FilterChip(
-                      label: Text(genre),
-                      selected: selectedGenres.contains(genre),
-                      onSelected: (bool selected) {
-                        setState(() {
-                          if (selected) {
-                            selectedGenres.add(genre);
-                          } else {
-                            selectedGenres.remove(genre);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Types',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: types.map((type) {
-                    return FilterChip(
-                      label: Text(type),
-                      selected: selectedTypes.contains(type),
-                      onSelected: (bool selected) {
-                        setState(() {
-                          if (selected) {
-                            selectedTypes.add(type);
-                          } else {
-                            selectedTypes.remove(type);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
+                if (genres.isNotEmpty) ...[
+                  const Text(
+                    'Genres',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: genres.map((genre) {
+                      return FilterChip(
+                        label: Text(genre, style: const TextStyle(fontSize: 12)),
+                        selected: selectedGenres.contains(genre),
+                        onSelected: (bool selected) {
+                          setDialogState(() {
+                            if (selected) {
+                              selectedGenres.add(genre);
+                            } else {
+                              selectedGenres.remove(genre);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (types.isNotEmpty) ...[
+                  const Text(
+                    'Types',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: types.map((type) {
+                      return FilterChip(
+                        label: Text(type, style: const TextStyle(fontSize: 12)),
+                        selected: selectedTypes.contains(type),
+                        onSelected: (bool selected) {
+                          setDialogState(() {
+                            if (selected) {
+                              selectedTypes.clear();
+                              selectedTypes.add(type);
+                            } else {
+                              selectedTypes.remove(type);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 const Text(
                   'Status',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                RadioGroup<String>(
-                  groupValue: selectedStatus,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedStatus = value;
-                    });
-                  },
-                  child: const Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: Text('Ongoing'),
-                          value: 'ongoing',
-                        ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Ongoing'),
+                        selected: selectedStatus?.toLowerCase() == 'ongoing',
+                        onSelected: (selected) {
+                          setDialogState(() {
+                            selectedStatus = selected ? 'ongoing' : null;
+                          });
+                        },
                       ),
-                      Expanded(
-                        child: RadioListTile<String>(
-                          title: Text('Completed'),
-                          value: 'completed',
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Completed'),
+                        selected: selectedStatus?.toLowerCase() == 'completed',
+                        onSelected: (selected) {
+                          setDialogState(() {
+                            selectedStatus = selected ? 'completed' : null;
+                          });
+                        },
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           actions: [
+            TextButton(
+              onPressed: () {
+                setDialogState(() {
+                  selectedGenres.clear();
+                  selectedTypes.clear();
+                  selectedStatus = null;
+                });
+              },
+              child: const Text('Reset'),
+            ),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
@@ -324,18 +358,15 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-
-                _selectedGenres = selectedGenres.isEmpty
-                    ? null
-                    : List.from(selectedGenres);
-                _selectedType = selectedTypes.isEmpty
-                    ? null
-                    : selectedTypes.first;
-                _selectedStatus = selectedStatus;
-
-                _currentPage = 1;
-                _hasMoreResults = true;
-
+                setState(() {
+                  _selectedGenres =
+                      selectedGenres.isEmpty ? null : List.from(selectedGenres);
+                  _selectedType =
+                      selectedTypes.isEmpty ? null : selectedTypes.first;
+                  _selectedStatus = selectedStatus;
+                  _currentPage = 1;
+                  _hasMoreResults = true;
+                });
                 _performSearch();
               },
               child: const Text('Apply Filter'),
@@ -355,8 +386,13 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
     final textColor = isDarkMode ? Colors.white : AppColors.primary;
     final cardColor = isDarkMode ? AppColors.cardDark : Colors.white;
     final shadowColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.1)
-        : Colors.black.withValues(alpha: 0.1);
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.black.withValues(alpha: 0.08);
+
+    final hasActiveFilters =
+        (_selectedGenres != null && _selectedGenres!.isNotEmpty) ||
+        _selectedType != null ||
+        _selectedStatus != null;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -376,11 +412,26 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.tune, color: textColor),
-            onPressed: () {
-              _showFilterDialog();
-            },
+          Stack(
+            children: [
+              IconButton(
+                icon: Icon(Icons.tune, color: textColor),
+                onPressed: _showFilterDialog,
+              ),
+              if (hasActiveFilters)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -423,6 +474,17 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                           horizontal: 8,
                         ),
                         isDense: true,
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                  _currentPage = 1;
+                                  _performSearch();
+                                },
+                              )
+                            : null,
                       ),
                       style: TextStyle(fontSize: 14, color: textColor),
                       onSubmitted: (value) {
@@ -439,7 +501,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
           ),
           if (_providers.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
@@ -456,21 +518,22 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                 child: DropdownButton<String>(
                   value: _selectedProviderName,
                   isExpanded: true,
-                  underline: Container(),
+                  underline: const SizedBox.shrink(),
                   dropdownColor: cardColor,
                   style: TextStyle(color: textColor, fontSize: 14),
                   items: _providers.map((provider) {
                     return DropdownMenuItem<String>(
                       value: provider['providerName'],
                       child: Text(
-                        provider['providerName'],
+                        'Provider: ${provider['providerName']}',
                         style: TextStyle(color: textColor, fontSize: 14),
                       ),
                     );
                   }).toList(),
                   onChanged: (value) {
+                    if (value == null || value == _selectedProviderName) return;
                     setState(() {
-                      _selectedProviderName = value!;
+                      _selectedProviderName = value;
                       _selectedGenres = null;
                       _selectedStatus = null;
                       _selectedType = null;
@@ -478,21 +541,20 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                       _hasMoreResults = true;
                       _searchResults = [];
                     });
-
                     _performSearch();
                   },
                 ),
               ),
             ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _searchQuery.isNotEmpty
                       ? 'Search Results (${_searchResults.length})'
-                      : 'Search Results (0)',
+                      : 'Search Results (${_searchResults.length})',
                   style: TextStyle(
                     color: isDarkMode ? Colors.grey[400] : Colors.grey,
                     fontSize: 12,
@@ -533,21 +595,60 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                       : Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _performSearch,
+                      child: const Text('Retry', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ),
               ),
             ),
           Expanded(
-            child: _searchResults.isEmpty &&
-                    !_isLoadingSearch &&
-                    _searchQuery.isEmpty
+            child: _searchResults.isEmpty && !_isLoadingSearch
                 ? Center(
-                    child: Text(
-                      'Search for manga to get started',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey,
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.manage_search_rounded,
+                            size: 56,
+                            color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? 'Search for manga from source'
+                                : 'No manga found on $_selectedProviderName',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? 'Type a title or author to browse online scrap sources.'
+                                : 'Try searching another keyword or switch providers.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -565,7 +666,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
       onNotification: (notification) {
         if (notification is ScrollUpdateNotification) {
           final metrics = notification.metrics;
-          if (metrics.pixels >= metrics.maxScrollExtent - 100 &&
+          if (metrics.pixels >= metrics.maxScrollExtent - 150 &&
               _hasMoreResults &&
               !_isLoadingSearch) {
             _loadMore();
@@ -574,6 +675,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
         return false;
       },
       child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 24),
         itemCount: _searchResults.length + (_isLoadingSearch ? 1 : 0),
         itemBuilder: (context, index) {
           if (index < _searchResults.length) {
@@ -592,472 +694,6 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
             );
           }
         },
-      ),
-    );
-  }
-}
-
-class _ScrapMangaModal extends StatefulWidget {
-  final SearchResult item;
-  final String provider;
-  final MangaApiService apiService;
-  final Function(bool scrapChapters, String? linkId) onScrap;
-
-  const _ScrapMangaModal({
-    required this.item,
-    required this.provider,
-    required this.apiService,
-    required this.onScrap,
-  });
-
-  @override
-  State<_ScrapMangaModal> createState() => _ScrapMangaModalState();
-}
-
-class _ScrapMangaModalState extends State<_ScrapMangaModal> {
-  bool _isLoadingDetail = true;
-  MangaDetail? _detail;
-  String? _error;
-
-  bool _isSearchingExisting = false;
-  List<MangaSummary> _existingMangaResults = [];
-  MangaSummary? _selectedExistingManga;
-  final _existingSearchController = TextEditingController();
-  Timer? _searchDebounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchDetail();
-  }
-
-  @override
-  void dispose() {
-    _existingSearchController.dispose();
-    _searchDebounce?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _fetchDetail() async {
-    setState(() {
-      _isLoadingDetail = true;
-      _error = null;
-    });
-
-    try {
-      final data = await widget.apiService.getScrapMangaDetail(
-        provider: widget.provider,
-        mangaUrl: widget.item.detailUrl,
-      );
-      if (mounted) {
-        setState(() {
-          _detail = MangaDetail.fromMap(data);
-          _isLoadingDetail = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _isLoadingDetail = false;
-        });
-      }
-    }
-  }
-
-  void _searchExistingManga(String query) {
-    _searchDebounce?.cancel();
-    if (query.trim().isEmpty) {
-      setState(() {
-        _existingMangaResults = [];
-        _isSearchingExisting = false;
-      });
-      return;
-    }
-
-    _searchDebounce = Timer(const Duration(milliseconds: 500), () async {
-      if (!mounted) return;
-      setState(() => _isSearchingExisting = true);
-      try {
-        final response = await widget.apiService.getPagedManga(
-          search: query,
-          pageSize: 10,
-        );
-        if (mounted) {
-          setState(() {
-            _existingMangaResults = response.items;
-            _isSearchingExisting = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() => _isSearchingExisting = false);
-        }
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : AppColors.primary;
-
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.9,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.8,
-      ),
-      padding: const EdgeInsets.all(16.0),
-      child: _isLoadingDetail
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32.0),
-                child: CircularProgressIndicator(color: AppColors.primary),
-              ),
-            )
-          : _error != null
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                const SizedBox(height: 16),
-                Text('Failed to load manga details: $_error'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _fetchDetail,
-                  child: const Text('Retry'),
-                ),
-              ],
-            )
-          : _buildDetailContent(isDark, textColor),
-    );
-  }
-
-  Widget _buildDetailContent(bool isDark, Color textColor) {
-    final detail = _detail!;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (detail.displayImageUrl.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    widget.apiService.getImageUrl(detail.displayImageUrl),
-                    width: 90,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 90,
-                      height: 120,
-                      color: Colors.grey[800],
-                      child: const Icon(
-                        Icons.broken_image,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      detail.title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Author: ${detail.author}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.grey[300] : Colors.grey[700],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Type: ${detail.type} | Status: ${detail.status ?? "Unknown"}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ),
-                    if (detail.rating != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
-                          Text(
-                            detail.rating!.toStringAsFixed(1),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (detail.genres != null && detail.genres!.isNotEmpty) ...[
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: detail.genres!.map((genre) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    genre,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (detail.description != null && detail.description!.isNotEmpty) ...[
-            const Text(
-              'Description',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              detail.description!,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
-              ),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-          ],
-          Text(
-            'Total Chapters: ${detail.chapters.length}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 180),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: detail.chapters.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No chapters found'),
-                    ),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: detail.chapters.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final ch = detail.chapters[index];
-                      return ListTile(
-                        dense: true,
-                        title: Text(
-                          ch.title,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        subtitle: Text(
-                          'Number: ${ch.chapterNumber}',
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                        trailing: ch.language.isNotEmpty
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  ch.language.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              )
-                            : null,
-                      );
-                    },
-                  ),
-          ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const Text(
-            'Link to Existing Manga (Optional)',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          if (_selectedExistingManga == null) ...[
-            TextField(
-              controller: _existingSearchController,
-              decoration: InputDecoration(
-                hintText: 'Search local manga to link...',
-                hintStyle: const TextStyle(fontSize: 13),
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _isSearchingExisting
-                    ? const Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-              onChanged: _searchExistingManga,
-            ),
-            if (_existingMangaResults.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 150),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _existingMangaResults.length,
-                  itemBuilder: (context, index) {
-                    final ex = _existingMangaResults[index];
-                    return ListTile(
-                      dense: true,
-                      title: Text(ex.title),
-                      subtitle: Text(ex.author),
-                      onTap: () {
-                        setState(() {
-                          _selectedExistingManga = ex;
-                          _existingMangaResults = [];
-                          _existingSearchController.clear();
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ] else ...[
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                border: Border.all(color: Colors.green),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.link, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _selectedExistingManga!.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'ID: ${_selectedExistingManga!.id}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.red),
-                    onPressed: () {
-                      setState(() {
-                        _selectedExistingManga = null;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    foregroundColor: AppColors.primary,
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onScrap(false, _selectedExistingManga?.id);
-                  },
-                  icon: const Icon(Icons.info_outline),
-                  label: const Text('Scrap Metadata'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.withValues(alpha: 0.1),
-                    foregroundColor: Colors.orange,
-                    elevation: 0,
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onScrap(true, _selectedExistingManga?.id);
-                  },
-                  icon: const Icon(Icons.download),
-                  label: const Text('Scrap Chapters'),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
@@ -10,7 +11,9 @@ import '../../../core/models/paged_response.dart';
 import '../../../core/network/manga_api_service.dart';
 import '../../../routes/app_pages.dart';
 import '../../manga_detail/models/manga_detail.dart';
+import '../../manga_detail/services/manga_detail_service.dart';
 import 'widgets/discover_header.dart';
+import 'widgets/discover_grid_skeleton.dart';
 import 'widgets/scrap_queue_dialog.dart';
 import 'widgets/filter_dialog.dart';
 
@@ -26,6 +29,8 @@ class DiscoverScreen extends StatefulWidget {
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
   final MangaApiService _apiService = getIt<MangaApiService>();
+  final MangaDetailService _detailService = getIt<MangaDetailService>();
+
   final List<MangaSummary> _items = [];
   bool _isLoading = false;
   bool _isMoreLoading = false;
@@ -42,12 +47,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   late String _sortBy;
   String _orderBy = 'desc';
 
+  Timer? _debounceTimer;
+  int _requestCounter = 0;
+
   @override
   void initState() {
     super.initState();
     _searchQuery = widget.initialSearch;
     _sortBy = widget.sortBy ?? 'updatedAt';
-    _fetchData();
+    _fetchData(refresh: true);
   }
 
   @override
@@ -61,8 +69,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _fetchData({bool refresh = false}) async {
     if (refresh) {
+      _debounceTimer?.cancel();
       if (!mounted) return;
       setState(() {
         _currentPage = 1;
@@ -70,7 +85,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _hasMore = true;
         _isLoading = true;
       });
-    } else if (!_hasMore || _isMoreLoading) {
+    } else if (!_hasMore || _isMoreLoading || _isLoading) {
       return;
     }
 
@@ -79,6 +94,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         _isMoreLoading = true;
       });
     }
+
+    final currentRequest = ++_requestCounter;
 
     try {
       final PagedResponse<MangaSummary> response;
@@ -111,33 +128,42 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         );
       }
 
-      if (!mounted) return;
+      if (currentRequest != _requestCounter || !mounted) return;
+
       setState(() {
         _items.addAll(response.items);
         _isLoading = false;
         _isMoreLoading = false;
-        _hasMore = _items.length < response.totalCount && !_isSemanticSearch;
+        _hasMore =
+            _items.length < response.totalCount &&
+            !_isSemanticSearch &&
+            response.items.isNotEmpty;
         if (_hasMore) _currentPage++;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (currentRequest != _requestCounter || !mounted) return;
       setState(() {
         _isLoading = false;
         _isMoreLoading = false;
       });
       AlertBanner.show(
         context,
-        'Error: ${e.toString()}',
+        'Error loading manga: ${e.toString()}',
         type: AlertBannerType.error,
       );
     }
   }
 
   void _onSearch(String value) {
-    final newQuery = value.isEmpty ? null : value;
+    final newQuery = value.trim().isEmpty ? null : value.trim();
     if (_searchQuery == newQuery) return;
-    _searchQuery = newQuery;
-    _fetchData(refresh: true);
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      _searchQuery = newQuery;
+      _fetchData(refresh: true);
+    });
   }
 
   void _onShowQueue() {
@@ -174,6 +200,57 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _navigateToDetail(MangaSummary item) async {
+    // Fast path: Check local cache first
+    try {
+      final cached = await _detailService.getDetail(item.id);
+      if (cached != null && mounted) {
+        FocusManager.instance.primaryFocus?.unfocus();
+        await Navigator.pushNamed(
+          context,
+          AppRoutes.detail,
+          arguments: cached,
+        );
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback: Fetch from API with non-blocking feedback
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+
+    try {
+      final detailData = await _apiService.getMangaDetail(item.id);
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      final mangaDetail = MangaDetail.fromMap(detailData);
+      await _detailService.saveDetail(mangaDetail);
+
+      if (!mounted) return;
+      FocusManager.instance.primaryFocus?.unfocus();
+      await Navigator.pushNamed(
+        context,
+        AppRoutes.detail,
+        arguments: mangaDetail,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      AlertBanner.show(
+        context,
+        'Failed to load details: $e',
+        type: AlertBannerType.error,
+      );
+    }
   }
 
   SliverGridDelegateWithFixedCrossAxisCount _buildGridDelegate() {
@@ -213,6 +290,93 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  bool get _hasActiveFilters =>
+      _selectedGenres.isNotEmpty ||
+      _selectedType != null ||
+      _selectedStatus != null;
+
+  void _clearAllFilters() {
+    setState(() {
+      _selectedGenres = [];
+      _selectedType = null;
+      _selectedStatus = null;
+      _searchQuery = null;
+    });
+    _fetchData(refresh: true);
+  }
+
+  Widget _buildActiveFilterChips(bool isDark) {
+    if (!_hasActiveFilters) return const SizedBox.shrink();
+
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(top: 8, bottom: 4),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          ..._selectedGenres.map((genre) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InputChip(
+                  label: Text(genre, style: const TextStyle(fontSize: 12)),
+                  selected: true,
+                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                  checkmarkColor: AppColors.primary,
+                  onDeleted: () {
+                    setState(() {
+                      _selectedGenres.remove(genre);
+                    });
+                    _fetchData(refresh: true);
+                  },
+                ),
+              )),
+          if (_selectedType != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InputChip(
+                label: Text('Type: $_selectedType',
+                    style: const TextStyle(fontSize: 12)),
+                selected: true,
+                selectedColor: Colors.blue.withValues(alpha: 0.15),
+                checkmarkColor: Colors.blue,
+                onDeleted: () {
+                  setState(() {
+                    _selectedType = null;
+                  });
+                  _fetchData(refresh: true);
+                },
+              ),
+            ),
+          if (_selectedStatus != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InputChip(
+                label: Text('Status: $_selectedStatus',
+                    style: const TextStyle(fontSize: 12)),
+                selected: true,
+                selectedColor: Colors.green.withValues(alpha: 0.15),
+                checkmarkColor: Colors.green,
+                onDeleted: () {
+                  setState(() {
+                    _selectedStatus = null;
+                  });
+                  _fetchData(refresh: true);
+                },
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ActionChip(
+              avatar: const Icon(Icons.clear_all, size: 16),
+              label: const Text('Clear All', style: TextStyle(fontSize: 12)),
+              onPressed: _clearAllFilters,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -229,7 +393,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
             if (notification is ScrollEndNotification &&
-                notification.metrics.extentAfter < 500) {
+                notification.metrics.extentAfter < 500 &&
+                !_isSemanticSearch) {
               _fetchData();
             }
             return false;
@@ -263,10 +428,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             context,
                             AppRoutes.advancedRecommendation,
                           ),
-                          hasFilters:
-                              _selectedGenres.isNotEmpty ||
-                              _selectedType != null ||
-                              _selectedStatus != null,
+                          hasFilters: _hasActiveFilters,
                           isSemanticSearch: _isSemanticSearch,
                           onSemanticSearchChanged: (value) {
                             setState(() {
@@ -280,15 +442,60 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ),
                 ),
               ),
+              if (_hasActiveFilters)
+                SliverToBoxAdapter(
+                  child: _buildActiveFilterChips(isDark),
+                ),
               if (_isLoading)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
+                const SliverToBoxAdapter(
+                  child: DiscoverGridSkeleton(itemCount: 8),
                 )
               else if (_items.isEmpty)
-                const SliverFillRemaining(
-                  child: Center(child: Text('No manga found')),
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 64,
+                            color: isDark ? Colors.grey[600] : Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No manga found',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _hasActiveFilters
+                                ? 'Try changing your search terms or filters.'
+                                : 'No manga available at the moment.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            ),
+                          ),
+                          if (_hasActiveFilters) ...[
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _clearAllFilters,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Reset Filters'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 )
               else
                 SliverPadding(
@@ -297,7 +504,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     gridDelegate: _buildGridDelegate(),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       if (index == _items.length) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        );
                       }
                       final item = _items[index];
 
@@ -313,43 +527,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           item.localImageUrl,
                           item.imageUrl,
                         ),
-                        onTap: () async {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-
-                          try {
-                            final detailData = await _apiService.getMangaDetail(
-                              item.id,
-                            );
-                            if (!mounted || !context.mounted) return;
-                            Navigator.pop(context);
-
-                            final mangaDetail = MangaDetail.fromMap(detailData);
-
-                            await Navigator.pushNamed(
-                              context,
-                              AppRoutes.detail,
-                              arguments: mangaDetail,
-                            );
-
-                            if (mounted) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                            }
-                          } catch (e) {
-                            if (!mounted || !context.mounted) return;
-                            Navigator.pop(context);
-                            AlertBanner.show(
-                              context,
-                              'Failed to load details: $e',
-                              type: AlertBannerType.error,
-                            );
-                          }
-                        },
+                        onTap: () => _navigateToDetail(item),
                       );
                     }, childCount: _items.length + (_isMoreLoading ? 1 : 0)),
                   ),
