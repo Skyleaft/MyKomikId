@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/manga_api_service.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../../../../routes/app_pages.dart';
 import '../../../history/models/progression.dart';
 import '../../../manga_detail/models/manga_detail.dart';
@@ -12,6 +14,8 @@ class HomeContinueReadingSection extends StatelessWidget {
   final bool isLoading;
   final bool isDark;
   final MangaApiService apiService;
+  final void Function(String mangaId, {MangaDetail? detail}) onSelectManga;
+  final VoidCallback? onNavigateToHistory;
 
   const HomeContinueReadingSection({
     super.key,
@@ -20,6 +24,8 @@ class HomeContinueReadingSection extends StatelessWidget {
     required this.isLoading,
     required this.isDark,
     required this.apiService,
+    required this.onSelectManga,
+    this.onNavigateToHistory,
   });
 
   @override
@@ -49,12 +55,17 @@ class HomeContinueReadingSection extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Text(
                     'Continue Reading',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                 ],
               ),
               TextButton(
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.history),
+                onPressed: onNavigateToHistory ??
+                    () => Navigator.pushNamed(context, AppRoutes.history),
                 child: const Text(
                   'View all',
                   style: TextStyle(
@@ -69,10 +80,8 @@ class HomeContinueReadingSection extends StatelessWidget {
         const SizedBox(height: 12),
         SizedBox(
           height: 180,
-          child: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                )
+          child: (isLoading && recentProgressions.isEmpty)
+              ? _buildSkeletonLoader()
               : ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -88,6 +97,25 @@ class HomeContinueReadingSection extends StatelessWidget {
     );
   }
 
+  Widget _buildSkeletonLoader() {
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: 3,
+      itemBuilder: (context, index) {
+        return Container(
+          width: 140,
+          margin: const EdgeInsets.only(right: 14),
+          child: const ShimmerBox(
+            width: 140,
+            height: 180,
+            borderRadius: 16,
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildHistoryCard(
     BuildContext context,
     MangaProgression progression,
@@ -96,27 +124,12 @@ class HomeContinueReadingSection extends StatelessWidget {
     final imageUrl = detail != null
         ? apiService.getLocalImageUrl(detail.localImageUrl, detail.imageUrl)
         : '';
-    final title = detail?.title ?? 'Unknown Manga';
-    final progress = progression.progressPercentage;
-    final now = DateTime.now();
-    final diff = now.difference(progression.lastRead.toLocal());
-    String timeAgo;
-    if (diff.inDays >= 1) {
-      timeAgo = '${diff.inDays}d ago';
-    } else if (diff.inHours >= 1) {
-      timeAgo = '${diff.inHours}h ago';
-    } else if (diff.inMinutes >= 1) {
-      timeAgo = '${diff.inMinutes}m ago';
-    } else {
-      timeAgo = 'Just now';
-    }
+    final title = detail?.title ?? 'Manga #${progression.mangaId}';
+    final progress = progression.progressPercentage.clamp(0.0, 1.0);
+    final relativeTime = timeAgo(progression.lastRead.toLocal());
 
     return GestureDetector(
-      onTap: () {
-        if (detail != null) {
-          Navigator.pushNamed(context, AppRoutes.detail, arguments: detail);
-        }
-      },
+      onTap: () => onSelectManga(progression.mangaId, detail: detail),
       child: Container(
         width: 140,
         margin: const EdgeInsets.only(right: 14),
@@ -127,7 +140,7 @@ class HomeContinueReadingSection extends StatelessWidget {
               : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -142,13 +155,14 @@ class HomeContinueReadingSection extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: imageUrl,
                       fit: BoxFit.cover,
+                      fadeInDuration: const Duration(milliseconds: 200),
                       placeholder: (_, _) => Container(
                         color: isDark ? Colors.grey[850] : Colors.grey[200],
                       ),
                       errorBuilder: (_, _, _) => Container(
                         color: isDark ? Colors.grey[850] : Colors.grey[200],
                         child: const Icon(
-                          Icons.image_not_supported,
+                          Icons.image_not_supported_outlined,
                           color: Colors.grey,
                         ),
                       ),
@@ -156,7 +170,7 @@ class HomeContinueReadingSection extends StatelessWidget {
                   : Container(
                       color: isDark ? Colors.grey[850] : Colors.grey[200],
                       child: const Icon(
-                        Icons.image_not_supported,
+                        Icons.image_not_supported_outlined,
                         color: Colors.grey,
                       ),
                     ),
@@ -166,7 +180,7 @@ class HomeContinueReadingSection extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      stops: const [0.3, 1.0],
+                      stops: const [0.25, 1.0],
                       colors: [
                         Colors.transparent,
                         Colors.black.withValues(alpha: 0.88),
@@ -181,11 +195,11 @@ class HomeContinueReadingSection extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
+                    color: Colors.black.withValues(alpha: 0.60),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    timeAgo,
+                    relativeTime,
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 9,
@@ -202,6 +216,7 @@ class HomeContinueReadingSection extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         title,
@@ -245,3 +260,5 @@ class HomeContinueReadingSection extends StatelessWidget {
     );
   }
 }
+
+

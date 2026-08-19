@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/manga_summary.dart';
 import '../../../../core/network/manga_api_service.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 
 class HomeLatestUpdatesSection extends StatelessWidget {
   final List<MangaSummary> latestUpdates;
   final bool isLoading;
   final bool isDark;
   final MangaApiService apiService;
-  final ValueChanged<String> onSelectManga;
+  final void Function(String mangaId, {MangaSummary? summary}) onSelectManga;
   final VoidCallback onNavigateToDiscover;
 
   const HomeLatestUpdatesSection({
@@ -31,14 +34,31 @@ class HomeLatestUpdatesSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Latest Update',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Latest Updates',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
               ),
               TextButton(
                 onPressed: onNavigateToDiscover,
                 child: const Text(
-                  'View More',
+                  'View all',
                   style: TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,
@@ -49,20 +69,60 @@ class HomeLatestUpdatesSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (isLoading)
-            const Center(child: CircularProgressIndicator())
+            _buildSkeletonLoader()
           else if (latestUpdates.isEmpty)
-            const Text('No updates found')
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              alignment: Alignment.center,
+              child: Text(
+                'No updates found',
+                style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.black38,
+                  fontSize: 13,
+                ),
+              ),
+            )
           else
             ...latestUpdates.map(
-              (manga) => Column(
-                children: [
-                  _buildUpdateItem(context, manga),
-                  const SizedBox(height: 12),
-                ],
+              (manga) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildUpdateItem(context, manga),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSkeletonLoader() {
+    return Column(
+      children: List.generate(4, (index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              const ShimmerBox(
+                width: 60,
+                height: 80,
+                borderRadius: 10,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                    SizedBox(height: 8),
+                    ShimmerBox(width: 80, height: 11, borderRadius: 4),
+                    SizedBox(height: 8),
+                    ShimmerBox(width: 50, height: 10, borderRadius: 4),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
@@ -72,105 +132,135 @@ class HomeLatestUpdatesSection extends StatelessWidget {
       manga.imageUrl,
     );
 
-    return GestureDetector(
-      onTap: () => onSelectManga(manga.id),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                imageUrl,
-                width: 60,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 60,
-                  height: 80,
-                  color: isDark ? Colors.grey[850] : Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported, color: Colors.grey),
+    final uploadDate = manga.latestChapter?.uploadDate;
+    final timeStr = uploadDate != null ? timeAgo(uploadDate) : '';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onSelectManga(manga.id, summary: manga),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.black.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 56,
+                  height: 76,
+                  child: imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          fadeInDuration: const Duration(milliseconds: 200),
+                          placeholder: (_, _) => Container(
+                            color: isDark ? Colors.grey[850] : Colors.grey[200],
+                          ),
+                          errorBuilder: (_, _, _) => Container(
+                            color: isDark ? Colors.grey[850] : Colors.grey[200],
+                            child: const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: isDark ? Colors.grey[850] : Colors.grey[200],
+                          child: const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: Colors.grey,
+                            size: 20,
+                          ),
+                        ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'NEW',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'NEW',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            manga.title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Chapter ${manga.latestChapter?.number.toInt() ?? 0}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          manga.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (timeStr.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        timeStr,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark ? Colors.white38 : Colors.black38,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Chapter ${manga.latestChapter?.number ?? 0}',
-                    style: const TextStyle(fontSize: 13, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatUploadDate(manga.latestChapter?.uploadDate),
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.bookmark_add_outlined, color: Colors.grey),
-            ),
-          ],
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? Colors.white24 : Colors.black26,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-
-  String _formatUploadDate(DateTime? date) {
-    if (date == null) return '';
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minutes ago';
-    } else {
-      return 'Just now';
-    }
-  }
 }
+
