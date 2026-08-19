@@ -13,6 +13,8 @@ class HomeController extends ChangeNotifier {
   final ProgressionService _progressionService;
   final MangaDetailService _detailService;
 
+  bool _disposed = false;
+
   final Map<int, List<MangaSummary>> _trendingByTab = {};
   final Map<int, bool> _trendingLoadingByTab = {};
 
@@ -48,6 +50,18 @@ class HomeController extends ChangeNotifier {
         _progressionService = progressionService ?? getIt<ProgressionService>(),
         _detailService = detailService ?? getIt<MangaDetailService>();
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   Future<void> fetchAllData() async {
     await Future.wait([
       fetchHistory().catchError((e) => debugPrint('Error fetching history: $e')),
@@ -62,13 +76,18 @@ class HomeController extends ChangeNotifier {
   Future<void> refresh() async {
     _trendingByTab.clear();
     _trendingLoadingByTab.clear();
+    _isLoadingHistory = true;
+    _isLoadingLatest = true;
+    _isLoadingRecommended = true;
+    _isLoadingTop = true;
+    _safeNotifyListeners();
     await fetchAllData();
   }
 
   Future<void> fetchTrendingForTab(int tabIdx) async {
     if (_trendingLoadingByTab[tabIdx] == true) return;
     _trendingLoadingByTab[tabIdx] = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final tab = kTrendingTabs[tabIdx];
@@ -81,37 +100,46 @@ class HomeController extends ChangeNotifier {
       debugPrint('fetchTrendingForTab error: $e');
     } finally {
       _trendingLoadingByTab[tabIdx] = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   Future<void> fetchHistory() async {
     _isLoadingHistory = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final progressions = await _progressionService.getAllProgressions();
       progressions.sort((a, b) => b.lastRead.compareTo(a.lastRead));
       final recent = progressions.take(10).toList();
 
-      final detailsMap = <String, MangaDetail>{};
-      for (final p in recent) {
-        if (p.manga != null) {
-          detailsMap[p.mangaId] = MangaDetail.fromMangaSummary(p.manga!);
-          continue;
-        }
-
-        try {
-          final cached = await _detailService.getDetail(p.mangaId);
-          if (cached != null) {
-            detailsMap[p.mangaId] = cached;
-          } else {
-            final data = await _apiService.getMangaDetail(p.mangaId);
-            final detail = MangaDetail.fromMap(data);
-            await _detailService.saveDetail(detail);
-            detailsMap[p.mangaId] = detail;
+      final results = await Future.wait(
+        recent.map((p) async {
+          if (p.manga != null) {
+            return MapEntry(p.mangaId, MangaDetail.fromMangaSummary(p.manga!));
           }
-        } catch (_) {}
+
+          try {
+            final cached = await _detailService.getDetail(p.mangaId);
+            if (cached != null) {
+              return MapEntry(p.mangaId, cached);
+            } else {
+              final data = await _apiService.getMangaDetail(p.mangaId);
+              final detail = MangaDetail.fromMap(data);
+              await _detailService.saveDetail(detail);
+              return MapEntry(p.mangaId, detail);
+            }
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+
+      final detailsMap = <String, MangaDetail>{};
+      for (final entry in results) {
+        if (entry != null) {
+          detailsMap[entry.key] = entry.value;
+        }
       }
 
       _recentProgressions = recent;
@@ -120,7 +148,7 @@ class HomeController extends ChangeNotifier {
       debugPrint('fetchHistory error: $e');
     } finally {
       _isLoadingHistory = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -135,7 +163,7 @@ class HomeController extends ChangeNotifier {
     } catch (_) {
     } finally {
       _isLoadingLatest = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -150,15 +178,20 @@ class HomeController extends ChangeNotifier {
     } catch (_) {
     } finally {
       _isLoadingTop = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   Future<void> fetchRecommended() async {
     try {
-      final history = await _progressionService.getAllProgressions();
-      history.sort((a, b) => b.lastRead.compareTo(a.lastRead));
-      List<String> ids = history.take(5).map((e) => e.mangaId).toList();
+      List<String> ids;
+      if (_recentProgressions.isNotEmpty) {
+        ids = _recentProgressions.take(5).map((e) => e.mangaId).toList();
+      } else {
+        final history = await _progressionService.getAllProgressions();
+        history.sort((a, b) => b.lastRead.compareTo(a.lastRead));
+        ids = history.take(5).map((e) => e.mangaId).toList();
+      }
 
       if (ids.isEmpty && _topManga.isNotEmpty) {
         ids = [_topManga.first.id];
@@ -172,7 +205,7 @@ class HomeController extends ChangeNotifier {
     } catch (_) {
     } finally {
       _isLoadingRecommended = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 }

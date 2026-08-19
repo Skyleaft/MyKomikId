@@ -4,6 +4,8 @@ import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/manga_summary.dart';
 import '../../../../core/network/manga_api_service.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../../core/widgets/shimmer_box.dart';
 import '../../../home/models/trending_tab.dart';
 
 class HomeTrendingSection extends StatelessWidget {
@@ -12,7 +14,7 @@ class HomeTrendingSection extends StatelessWidget {
   final Map<int, bool> trendingLoadingByTab;
   final bool isDark;
   final MangaApiService apiService;
-  final ValueChanged<String> onSelectManga;
+  final void Function(String mangaId, {MangaSummary? summary}) onSelectManga;
   final VoidCallback onNavigateToDiscover;
 
   const HomeTrendingSection({
@@ -113,15 +115,22 @@ class HomeTrendingSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // Cards TabBarView
-        SizedBox(
-          height: 260,
-          child: TabBarView(
-            controller: tabController,
-            children: List.generate(kTrendingTabs.length, (tabIdx) {
-              return _buildTrendingTabContent(context, tabIdx);
-            }),
-          ),
+        // Content area without gesture conflict
+        AnimatedBuilder(
+          animation: tabController,
+          builder: (context, _) {
+            final activeTab = tabController.index;
+            return SizedBox(
+              height: 260,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: KeyedSubtree(
+                  key: ValueKey<int>(activeTab),
+                  child: _buildTrendingTabContent(context, activeTab),
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -197,9 +206,7 @@ class HomeTrendingSection extends StatelessWidget {
     final tabColor = kTrendingTabs[tabIdx].color;
 
     if (isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: tabColor, strokeWidth: 2.5),
-      );
+      return _buildSkeletonLoader();
     }
 
     if (items.isEmpty) {
@@ -235,6 +242,25 @@ class HomeTrendingSection extends StatelessWidget {
     );
   }
 
+  Widget _buildSkeletonLoader() {
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: 4,
+      itemBuilder: (context, index) {
+        return Container(
+          width: 160,
+          margin: const EdgeInsets.only(right: 14),
+          child: const ShimmerBox(
+            width: 160,
+            height: 260,
+            borderRadius: 18,
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildTrendingCard(
     BuildContext context,
     MangaSummary manga,
@@ -247,7 +273,7 @@ class HomeTrendingSection extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => onSelectManga(manga.id),
+      onTap: () => onSelectManga(manga.id, summary: manga),
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 14),
@@ -279,6 +305,7 @@ class HomeTrendingSection extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: imageUrl,
                             fit: BoxFit.cover,
+                            fadeInDuration: const Duration(milliseconds: 200),
                             placeholder: (_, _) => Container(
                               color: isDark ? Colors.grey[850] : Colors.grey[200],
                             ),
@@ -306,7 +333,7 @@ class HomeTrendingSection extends StatelessWidget {
                             stops: const [0.35, 1.0],
                             colors: [
                               Colors.transparent,
-                              Colors.black.withValues(alpha: 0.85),
+                              Colors.black.withValues(alpha: 0.88),
                             ],
                           ),
                         ),
@@ -359,21 +386,22 @@ class HomeTrendingSection extends StatelessWidget {
                               children: [
                                 const Icon(
                                   Icons.remove_red_eye_outlined,
-                                  size: 10,
+                                  size: 11,
                                   color: Colors.white54,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  _formatViews(manga.totalView),
+                                  formatViewCount(manga.totalView),
                                   style: const TextStyle(
                                     color: Colors.white54,
                                     fontSize: 10,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 const Icon(
                                   Icons.menu_book_rounded,
-                                  size: 10,
+                                  size: 11,
                                   color: Colors.white54,
                                 ),
                                 const SizedBox(width: 3),
@@ -382,6 +410,7 @@ class HomeTrendingSection extends StatelessWidget {
                                   style: const TextStyle(
                                     color: Colors.white54,
                                     fontSize: 10,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -406,8 +435,8 @@ class HomeTrendingSection extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: rank < 3
-                          ? tabColor.withValues(alpha: 0.82)
-                          : Colors.black.withValues(alpha: 0.50),
+                          ? tabColor.withValues(alpha: 0.85)
+                          : Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -447,7 +476,7 @@ class HomeTrendingSection extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.50),
+                        color: Colors.black.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -478,13 +507,5 @@ class HomeTrendingSection extends StatelessWidget {
       ),
     );
   }
-
-  String _formatViews(int views) {
-    if (views >= 1000000) {
-      return '${(views / 1000000).toStringAsFixed(1)}M';
-    } else if (views >= 1000) {
-      return '${(views / 1000).toStringAsFixed(1)}K';
-    }
-    return views.toString();
-  }
 }
+
