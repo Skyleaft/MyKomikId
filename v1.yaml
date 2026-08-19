@@ -552,6 +552,43 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/v1/users/fcm-token:
+    delete:
+      tags:
+        - Users
+      summary: Unregister device FCM token upon logout
+      operationId: UnregisterFcmToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnregisterFcmTokenRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfstring"
+    post:
+      tags:
+        - Users
+      summary: Register device FCM token for push notifications
+      operationId: RegisterFcmToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterFcmTokenRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfstring"
   /api/v1/users/heartbeat:
     patch:
       tags:
@@ -1528,6 +1565,28 @@ components:
         timestamp:
           type: string
           format: date-time
+    ApiResponseOfstring:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type:
+            - "null"
+            - string
+        message:
+          type:
+            - "null"
+            - string
+        errors:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
     ApiResponseOfUserHeartbeatResponse:
       type: object
       properties:
@@ -2048,6 +2107,13 @@ components:
           type:
             - "null"
             - string
+    RegisterFcmTokenRequest:
+      required:
+        - fcmToken
+      type: object
+      properties:
+        fcmToken:
+          type: string
     RegisterRequest:
       required:
         - username
@@ -2060,6 +2126,13 @@ components:
         password:
           type: string
         email:
+          type: string
+    UnregisterFcmTokenRequest:
+      required:
+        - fcmToken
+      type: object
+      properties:
+        fcmToken:
           type: string
     UpdateMangaCommand:
       required:
@@ -2219,6 +2292,10 @@ components:
         lastActiveAt:
           type: string
           format: date-time
+        clientIpAddress:
+          type:
+            - "null"
+            - string
     UserInfoResponse:
       required:
         - isAuthenticated
@@ -2353,6 +2430,10 @@ components:
             - "null"
             - string
           format: date-time
+        clientIpAddress:
+          type:
+            - "null"
+            - string
 tags:
   - name: Manga
   - name: Images

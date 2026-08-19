@@ -22,6 +22,7 @@ Open Manga Reader is a modern, cross-platform manga reading application built wi
   - **Keyboard & Hotkey Navigation** on Desktop & Web (`F`, `Space`, `Escape`, `[`/`]`, `W/A/S/D`, arrow keys).
 - **☁️ Cloud Sync & Offline-First**: Local storage paired with seamless cloud synchronization, debounced updates, and queued offline mutations.
 - **📈 Progression Tracking**: Real-time chapter reading time tracking, progress history, and statistics.
+- **🔔 Push Notifications & Library Topic Sync**: Firebase Cloud Messaging (FCM) integration with automated backend device token registration (`/api/v1/users/fcm-token`), library-based topic subscription (`manga_{mangaId}`), and deep routing directly to manga details on new chapter releases.
 - **🔐 Secure Authentication**: Firebase Auth with Google Sign-In support across Mobile, Web, and Desktop (PKCE OAuth with custom loopback).
 - **🌘 Dynamic Themes**: Curated light and dark modes adhering to modern design aesthetics.
 - **⚙️ Custom API Management**: Dynamically switch and configure backend API endpoints with connection testing.
@@ -54,6 +55,7 @@ lib/
 │   ├── di/                             # GetIt service locator setup
 │   ├── models/                         # Shared DTOs (MangaSummary, PagedResponse)
 │   ├── network/                        # Centralized Dio API client, ApiConfig, and SyncService
+│   ├── services/                       # Cross-cutting services (NotificationService)
 │   ├── theme/                          # Material light & dark themes
 │   ├── utils/                          # Common formatters and helpers
 │   └── widgets/                        # Shared reusable widgets (AppBottomNav, AlertBanner, DiscoverCard, MangaCard)
@@ -130,7 +132,8 @@ lib/
 - **Image Caching & Preloading**: [CachedNetworkImageCE](https://pub.dev/packages/cached_network_image_ce)
 - **Desktop Window Management**: [window_manager](https://pub.dev/packages/window_manager)
 - **Hardware Integration**: [battery_plus](https://pub.dev/packages/battery_plus)
-- **Backend & Auth**: [Firebase Auth](https://firebase.google.com/) & [MangaScrapper API](https://github.com/Skyleaft/MangaScrapper)
+- **Backend & Auth**: [Firebase Auth](https://firebase.google.com/), [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging), & [MangaScrapper API](https://github.com/Skyleaft/MangaScrapper)
+- **Push & Local Notifications**: [firebase_messaging](https://pub.dev/packages/firebase_messaging) & [flutter_local_notifications](https://pub.dev/packages/flutter_local_notifications)
 - **Desktop OAuth**: Custom loopback authorization with PKCE (RFC 7636 / RFC 8252)
 - **Deep Linking**: [app_links](https://pub.dev/packages/app_links) & [protocol_handler](https://pub.dev/packages/protocol_handler)
 - **Typography**: [Google Fonts](https://fonts.google.com/)

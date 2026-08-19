@@ -8,9 +8,11 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/di/injection.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/config/app_config.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,12 @@ void main() async {
 
   // Setup Dependency Injection
   await setupInjection();
+
+  // Initialize FCM Notification Service
+  if (NotificationService.isSupported) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await getIt<NotificationService>().init();
+  }
 
   // Global Flutter and Platform Error Boundaries
   FlutterError.onError = (details) {

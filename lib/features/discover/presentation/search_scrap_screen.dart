@@ -219,6 +219,8 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
     final genres = await _apiService.getAllGenres();
     final types = await _apiService.getAllTypes();
 
+    if (!mounted) return;
+
     final selectedGenres = <String>[];
     final selectedTypes = <String>[];
     String? selectedStatus;
@@ -287,33 +289,29 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: RadioListTile<String>(
-                        title: const Text('Ongoing'),
-                        value: 'ongoing',
-                        groupValue: selectedStatus,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedStatus = value;
-                          });
-                        },
+                RadioGroup<String>(
+                  groupValue: selectedStatus,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedStatus = value;
+                    });
+                  },
+                  child: const Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text('Ongoing'),
+                          value: 'ongoing',
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: RadioListTile<String>(
-                        title: const Text('Completed'),
-                        value: 'completed',
-                        groupValue: selectedStatus,
-                        onChanged: (value) {
-                          setState(() {
-                            selectedStatus = value;
-                          });
-                        },
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text('Completed'),
+                          value: 'completed',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),

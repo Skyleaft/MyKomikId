@@ -4,6 +4,7 @@ import '../../history/models/progression.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
 import '../../../core/network/sync_service.dart';
+import '../../../core/services/notification_service.dart';
 
 class LibraryService {
   static const _libraryKey = 'manga_library';
@@ -14,13 +15,16 @@ class LibraryService {
     // 1. Update local cache immediately
     await _updateLocalCache(manga, isRemoving: false);
 
-    // 2. Try API
+    // 2. Subscribe to FCM topic for chapter updates
+    getIt<NotificationService>().subscribeToMangaTopic(manga.id);
+
+    // 3. Try API
     final apiService = getIt<MangaApiService>();
     final payload = manga.toApiRequest(_currentUserId);
     try {
       await apiService.addToUserLibrary(payload);
     } catch (e) {
-      // 3. Queue for sync if failed
+      // 4. Queue for sync if failed
       getIt<SyncService>().enqueueAction('library_add', payload);
     }
   }
@@ -56,12 +60,15 @@ class LibraryService {
     // 1. Update local cache immediately
     await _updateLocalCacheById(mangaId, isRemoving: true);
 
-    // 2. Try API
+    // 2. Unsubscribe from FCM topic
+    getIt<NotificationService>().unsubscribeFromMangaTopic(mangaId);
+
+    // 3. Try API
     final apiService = getIt<MangaApiService>();
     try {
       await apiService.removeFromUserLibrary(targetId);
     } catch (e) {
-      // 3. Queue for sync if failed
+      // 4. Queue for sync if failed
       getIt<SyncService>().enqueueAction('library_remove', {
         'mangaId': targetId,
       });
@@ -147,6 +154,12 @@ class LibraryService {
       }).toList();
 
       await _saveAllToLocalCache(library);
+
+      // Synchronize FCM topics for all items currently in user library
+      getIt<NotificationService>().syncLibraryTopics(
+        library.map((m) => m.id).toList(),
+      );
+
       syncService.syncPendingActions();
     } catch (_) {}
   }
@@ -230,6 +243,7 @@ class LibraryService {
   Future<void> clearLibrary() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_libraryKey);
+    await getIt<NotificationService>().clearAllSubscribedTopics();
   }
 
   Future<void> _updateLocalCache(
