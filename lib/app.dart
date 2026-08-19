@@ -48,18 +48,16 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper>
-    with ProtocolListener, WidgetsBindingObserver, WindowListener {
+    with ProtocolListener, WindowListener {
   final AuthService _authService = AuthService();
   bool _isCheckingAuth = true;
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   StreamSubscription<User?>? _authSubscription;
-  Timer? _heartbeatTimer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     protocolHandler.addListener(this);
     _initWindowState();
     _initDeepLinks();
@@ -68,12 +66,10 @@ class _AuthWrapperState extends State<AuthWrapper>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       windowManager.removeListener(this);
     }
     _windowSaveDebounce?.cancel();
-    _stopHeartbeat();
     protocolHandler.removeListener(this);
     _linkSubscription?.cancel();
     _authSubscription?.cancel();
@@ -152,43 +148,6 @@ class _AuthWrapperState extends State<AuthWrapper>
         }
       } catch (e) {
         debugPrint('Error saving window state: $e');
-      }
-    }
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _sendHeartbeat();
-      _startHeartbeat();
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      _stopHeartbeat();
-    }
-  }
-
-  void _startHeartbeat() {
-    _stopHeartbeat();
-    _heartbeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      _sendHeartbeat();
-    });
-  }
-
-  void _stopHeartbeat() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-  }
-
-  Future<void> _sendHeartbeat() async {
-    final user = _authService.currentUser;
-    if (user != null) {
-      try {
-        final apiService = getIt<MangaApiService>();
-        if (apiService.jwtToken != null) {
-          await apiService.patchUserHeartbeat();
-        }
-      } catch (e) {
-        debugPrint('Failed to send heartbeat: $e');
       }
     }
   }
@@ -278,11 +237,8 @@ class _AuthWrapperState extends State<AuthWrapper>
         (User? user) async {
           if (mounted) {
             if (user != null) {
-              _startHeartbeat();
-              _sendHeartbeat();
               await _checkApiConfiguration();
             } else {
-              _stopHeartbeat();
               setState(() {
                 _isCheckingAuth = false;
               });
