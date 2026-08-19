@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/manga_api_service.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../manga_detail/models/manga_detail.dart';
 import '../../models/progression.dart';
 
@@ -12,6 +12,7 @@ class HistoryItemCard extends StatelessWidget {
   final bool isDark;
   final MangaApiService apiService;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   const HistoryItemCard({
     super.key,
@@ -20,193 +21,236 @@ class HistoryItemCard extends StatelessWidget {
     required this.isDark,
     required this.apiService,
     required this.onTap,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    final formatter = DateFormat('MMM d, yyyy • HH:mm');
-    final lastReadFormatted = formatter.format(progression.lastRead.toLocal());
+    final title = progression.manga?.title ??
+        mangaDetail?.title ??
+        'Manga #${progression.mangaId}';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.slate800.withValues(alpha: 0.8)
-            : Colors.white70.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    final localImage = progression.manga?.localImageUrl ??
+        mangaDetail?.localImageUrl;
+    final remoteImage = progression.manga?.imageUrl ?? mangaDetail?.imageUrl;
+    final imageUrl = apiService.getLocalImageUrl(localImage, remoteImage);
+
+    final progress = progression.progressPercentage;
+    final relativeTime = timeAgo(progression.lastRead.toLocal());
+    final readingTime = progression.formattedTotalReadingTime;
+
+    return Dismissible(
+      key: ValueKey('history_${progression.mangaId}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: Colors.redAccent.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 28),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Manga Cover
-              Container(
-                width: 80,
-                height: 110,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: isDark ? Colors.grey[800] : Colors.grey[200],
-                ),
-                child: mangaDetail != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: CachedNetworkImage(
-                          imageUrl: apiService.getLocalImageUrl(
-                            mangaDetail!.localImageUrl,
-                            mangaDetail!.imageUrl,
-                          ),
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
+      onDismissed: (_) {
+        onDelete?.call();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppColors.slate800.withValues(alpha: 0.85)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Manga Cover
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 76,
+                    height: 106,
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            fadeInDuration: const Duration(milliseconds: 200),
+                            placeholder: (_, _) => Container(
+                              color: isDark ? Colors.grey[850] : Colors.grey[200],
+                            ),
+                            errorBuilder: (_, _, _) => Container(
+                              color: isDark ? Colors.grey[850] : Colors.grey[200],
+                              child: const Icon(
+                                Icons.image_not_supported_outlined,
+                                color: Colors.grey,
                               ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Icon(Icons.image_not_supported, size: 32),
-                            );
-                          },
-                        ),
-                      )
-                    : const Center(
-                        child: Icon(Icons.image_not_supported, size: 32),
-                      ),
-              ),
-              const SizedBox(width: 16),
-
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      mangaDetail?.title ?? 'Unknown Manga',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Chapter info
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Chapter ${progression.currentChapter.toInt()}',
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        : Container(
+                            color: isDark ? Colors.grey[850] : Colors.grey[200],
+                            child: const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: Colors.grey,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Page ${progression.currentPage}/${progression.totalPages}',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                  ),
+                ),
+                const SizedBox(width: 14),
 
-                    // Progress bar
-                    Stack(
-                      children: [
-                        Container(
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(3),
-                          ),
+                // Content details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                          letterSpacing: -0.2,
                         ),
-                        Container(
-                          height: 6,
-                          width: MediaQuery.of(context).size.width *
-                              0.6 *
-                              progression.progressPercentage,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
 
-                    // Last read info
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          lastReadFormatted,
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (progression.isCompleted)
+                      // Chapter & Page info
+                      Row(
+                        children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                              horizontal: 7,
+                              vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              'Completed',
-                              style: TextStyle(
-                                color: Colors.green,
+                            child: Text(
+                              'Ch. ${progression.currentChapter.toInt()}',
+                              style: const TextStyle(
+                                color: AppColors.primary,
                                 fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Page ${progression.currentPage}/${progression.totalPages}',
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (readingTime.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '•  $readingTime',
+                              style: TextStyle(
+                                color: isDark ? Colors.white38 : Colors.black38,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Progress bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                          backgroundColor: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.black.withValues(alpha: 0.08),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Footer: Relative time & completion badge
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 13,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            relativeTime,
+                            style: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (progression.isCompleted)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Completed',
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          else
+                            Text(
+                              '${(progress * 100).toInt()}%',
+                              style: TextStyle(
+                                color: isDark ? Colors.white38 : Colors.black38,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

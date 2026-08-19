@@ -34,8 +34,15 @@ class ProgressionService {
     final payload = progression.toApiRequest(_currentUserId);
     try {
       final response = await apiService.updateUserProgression(payload);
-      final updatedProgression = MangaProgression.fromMap(response);
-      await _updateLocalCache(updatedProgression, overwrite: true);
+      if (response.isNotEmpty) {
+        final updatedProgression = MangaProgression.fromMap(response);
+        await _updateLocalCache(
+          updatedProgression.copyWith(
+            manga: progression.manga ?? updatedProgression.manga,
+          ),
+          overwrite: true,
+        );
+      }
     } catch (e) {
       // 3. Queue for sync if failed
       getIt<SyncService>().enqueueAction(
@@ -81,11 +88,29 @@ class ProgressionService {
     try {
       final apiService = getIt<MangaApiService>();
       final data = await apiService.getUserProgression(_currentUserId);
-      final progressions = data
+      final apiProgressions = data
           .map((json) => MangaProgression.fromMap(json))
           .toList();
 
-      await _saveAllToLocalCache(progressions);
+      final localList = await _loadFromLocalCache();
+      final localMap = {for (final p in localList) p.mangaId: p};
+
+      final merged = apiProgressions.map((apiProg) {
+        final local = localMap[apiProg.mangaId];
+        return apiProg.copyWith(
+          manga: apiProg.manga ?? local?.manga,
+        );
+      }).toList();
+
+      // If there are local progressions not yet on remote, retain them
+      final apiMangaIds = apiProgressions.map((e) => e.mangaId).toSet();
+      for (final local in localList) {
+        if (!apiMangaIds.contains(local.mangaId)) {
+          merged.add(local);
+        }
+      }
+
+      await _saveAllToLocalCache(merged);
       getIt<SyncService>().syncPendingActions();
     } catch (_) {}
   }
@@ -165,6 +190,13 @@ class ProgressionService {
   Future<List<MangaProgression>> _loadFromLocalCache() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = prefs.getStringList(_progressionKey) ?? [];
-    return jsonList.map((json) => MangaProgression.fromJson(json)).toList();
+    final list = <MangaProgression>[];
+    for (final json in jsonList) {
+      try {
+        list.add(MangaProgression.fromJson(json));
+      } catch (_) {}
+    }
+    return list;
   }
 }
+

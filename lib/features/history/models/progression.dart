@@ -24,13 +24,14 @@ class UserChapterLog {
 
   factory UserChapterLog.fromMap(Map<String, dynamic> map) {
     return UserChapterLog(
-      id: map['id'] as String? ?? '',
-      chapterId: map['chapterId'] as String? ?? '',
+      id: map['id']?.toString() ?? '',
+      chapterId: map['chapterId']?.toString() ?? '',
       chapterNumber: ((map['chapterNumber'] ?? 0.0) as num).toDouble(),
       lastReadPage: (map['lastReadPage'] ?? 0) as int,
       totalPages: (map['totalPage'] ?? map['totalPages'] ?? 0) as int,
       isCompleted: map['isCompleted'] as bool? ?? false,
-      readingTimeSeconds: (map['readTimeInSeconds'] ?? map['readingTimeSeconds'] ?? 0) as int,
+      readingTimeSeconds:
+          (map['readTimeInSeconds'] ?? map['readingTimeSeconds'] ?? 0) as int,
       lastReadAt: _parseDate(map['lastReadAt']),
     );
   }
@@ -54,6 +55,18 @@ class UserChapterLog {
       'readingTimeSeconds': readingTimeSeconds,
       'lastReadAt': lastReadAt.toIso8601String(),
     };
+  }
+
+  String get formattedReadingTime {
+    if (readingTimeSeconds < 60) {
+      return '${readingTimeSeconds}s';
+    } else if (readingTimeSeconds < 3600) {
+      return '${(readingTimeSeconds / 60).floor()}m';
+    } else {
+      final hours = (readingTimeSeconds / 3600).floor();
+      final mins = ((readingTimeSeconds % 3600) / 60).floor();
+      return mins > 0 ? '${hours}h ${mins}m' : '${hours}h';
+    }
   }
 }
 
@@ -113,6 +126,18 @@ class MangaProgression {
   int get readingTimeSeconds => _latestLog?.readingTimeSeconds ?? 0;
   DateTime get lastRead => lastReadAt;
 
+  String get formattedTotalReadingTime {
+    if (totalReadingTime < 60) {
+      return '${totalReadingTime}s read';
+    } else if (totalReadingTime < 3600) {
+      return '${(totalReadingTime / 60).floor()}m read';
+    } else {
+      final hours = (totalReadingTime / 3600).floor();
+      final mins = ((totalReadingTime % 3600) / 60).floor();
+      return mins > 0 ? '${hours}h ${mins}m read' : '${hours}h read';
+    }
+  }
+
   factory MangaProgression.fromMap(Map<String, dynamic> map) {
     final rawLogs = map['chapterLogs'] as List<dynamic>?;
     final List<UserChapterLog> logs = rawLogs != null
@@ -125,7 +150,7 @@ class MangaProgression {
         (map['chapterId'] != null ||
             map['chapterNumber'] != null ||
             map['currentChapter'] != null)) {
-      final oldChapterId = map['chapterId'] as String? ?? '';
+      final oldChapterId = map['chapterId']?.toString() ?? '';
       final oldChapterNumber =
           ((map['chapterNumber'] ?? map['currentChapter'] ?? 0.0) as num)
               .toDouble();
@@ -133,7 +158,8 @@ class MangaProgression {
           (map['lastReadPage'] ?? map['currentPage'] ?? 1) as int;
       final oldTotalPages = (map['totalPage'] ?? map['totalPages'] ?? 1) as int;
       final oldIsCompleted = map['isCompleted'] as bool? ?? false;
-      final oldReadingTimeSeconds = (map['readTimeInSeconds'] ?? map['readingTimeSeconds'] ?? 0) as int;
+      final oldReadingTimeSeconds =
+          (map['readTimeInSeconds'] ?? map['readingTimeSeconds'] ?? 0) as int;
       final oldLastReadAt = _parseDate(map['lastReadAt'] ?? map['lastRead']);
       logs.add(
         UserChapterLog(
@@ -153,13 +179,15 @@ class MangaProgression {
         ? MangaSummary.fromJson(map['manga'] as Map<String, dynamic>)
         : null;
 
+    final totalTime = (map['totalReadingTime'] ?? 0) as int;
+
     return MangaProgression(
-      id: map['id'] as String? ?? '',
-      userId: map['userId'] as String? ?? '',
-      mangaId: map['mangaId'] as String? ?? '',
+      id: map['id']?.toString() ?? '',
+      userId: map['userId']?.toString() ?? '',
+      mangaId: map['mangaId']?.toString() ?? '',
       lastReadAt: _parseDate(map['lastReadAt'] ?? map['lastRead']),
       chapterLogs: logs,
-      totalReadingTime: map['totalReadingTime'] as int? ?? 0,
+      totalReadingTime: totalTime,
       manga: mangaObj,
     );
   }
@@ -225,3 +253,4 @@ class MangaProgression {
     return (currentPage / totalPages).clamp(0.0, 1.0);
   }
 }
+

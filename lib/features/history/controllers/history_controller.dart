@@ -11,6 +11,8 @@ class HistoryController extends ChangeNotifier {
   final MangaApiService _apiService;
   final MangaDetailService _detailService;
 
+  bool _disposed = false;
+
   List<MangaProgression> _progressions = [];
   Map<String, MangaDetail> _mangaDetailsMap = {};
   bool _isLoading = true;
@@ -31,18 +33,36 @@ class HistoryController extends ChangeNotifier {
         _apiService = apiService ?? getIt<MangaApiService>(),
         _detailService = detailService ?? getIt<MangaDetailService>();
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   void setSelectedFilter(String filter) {
     _selectedFilter = filter;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void setSearchQuery(String query) {
     _searchQuery = query;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
-  bool _matchesFilter(DateTime dateTime, String filter) {
-    final localDateTime = dateTime.toLocal();
+  bool _matchesFilter(MangaProgression progression, String filter) {
+    if (filter == 'Completed') {
+      return progression.isCompleted;
+    } else if (filter == 'In Progress') {
+      return !progression.isCompleted;
+    }
+
+    final localDateTime = progression.lastRead.toLocal();
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
 
@@ -64,12 +84,13 @@ class HistoryController extends ChangeNotifier {
 
   List<MangaProgression> get filteredProgressions {
     return _progressions.where((progression) {
-      final matchesTime = _matchesFilter(progression.lastRead, _selectedFilter);
-      if (!matchesTime) return false;
+      final matchesStatusOrTime = _matchesFilter(progression, _selectedFilter);
+      if (!matchesStatusOrTime) return false;
 
       if (_searchQuery.isNotEmpty) {
         final detail = _mangaDetailsMap[progression.mangaId];
-        final title = detail?.title.toLowerCase() ?? 'unknown manga';
+        final title = (progression.manga?.title ?? detail?.title ?? '')
+            .toLowerCase();
         final query = _searchQuery.toLowerCase();
         return title.contains(query);
       }
@@ -80,41 +101,79 @@ class HistoryController extends ChangeNotifier {
 
   Future<void> loadHistory() async {
     _isLoading = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final list = await _progressionService.getAllProgressions();
       list.sort((a, b) => b.lastRead.compareTo(a.lastRead));
       _progressions = list;
 
-      final detailsMap = <String, MangaDetail>{};
-      for (final progression in list) {
+      await _hydrateMangaDetails(list);
+    } catch (e) {
+      debugPrint('Error loading history: $e');
+    } finally {
+      _isLoading = false;
+      _safeNotifyListeners();
+    }
+  }
+
+  Future<void> _hydrateMangaDetails(List<MangaProgression> list) async {
+    final detailsMap = <String, MangaDetail>{};
+
+    final results = await Future.wait(
+      list.map((progression) async {
+        if (progression.manga != null) {
+          final detail = MangaDetail.fromMangaSummary(progression.manga!);
+          return MapEntry(progression.mangaId, detail);
+        }
+
         try {
           final cached = await _detailService.getDetail(progression.mangaId);
           if (cached != null) {
-            detailsMap[progression.mangaId] = cached;
+            // Background fetch fresh detail
             _apiService.getMangaDetail(progression.mangaId).then((data) {
               final fresh = MangaDetail.fromMap(data);
               _detailService.saveDetail(fresh);
               _mangaDetailsMap[progression.mangaId] = fresh;
-              notifyListeners();
+              _safeNotifyListeners();
             }).catchError((_) {});
+            return MapEntry(progression.mangaId, cached);
           } else {
             final detailData = await _apiService.getMangaDetail(
               progression.mangaId,
             );
             final mangaDetail = MangaDetail.fromMap(detailData);
             await _detailService.saveDetail(mangaDetail);
-            detailsMap[progression.mangaId] = mangaDetail;
+            return MapEntry(progression.mangaId, mangaDetail);
           }
-        } catch (_) {}
-      }
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
 
-      _mangaDetailsMap = detailsMap;
-    } catch (_) {
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+    for (final entry in results) {
+      if (entry != null) {
+        detailsMap[entry.key] = entry.value;
+      }
     }
+
+    _mangaDetailsMap = detailsMap;
+    _safeNotifyListeners();
+  }
+
+  Future<void> deleteProgression(String mangaId) async {
+    await _progressionService.deleteProgression(mangaId);
+    _progressions.removeWhere((p) => p.mangaId == mangaId);
+    _mangaDetailsMap.remove(mangaId);
+    _safeNotifyListeners();
+  }
+
+  Future<void> clearAllHistory() async {
+    await _progressionService.clearAllProgressions();
+    _progressions.clear();
+    _mangaDetailsMap.clear();
+    _safeNotifyListeners();
   }
 }
+
