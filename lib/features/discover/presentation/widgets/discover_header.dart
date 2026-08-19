@@ -106,10 +106,6 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                     icon: Icons.cloud_sync_outlined,
                   ),
                   const SizedBox(width: 8),
-                  _buildHeaderIconButton(
-                    onPressed: widget.onShowQueue,
-                    icon: Icons.receipt_long_outlined,
-                  ),
                 ],
               ),
             ],
@@ -200,9 +196,7 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
                   end: Alignment.bottomRight,
                 )
               : null,
-          color: isActive
-              ? null
-              : AppColors.primary.withValues(alpha: 0.1),
+          color: isActive ? null : AppColors.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           boxShadow: isActive
               ? [

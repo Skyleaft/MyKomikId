@@ -8,6 +8,7 @@ import '../services/window_service.dart';
 import '../../features/history/services/progression_service.dart';
 import '../../features/library/services/library_service.dart';
 import '../../features/manga_detail/services/manga_detail_service.dart';
+import '../../features/manga_detail/services/manga_signalr_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -27,6 +28,9 @@ Future<void> setupInjection() async {
 
   final notificationService = NotificationService();
   getIt.registerSingleton<NotificationService>(notificationService);
+
+  final signalRService = MangaSignalRService();
+  getIt.registerSingleton<MangaSignalRService>(signalRService);
 
   getIt.registerLazySingleton<SyncService>(() => SyncService());
   getIt.registerLazySingleton<ProgressionService>(() => ProgressionService());

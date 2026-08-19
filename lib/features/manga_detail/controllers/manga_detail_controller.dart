@@ -8,8 +8,10 @@ import '../../history/models/progression.dart';
 import '../../history/services/progression_service.dart';
 import '../../library/models/library_manga.dart';
 import '../../library/services/library_service.dart';
+import '../models/chapter_scraping_progress.dart';
 import '../models/manga_detail.dart';
 import '../services/manga_detail_service.dart';
+import '../services/manga_signalr_service.dart';
 
 enum ChapterFilterOption {
   all,
@@ -23,6 +25,7 @@ class MangaDetailController extends ChangeNotifier {
   final ProgressionService _progressionService;
   final LibraryService _libraryService;
   final MangaDetailService _detailService;
+  final MangaSignalRService _signalRService;
 
   List<Chapter> _chapters = [];
   bool _isLoadingChapters = true;
@@ -38,10 +41,14 @@ class MangaDetailController extends ChangeNotifier {
   bool _isAscending = false;
   String _searchQuery = '';
   ChapterFilterOption _chapterFilter = ChapterFilterOption.all;
+  ChapterScrapingProgress? _scrapingProgress;
 
   Timer? _searchDebounce;
+  Timer? _clearScrapingTimer;
   CancelToken? _chaptersCancelToken;
   CancelToken? _recommendationsCancelToken;
+  StreamSubscription<ChapterScrapingProgress>? _progressSubscription;
+  StreamSubscription<ChaptersUpdatedEvent>? _chaptersUpdatedSubscription;
 
   List<Chapter> get chapters => _chapters;
   bool get isLoadingChapters => _isLoadingChapters;
@@ -63,6 +70,11 @@ class MangaDetailController extends ChangeNotifier {
   bool get isAscending => _isAscending;
   String get searchQuery => _searchQuery;
   ChapterFilterOption get chapterFilter => _chapterFilter;
+  ChapterScrapingProgress? get scrapingProgress => _scrapingProgress;
+  bool get isScrapingActive =>
+      _scrapingProgress != null &&
+      !_scrapingProgress!.isCompleted &&
+      !_scrapingProgress!.isFailed;
 
   MangaDetailController({
     required this.manga,
@@ -70,15 +82,18 @@ class MangaDetailController extends ChangeNotifier {
     ProgressionService? progressionService,
     LibraryService? libraryService,
     MangaDetailService? detailService,
+    MangaSignalRService? signalRService,
   }) : _apiService = apiService ?? getIt<MangaApiService>(),
        _progressionService = progressionService ?? getIt<ProgressionService>(),
        _libraryService = libraryService ?? getIt<LibraryService>(),
-       _detailService = detailService ?? getIt<MangaDetailService>() {
+       _detailService = detailService ?? getIt<MangaDetailService>(),
+       _signalRService = signalRService ?? getIt<MangaSignalRService>() {
     _chapters = List.from(manga.chapters);
     _sortChapters();
   }
 
   Future<void> init() async {
+    _initSignalR();
     await Future.wait([
       _loadChapters(),
       _loadProgression(),
@@ -86,11 +101,79 @@ class MangaDetailController extends ChangeNotifier {
     ]);
   }
 
+  void _initSignalR() {
+    _signalRService.joinMangaGroup(manga.id);
+
+    _progressSubscription =
+        _signalRService.scrapingProgressStream.listen((progress) {
+      if (progress.mangaId == manga.id) {
+        _clearScrapingTimer?.cancel();
+        _scrapingProgress = progress;
+        notifyListeners();
+
+        if (progress.isCompleted) {
+          // Silently refresh chapters after completion
+          Future.delayed(const Duration(milliseconds: 1200), () {
+            _silentRefreshChapters();
+          });
+          // Auto-clear banner after 3.5 seconds
+          _clearScrapingTimer = Timer(const Duration(milliseconds: 3500), () {
+            _scrapingProgress = null;
+            notifyListeners();
+          });
+        }
+      }
+    });
+
+    _chaptersUpdatedSubscription =
+        _signalRService.chaptersUpdatedStream.listen((event) {
+      if (event.mangaId == manga.id) {
+        _silentRefreshChapters();
+      }
+    });
+  }
+
+  void startScrapingFeedback() {
+    _clearScrapingTimer?.cancel();
+    _scrapingProgress = ChapterScrapingProgress(
+      mangaId: manga.id,
+      mangaTitle: manga.title,
+      chapterId: '',
+      chapterNumber: 0,
+      downloadedPages: 0,
+      totalPages: 0,
+      percent: 0,
+      status: 'Starting',
+    );
+    notifyListeners();
+  }
+
+  void clearScrapingProgress() {
+    _clearScrapingTimer?.cancel();
+    _scrapingProgress = null;
+    notifyListeners();
+  }
+
+  Future<void> _silentRefreshChapters() async {
+    try {
+      final chaptersData = await _apiService.getMangaChapters(manga.id);
+      _chapters = chaptersData.map((e) => Chapter.fromMap(e)).toList();
+      _sortChapters();
+      final freshDetail = _buildUpdatedDetail(_chapters);
+      await _detailService.saveDetail(freshDetail);
+      notifyListeners();
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _clearScrapingTimer?.cancel();
     _chaptersCancelToken?.cancel();
     _recommendationsCancelToken?.cancel();
+    _progressSubscription?.cancel();
+    _chaptersUpdatedSubscription?.cancel();
+    _signalRService.leaveMangaGroup(manga.id);
     super.dispose();
   }
 
