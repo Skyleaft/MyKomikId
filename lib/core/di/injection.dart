@@ -4,6 +4,7 @@ import '../network/manga_api_service.dart';
 import '../network/sync_service.dart';
 import '../services/heartbeat_service.dart';
 import '../services/notification_service.dart';
+import '../services/window_service.dart';
 import '../../features/history/services/progression_service.dart';
 import '../../features/library/services/library_service.dart';
 import '../../features/manga_detail/services/manga_detail_service.dart';
@@ -15,6 +16,10 @@ Future<void> setupInjection() async {
   final mangaApiService = MangaApiService();
   await mangaApiService.init();
   getIt.registerSingleton<MangaApiService>(mangaApiService);
+
+  final windowService = WindowService();
+  await windowService.init();
+  getIt.registerSingleton<WindowService>(windowService);
 
   final heartbeatService = HeartbeatService();
   heartbeatService.init();

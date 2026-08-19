@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:protocol_handler/protocol_handler.dart';
-import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/di/injection.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,12 +16,9 @@ import 'core/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Desktop protocol & window setup
+  // Desktop protocol setup
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     await protocolHandler.register('open-manga-reader');
-    await windowManager.ensureInitialized();
-    await windowManager.setMinimumSize(const Size(480, 640));
-    await windowManager.setTitle('Open Manga Reader');
   }
 
   // Load .env file
