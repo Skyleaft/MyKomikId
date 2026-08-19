@@ -19,6 +19,7 @@ import 'widgets/manga_detail_chapter_header.dart';
 import 'widgets/manga_detail_chapter_tile.dart';
 import 'widgets/manga_detail_recommendations_grid.dart';
 import 'widgets/manga_detail_recommendations_header.dart';
+import 'widgets/manga_detail_scraping_progress_card.dart';
 import 'widgets/similar_manga_filter_sheet.dart';
 
 class MangaDetailScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void initState() {
     super.initState();
     _controller = MangaDetailController(manga: widget.manga);
+    _controller.addListener(_onControllerChanged);
     _controller.init();
 
     _tabController = TabController(length: 2, vsync: this);
@@ -51,8 +53,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     });
   }
 
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _tabController.dispose();
     super.dispose();
@@ -292,21 +299,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                         onSearchChanged: _controller.setSearchQuery,
                         onScrapChapters: () async {
                           try {
+                            _controller.startScrapingFeedback();
                             AlertBanner.show(
                               context,
-                              'Scraping chapters...',
+                              'Scraping chapters queued...',
                               type: AlertBannerType.info,
                             );
                             await _apiService.scrapChapterPagesNew(widget.manga.id);
-                            if (context.mounted) {
-                              AlertBanner.show(
-                                context,
-                                'Chapter scraping queued successfully!',
-                                type: AlertBannerType.success,
-                              );
-                              _controller.refresh();
-                            }
                           } catch (e) {
+                            _controller.clearScrapingProgress();
                             if (context.mounted) {
                               AlertBanner.show(
                                 context,
@@ -317,6 +318,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                           }
                         },
                       ),
+                    ),
+                  ),
+
+                // Real-time SignalR Chapter Scraping Progress Card
+                if (_tabController.index == 0 && _controller.scrapingProgress != null)
+                  SliverToBoxAdapter(
+                    child: MangaDetailScrapingProgressCard(
+                      progress: _controller.scrapingProgress!,
+                      onDismiss: _controller.clearScrapingProgress,
                     ),
                   ),
 

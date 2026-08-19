@@ -10,6 +10,7 @@ Open Manga Reader is a modern, cross-platform manga reading application built wi
 
 - **🚀 Multi-Platform**: Native performance on Android, iOS, Windows, macOS, Linux, and Web with Desktop window state persistence.
 - **🔍 Advanced Discovery & Scraping**: Search across sources, scrape metadata and chapters on demand, and filter by genre, status, and type.
+- **⚡ Real-Time SignalR Scraping Streaming**: Live WebSockets progress streaming via ASP.NET Core SignalR (`/hubs/manga`) for real-time chapter download percentage and instant chapter list auto-refresh.
 - **🤖 AI-Powered Recommendations**: Personalized manga recommendations driven by your reading history and preferences.
 - **📚 Personal Library**: Organize manga into Reading, Completed, On-Hold, and Dropped statuses with offline caching.
 - **📖 Immersive & Smart Reader**:
