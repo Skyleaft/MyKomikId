@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../history/services/progression_service.dart';
 import '../../library/services/library_service.dart';
 import 'google_desktop_auth.dart';
@@ -40,6 +41,7 @@ class AuthService {
         final idToken = await userCredential.user?.getIdToken();
         if (idToken != null) {
           await getIt<MangaApiService>().loginWithFirebase(idToken);
+          await getIt<NotificationService>().syncFcmToken();
         }
 
         await Future.wait([
@@ -64,6 +66,7 @@ class AuthService {
         final idToken = await userCredential.user?.getIdToken();
         if (idToken != null) {
           await getIt<MangaApiService>().loginWithFirebase(idToken);
+          await getIt<NotificationService>().syncFcmToken();
         }
 
         await Future.wait([
@@ -90,6 +93,7 @@ class AuthService {
       final idToken = await userCredential.user?.getIdToken();
       if (idToken != null) {
         await getIt<MangaApiService>().loginWithFirebase(idToken);
+        await getIt<NotificationService>().syncFcmToken();
       }
 
       await Future.wait([
@@ -112,6 +116,9 @@ class AuthService {
       await _googleSignIn.signOut();
     }
 
+    // Unregister FCM Token from backend and clear topic subscriptions
+    await getIt<NotificationService>().unregisterFcmToken();
+
     await getIt<MangaApiService>().logout();
 
     await Future.wait([
@@ -122,3 +129,4 @@ class AuthService {
     await _auth.signOut();
   }
 }
+

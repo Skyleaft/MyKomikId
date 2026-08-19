@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import 'core/di/injection.dart';
 import 'core/network/api_config.dart';
 import 'core/network/manga_api_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/services/auth_service.dart';
@@ -330,6 +331,10 @@ class _AuthWrapperState extends State<AuthWrapper>
             _isCheckingAuth = false;
           });
           Navigator.pushReplacementNamed(context, AppRoutes.home);
+
+          // Synchronize FCM Token with backend for authenticated session
+          getIt<NotificationService>().syncFcmToken();
+
           if (_pendingDeepLink != null) {
             final link = _pendingDeepLink!;
             _pendingDeepLink = null;
@@ -337,6 +342,11 @@ class _AuthWrapperState extends State<AuthWrapper>
               _handleDeepLink(link);
             });
           }
+
+          // Handle pending cold-start notification navigation
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            getIt<NotificationService>().handlePendingNavigation();
+          });
         }
       }
     } catch (e) {

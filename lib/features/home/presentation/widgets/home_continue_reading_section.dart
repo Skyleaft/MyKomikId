@@ -145,7 +145,7 @@ class HomeContinueReadingSection extends StatelessWidget {
                       placeholder: (_, _) => Container(
                         color: isDark ? Colors.grey[850] : Colors.grey[200],
                       ),
-                      errorWidget: (_, _, _) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         color: isDark ? Colors.grey[850] : Colors.grey[200],
                         child: const Icon(
                           Icons.image_not_supported,

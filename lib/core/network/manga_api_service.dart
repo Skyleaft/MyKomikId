@@ -705,4 +705,32 @@ class MangaApiService {
       rethrow;
     }
   }
+
+  // --- FCM Token Management ---
+
+  Future<dynamic> registerFcmToken(String fcmToken) async {
+    try {
+      final response = await _dio.post(
+        '/api/v1/users/fcm-token',
+        data: {'fcmToken': fcmToken},
+      );
+      return _unwrap(response.data);
+    } catch (e) {
+      debugPrint('Failed to register FCM token: $e');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> unregisterFcmToken(String fcmToken) async {
+    try {
+      final response = await _dio.delete(
+        '/api/v1/users/fcm-token',
+        data: {'fcmToken': fcmToken},
+      );
+      return _unwrap(response.data);
+    } catch (e) {
+      debugPrint('Failed to unregister FCM token: $e');
+      rethrow;
+    }
+  }
 }
