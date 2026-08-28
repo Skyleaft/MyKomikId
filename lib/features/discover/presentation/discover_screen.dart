@@ -12,6 +12,7 @@ import '../../../core/network/manga_api_service.dart';
 import '../../../routes/app_pages.dart';
 import '../../manga_detail/models/manga_detail.dart';
 import '../../manga_detail/services/manga_detail_service.dart';
+import '../models/query_paged_manga_request.dart';
 import 'widgets/discover_header.dart';
 import 'widgets/discover_grid_skeleton.dart';
 import 'widgets/scrap_queue_dialog.dart';
@@ -40,12 +41,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   String? _searchQuery;
   bool _isSemanticSearch = false;
 
-  List<String> _selectedGenres = [];
-  String? _selectedType;
-  String? _selectedStatus;
-
-  late String _sortBy;
-  String _orderBy = 'desc';
+  MangaAdvancedFilter _filter = const MangaAdvancedFilter();
+  late MangaSortOption _sortOption;
 
   Timer? _debounceTimer;
   int _requestCounter = 0;
@@ -54,7 +51,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void initState() {
     super.initState();
     _searchQuery = widget.initialSearch;
-    _sortBy = widget.sortBy ?? 'updatedAt';
+    _sortOption = MangaSortOption(
+      field: widget.sortBy ?? 'updatedAt',
+      direction: 'desc',
+    );
     _fetchData(refresh: true);
   }
 
@@ -64,7 +64,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (widget.initialSearch != oldWidget.initialSearch ||
         widget.sortBy != oldWidget.sortBy) {
       _searchQuery = widget.initialSearch;
-      _sortBy = widget.sortBy ?? 'updatedAt';
+      _sortOption = MangaSortOption(
+        field: widget.sortBy ?? 'updatedAt',
+        direction: 'desc',
+      );
       _fetchData(refresh: true);
     }
   }
@@ -116,16 +119,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           hasNextPage: false,
         );
       } else {
-        response = await _apiService.getPagedManga(
+        final request = QueryPagedMangaRequest(
+          filter: _filter.copyWith(
+            search: _searchQuery,
+            clearSearch: _searchQuery == null || _searchQuery!.trim().isEmpty,
+          ),
+          sorts: [_sortOption],
           page: _currentPage,
           pageSize: _pageSize,
-          search: _searchQuery,
-          genres: _selectedGenres.isEmpty ? null : _selectedGenres,
-          type: _selectedType,
-          status: _selectedStatus,
-          sortBy: _sortBy,
-          orderBy: _orderBy,
         );
+        response = await _apiService.queryPagedManga(request);
       }
 
       if (currentRequest != _requestCounter || !mounted) return;
@@ -183,18 +186,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FilterDialog(
-        initialGenres: _selectedGenres,
-        initialType: _selectedType,
-        initialStatus: _selectedStatus,
-        initialSortBy: _sortBy,
-        initialOrderBy: _orderBy,
-        onApply: (genres, type, status, sortBy, orderBy) {
+        initialFilter: _filter,
+        initialSort: _sortOption,
+        onApply: (newFilter, newSort) {
           setState(() {
-            _selectedGenres = genres;
-            _selectedType = type;
-            _selectedStatus = status;
-            _sortBy = sortBy;
-            _orderBy = orderBy;
+            _filter = newFilter;
+            _sortOption = newSort;
           });
           _fetchData(refresh: true);
         },
@@ -261,26 +258,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final int crossAxisCount = isDesktop
         ? 5
         : isTablet
-        ? 3
-        : 2;
+            ? 3
+            : 2;
 
     final double mainAxisSpacing = isDesktop
         ? 32
         : isTablet
-        ? 28
-        : 24;
+            ? 28
+            : 24;
 
     final double crossAxisSpacing = isDesktop
         ? 24
         : isTablet
-        ? 20
-        : 16;
+            ? 20
+            : 16;
 
     final double childAspectRatio = isDesktop
         ? 0.75
         : isTablet
-        ? 0.70
-        : 0.65;
+            ? 0.70
+            : 0.65;
 
     return SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: crossAxisCount,
@@ -290,16 +287,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  bool get _hasActiveFilters =>
-      _selectedGenres.isNotEmpty ||
-      _selectedType != null ||
-      _selectedStatus != null;
+  bool get _hasActiveFilters => _filter.hasActiveFilters;
 
   void _clearAllFilters() {
     setState(() {
-      _selectedGenres = [];
-      _selectedType = null;
-      _selectedStatus = null;
+      _filter = const MangaAdvancedFilter(nsfw: false);
       _searchQuery = null;
     });
     _fetchData(refresh: true);
@@ -308,71 +300,213 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Widget _buildActiveFilterChips(bool isDark) {
     if (!_hasActiveFilters) return const SizedBox.shrink();
 
+    final chips = <Widget>[];
+
+    // Included Genres
+    for (final genre in _filter.includedGenres) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text(genre, style: const TextStyle(fontSize: 12)),
+            avatar: const Icon(Icons.check_circle_rounded,
+                size: 14, color: Color(0xFF10B981)),
+            selected: true,
+            selectedColor: const Color(0xFF10B981).withValues(alpha: 0.15),
+            checkmarkColor: const Color(0xFF10B981),
+            onDeleted: () {
+              final newIncluded = List<String>.from(_filter.includedGenres)
+                ..remove(genre);
+              setState(() {
+                _filter = _filter.copyWith(includedGenres: newIncluded);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Excluded Genres
+    for (final genre in _filter.excludedGenres) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text('NOT: $genre', style: const TextStyle(fontSize: 12)),
+            avatar: const Icon(Icons.cancel_rounded,
+                size: 14, color: Color(0xFFEF4444)),
+            selected: true,
+            selectedColor: const Color(0xFFEF4444).withValues(alpha: 0.15),
+            checkmarkColor: const Color(0xFFEF4444),
+            onDeleted: () {
+              final newExcluded = List<String>.from(_filter.excludedGenres)
+                ..remove(genre);
+              setState(() {
+                _filter = _filter.copyWith(excludedGenres: newExcluded);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Types
+    for (final type in _filter.types) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text('Type: $type', style: const TextStyle(fontSize: 12)),
+            selected: true,
+            selectedColor: Colors.blue.withValues(alpha: 0.15),
+            checkmarkColor: Colors.blue,
+            onDeleted: () {
+              final newTypes = List<String>.from(_filter.types)..remove(type);
+              setState(() {
+                _filter = _filter.copyWith(types: newTypes);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Statuses
+    for (final status in _filter.statuses) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label:
+                Text('Status: $status', style: const TextStyle(fontSize: 12)),
+            selected: true,
+            selectedColor: Colors.teal.withValues(alpha: 0.15),
+            checkmarkColor: Colors.teal,
+            onDeleted: () {
+              final newStatuses = List<String>.from(_filter.statuses)
+                ..remove(status);
+              setState(() {
+                _filter = _filter.copyWith(statuses: newStatuses);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Author
+    if (_filter.author != null && _filter.author!.isNotEmpty) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text('Author: ${_filter.author}',
+                style: const TextStyle(fontSize: 12)),
+            selected: true,
+            selectedColor: Colors.purple.withValues(alpha: 0.15),
+            checkmarkColor: Colors.purple,
+            onDeleted: () {
+              setState(() {
+                _filter = _filter.copyWith(clearAuthor: true);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Min Rating
+    if (_filter.minRating != null) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text('⭐ ${_filter.minRating!.toStringAsFixed(1)}+',
+                style: const TextStyle(fontSize: 12)),
+            selected: true,
+            selectedColor: Colors.amber.withValues(alpha: 0.15),
+            checkmarkColor: Colors.amber[800],
+            onDeleted: () {
+              setState(() {
+                _filter = _filter.copyWith(clearMinRating: true);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // Min Chapters
+    if (_filter.minChapters != null) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text('${_filter.minChapters}+ Chapters',
+                style: const TextStyle(fontSize: 12)),
+            selected: true,
+            selectedColor: Colors.orange.withValues(alpha: 0.15),
+            checkmarkColor: Colors.orange[800],
+            onDeleted: () {
+              setState(() {
+                _filter = _filter.copyWith(clearMinChapters: true);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    // NSFW (show chip when different from default Safe Only)
+    if (_filter.nsfw != false) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InputChip(
+            label: Text(_filter.nsfw == true
+                ? '18+ Only'
+                : 'All Content (incl. 18+)',
+                style: const TextStyle(fontSize: 12)),
+            selected: true,
+            selectedColor: (_filter.nsfw == true ? Colors.red : Colors.orange)
+                .withValues(alpha: 0.15),
+            checkmarkColor: _filter.nsfw == true ? Colors.red : Colors.orange,
+            onDeleted: () {
+              setState(() {
+                _filter = _filter.copyWith(nsfw: false);
+              });
+              _fetchData(refresh: true);
+            },
+          ),
+        ),
+      );
+    }
+
+    chips.add(
+      Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ActionChip(
+          avatar: const Icon(Icons.clear_all, size: 16),
+          label: const Text('Clear All', style: TextStyle(fontSize: 12)),
+          onPressed: _clearAllFilters,
+        ),
+      ),
+    );
+
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       margin: const EdgeInsets.only(top: 8, bottom: 4),
       child: ListView(
         scrollDirection: Axis.horizontal,
-        children: [
-          ..._selectedGenres.map((genre) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: InputChip(
-                  label: Text(genre, style: const TextStyle(fontSize: 12)),
-                  selected: true,
-                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                  checkmarkColor: AppColors.primary,
-                  onDeleted: () {
-                    setState(() {
-                      _selectedGenres.remove(genre);
-                    });
-                    _fetchData(refresh: true);
-                  },
-                ),
-              )),
-          if (_selectedType != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InputChip(
-                label: Text('Type: $_selectedType',
-                    style: const TextStyle(fontSize: 12)),
-                selected: true,
-                selectedColor: Colors.blue.withValues(alpha: 0.15),
-                checkmarkColor: Colors.blue,
-                onDeleted: () {
-                  setState(() {
-                    _selectedType = null;
-                  });
-                  _fetchData(refresh: true);
-                },
-              ),
-            ),
-          if (_selectedStatus != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InputChip(
-                label: Text('Status: $_selectedStatus',
-                    style: const TextStyle(fontSize: 12)),
-                selected: true,
-                selectedColor: Colors.green.withValues(alpha: 0.15),
-                checkmarkColor: Colors.green,
-                onDeleted: () {
-                  setState(() {
-                    _selectedStatus = null;
-                  });
-                  _fetchData(refresh: true);
-                },
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              avatar: const Icon(Icons.clear_all, size: 16),
-              label: const Text('Clear All', style: TextStyle(fontSize: 12)),
-              onPressed: _clearAllFilters,
-            ),
-          ),
-        ],
+        children: chips,
       ),
     );
   }
