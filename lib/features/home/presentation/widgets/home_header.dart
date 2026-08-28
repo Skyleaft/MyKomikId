@@ -108,8 +108,8 @@ class HomeHeader extends StatelessWidget {
       height: 38,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFFFF8E53)],
+        gradient: LinearGradient(
+          colors: [AppColors.primary, const Color(0xFFFF8E53)],
         ),
         boxShadow: [
           BoxShadow(

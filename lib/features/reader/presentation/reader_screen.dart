@@ -917,7 +917,7 @@ class _ReaderScreenState extends State<ReaderScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.play_circle_fill_rounded,
                         color: AppColors.primary,
                         size: 16,

@@ -21,7 +21,7 @@ class _MangaDetailSynopsisState extends State<MangaDetailSynopsis> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Synopsis',
           style: TextStyle(
             fontSize: 18,
@@ -46,7 +46,7 @@ class _MangaDetailSynopsisState extends State<MangaDetailSynopsis> {
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             child: Text(
               _isExpanded ? 'Show less' : 'Read more',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 13,

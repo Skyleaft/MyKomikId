@@ -24,11 +24,11 @@ class MangaDetailStatsRow extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.star, color: AppColors.primary, size: 24),
+                Icon(Icons.star, color: AppColors.primary, size: 24),
                 const SizedBox(width: 4),
                 Text(
                   rating?.toString() ?? '0.0',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
@@ -60,7 +60,7 @@ class MangaDetailStatsRow extends StatelessWidget {
           children: [
             Text(
               chapterCount.toString(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -90,7 +90,7 @@ class MangaDetailStatsRow extends StatelessWidget {
           children: [
             Text(
               formatViewCount(totalView),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,

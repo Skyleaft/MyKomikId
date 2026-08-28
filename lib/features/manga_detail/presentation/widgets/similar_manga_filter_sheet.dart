@@ -209,7 +209,7 @@ class _SimilarMangaFilterSheetState extends State<SimilarMangaFilterSheet> {
         // Content
         Expanded(
           child: _isLoading
-              ? const Center(
+              ? Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 )
               : _error != null
@@ -376,7 +376,7 @@ class _SimilarMangaFilterSheetState extends State<SimilarMangaFilterSheet> {
                               TextButton(
                                 onPressed: () =>
                                     setState(() => _selectedGenres.clear()),
-                                child: const Text(
+                                child: Text(
                                   'Clear Genres',
                                   style: TextStyle(
                                     fontSize: 12,

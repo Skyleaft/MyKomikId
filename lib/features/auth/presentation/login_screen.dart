@@ -130,15 +130,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     RichText(
-                      text: const TextSpan(
-                        style: TextStyle(
+                      text: TextSpan(
+                        style: const TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -1.0,
                           color: Colors.white,
                         ),
                         children: [
-                          TextSpan(text: "My"),
+                          const TextSpan(text: "My"),
                           TextSpan(
                             text: "KomikID",
                             style: TextStyle(color: AppColors.primary),
@@ -190,12 +190,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.pushNamed(context, AppRoutes.baseApiSetting);
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.settings_outlined,
                       size: 18,
                       color: AppColors.primary,
                     ),
-                    label: const Text(
+                    label: Text(
                       "Configure API Server",
                       style: TextStyle(
                         color: AppColors.primary,

@@ -219,7 +219,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
@@ -638,9 +638,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     gridDelegate: _buildGridDelegate(),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       if (index == _items.length) {
-                        return const Center(
+                        return Center(
                           child: Padding(
-                            padding: EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.all(16.0),
                             child: CircularProgressIndicator(
                               color: AppColors.primary,
                             ),

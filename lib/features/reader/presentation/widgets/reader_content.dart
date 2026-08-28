@@ -103,7 +103,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
         onDoubleTapDown: widget.onDoubleTapDown,
         onDoubleTap: widget.onDoubleTap,
         child: widget.isLoading
-            ? const Center(
+            ? Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               )
             : widget.isWebtoonMode
@@ -242,7 +242,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white10),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.arrow_forward_rounded,
                               color: AppColors.primary,
                               size: 40,

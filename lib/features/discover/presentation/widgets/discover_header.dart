@@ -190,8 +190,8 @@ class _DiscoverHeaderState extends State<DiscoverHeader> {
         width: 52,
         decoration: BoxDecoration(
           gradient: isActive
-              ? const LinearGradient(
-                  colors: [AppColors.primary, Color(0xFFE56B6F)],
+              ? LinearGradient(
+                  colors: [AppColors.primary, const Color(0xFFE56B6F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )

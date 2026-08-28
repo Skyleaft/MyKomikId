@@ -8,7 +8,7 @@ import 'core/di/injection.dart';
 import 'core/network/api_config.dart';
 import 'core/network/manga_api_service.dart';
 import 'core/services/notification_service.dart';
-import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/manga_detail/models/manga_detail.dart';
@@ -19,18 +19,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Provider<AuthService>(
-      create: (_) => AuthService(),
-      child: MaterialApp(
-        title: 'Open Manga Reader',
-        navigatorKey: AppRoutes.navigatorKey,
-        navigatorObservers: [AppRoutes.routeObserver],
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        home: const AuthWrapper(),
-        routes: AppRoutes.routes,
+    return MultiProvider(
+      providers: [
+        Provider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        ChangeNotifierProvider<ThemeProvider>.value(
+          value: getIt<ThemeProvider>(),
+        ),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Open Manga Reader',
+            navigatorKey: AppRoutes.navigatorKey,
+            navigatorObservers: [AppRoutes.routeObserver],
+            debugShowCheckedModeBanner: false,
+            theme: themeProvider.lightThemeData,
+            darkTheme: themeProvider.darkThemeData,
+            themeMode: themeProvider.themeMode,
+            home: const AuthWrapper(),
+            routes: AppRoutes.routes,
+          );
+        },
       ),
     );
   }

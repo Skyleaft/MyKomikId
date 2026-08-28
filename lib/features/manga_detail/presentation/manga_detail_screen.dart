@@ -69,7 +69,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
@@ -143,7 +143,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
@@ -429,7 +429,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         child: Container(
           color: bgColor,
           padding: const EdgeInsets.all(24.0),
-          child: const Center(
+          child: Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           ),
         ),

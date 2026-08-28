@@ -119,9 +119,9 @@ class _ScrapMangaModalState extends State<ScrapMangaModal> {
       ),
       padding: const EdgeInsets.all(16.0),
       child: _isLoadingDetail
-          ? const Center(
+          ? Center(
               child: Padding(
-                padding: EdgeInsets.all(32.0),
+                padding: const EdgeInsets.all(32.0),
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
             )
@@ -242,7 +242,7 @@ class _ScrapMangaModalState extends State<ScrapMangaModal> {
                   ),
                   child: Text(
                     genre,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       color: AppColors.primary,
                     ),

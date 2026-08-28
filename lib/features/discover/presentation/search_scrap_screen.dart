@@ -178,7 +178,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
+        builder: (_) => Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
@@ -425,7 +425,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
@@ -573,7 +573,7 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
                     ),
                     child: Text(
                       _selectedProviderName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.primary,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -686,8 +686,8 @@ class _SearchScrapScreenState extends State<SearchScrapScreen> {
               onScrap: () => _showScrapModal(item),
             );
           } else {
-            return const Padding(
-              padding: EdgeInsets.all(16),
+            return Padding(
+              padding: const EdgeInsets.all(16),
               child: Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),

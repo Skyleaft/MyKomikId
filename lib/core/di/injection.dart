@@ -5,6 +5,7 @@ import '../network/sync_service.dart';
 import '../services/heartbeat_service.dart';
 import '../services/notification_service.dart';
 import '../services/window_service.dart';
+import '../theme/theme_provider.dart';
 import '../../features/history/services/progression_service.dart';
 import '../../features/library/services/library_service.dart';
 import '../../features/manga_detail/services/manga_detail_service.dart';
@@ -14,6 +15,10 @@ final getIt = GetIt.instance;
 
 Future<void> setupInjection() async {
   await AppConfig.init();
+  final themeProvider = ThemeProvider();
+  await themeProvider.init();
+  getIt.registerSingleton<ThemeProvider>(themeProvider);
+
   final mangaApiService = MangaApiService();
   await mangaApiService.init();
   getIt.registerSingleton<MangaApiService>(mangaApiService);

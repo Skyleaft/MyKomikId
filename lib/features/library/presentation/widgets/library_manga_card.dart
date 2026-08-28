@@ -237,7 +237,7 @@ class LibraryMangaCard extends StatelessWidget {
                                     ),
                                     child: Text(
                                       displayType.toUpperCase(),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 9,
                                         fontWeight: FontWeight.bold,
                                         color: AppColors.primary,
@@ -298,7 +298,7 @@ class LibraryMangaCard extends StatelessWidget {
                                 if (manga.hasStartedReading)
                                   Text(
                                     'Ch. ${manga.currentChapter % 1 == 0 ? manga.currentChapter.toInt() : manga.currentChapter} (Pg. ${manga.currentPage})',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: AppColors.primary,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -342,7 +342,7 @@ class LibraryMangaCard extends StatelessWidget {
                                 ),
                                 child: IconButton(
                                   tooltip: 'Continue Reading',
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.play_arrow_rounded,
                                     color: AppColors.primary,
                                     size: 20,

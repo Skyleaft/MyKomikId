@@ -149,7 +149,7 @@ class HistoryItemCard extends StatelessWidget {
                             ),
                             child: Text(
                               'Ch. ${progression.currentChapter.toInt()}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -188,7 +188,7 @@ class HistoryItemCard extends StatelessWidget {
                           backgroundColor: isDark
                               ? Colors.white.withValues(alpha: 0.1)
                               : Colors.black.withValues(alpha: 0.08),
-                          valueColor: const AlwaysStoppedAnimation<Color>(
+                          valueColor: AlwaysStoppedAnimation<Color>(
                             AppColors.primary,
                           ),
                         ),

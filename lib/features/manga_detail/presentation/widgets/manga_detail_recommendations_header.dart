@@ -293,7 +293,7 @@ class MangaDetailRecommendationsHeader extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
@@ -303,8 +303,8 @@ class MangaDetailRecommendationsHeader extends StatelessWidget {
           InkWell(
             onTap: onDelete,
             borderRadius: BorderRadius.circular(12),
-            child: const Padding(
-              padding: EdgeInsets.all(2.0),
+            child: Padding(
+              padding: const EdgeInsets.all(2.0),
               child: Icon(
                 Icons.close_rounded,
                 size: 14,

@@ -82,9 +82,9 @@ class MangaDetailAppBar extends StatelessWidget {
                 ),
               if (manga.url != null && manga.url!.isNotEmpty)
                 ListTile(
-                  leading: const CircleAvatar(
+                  leading: CircleAvatar(
                     backgroundColor: AppColors.primary,
-                    child: Icon(Icons.public, color: Colors.white, size: 20),
+                    child: const Icon(Icons.public, color: Colors.white, size: 20),
                   ),
                   title: const Text('Source Website'),
                   subtitle: Text(manga.url!, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -192,7 +192,7 @@ class MangaDetailAppBar extends StatelessWidget {
                   placeholder: (context, url) => Container(
                     height: 400,
                     color: Colors.grey[800],
-                    child: const Center(
+                    child: Center(
                       child: CircularProgressIndicator(
                         color: AppColors.primary,
                       ),
@@ -245,7 +245,7 @@ class MangaDetailAppBar extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
                         color: Colors.grey[300],
-                        child: const Center(
+                        child: Center(
                           child: CircularProgressIndicator(
                             color: AppColors.primary,
                           ),

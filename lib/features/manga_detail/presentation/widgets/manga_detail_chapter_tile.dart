@@ -109,7 +109,7 @@ class MangaDetailChapterTile extends StatelessWidget {
                                 ),
                                 child: Text(
                                   chapter.language.toUpperCase(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.primary,
@@ -319,7 +319,7 @@ class MangaDetailChapterTile extends StatelessWidget {
         LinearProgressIndicator(
           value: progressPercentage,
           backgroundColor: Colors.white10,
-          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
           minHeight: 4,
         ),
         const SizedBox(height: 4),
