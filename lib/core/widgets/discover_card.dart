@@ -1,10 +1,13 @@
+import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
+import '../di/injection.dart';
 import '../models/manga_summary.dart';
 import '../network/manga_api_service.dart';
-import '../di/injection.dart';
+import 'shimmer_box.dart';
 
-class DiscoverCard extends StatelessWidget {
+class DiscoverCard extends StatefulWidget {
   final String title;
   final String? imageUrl;
   final String? localImageUrl;
@@ -31,327 +34,343 @@ class DiscoverCard extends StatelessWidget {
   });
 
   @override
+  State<DiscoverCard> createState() => _DiscoverCardState();
+}
+
+class _DiscoverCardState extends State<DiscoverCard> {
+  bool _isHovered = false;
+
+  Color _getTypeColor(String type) {
+    return switch (type.toLowerCase()) {
+      'manhwa' => const Color(0xFF8B5CF6), // Purple / Indigo
+      'manhua' => const Color(0xFF06B6D4), // Cyan
+      'novel' => const Color(0xFFF59E0B), // Amber
+      _ => AppColors.primary, // Manga / Default
+    };
+  }
+
+  Color _getStatusColor(String? status) {
+    if (status == null || status.isEmpty) return Colors.grey;
+    return switch (status.toLowerCase()) {
+      'ongoing' => const Color(0xFF10B981), // Emerald Green
+      'completed' || 'finished' || 'end' => const Color(0xFF3B82F6), // Blue
+      'hiatus' || 'onhold' => const Color(0xFFF97316), // Orange
+      'dropped' => const Color(0xFFEF4444), // Crimson Red
+      _ => Colors.grey.shade600,
+    };
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     final String displayUrl = getIt<MangaApiService>().getLocalImageUrl(
-      localImageUrl,
-      imageUrl,
+      widget.localImageUrl,
+      widget.imageUrl,
     );
+
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
     final isDesktop = screenWidth >= 1024;
 
-    // Responsive dimensions
-    final double borderRadius = isDesktop
-        ? 16
-        : isTablet
-        ? 14
-        : 12;
+    final double borderRadius = isDesktop ? 16 : (isTablet ? 14 : 12);
+    final double titleFontSize = isDesktop ? 14.5 : (isTablet ? 13.5 : 12.5);
+    final double genreFontSize = isDesktop ? 11 : (isTablet ? 10.5 : 10);
+    final double badgeFontSize = isDesktop ? 10 : (isTablet ? 9.5 : 9);
+    final double iconSize = isDesktop ? 13 : (isTablet ? 12 : 11);
 
-    final double titleFontSize = isDesktop
-        ? 16
-        : isTablet
-        ? 15
-        : 14;
-
-    final double genreFontSize = isDesktop
-        ? 11
-        : isTablet
-        ? 10.5
-        : 10;
-
-    final double statusFontSize = isDesktop
-        ? 10
-        : isTablet
-        ? 9.5
-        : 9;
-    final double ratingFontSize = isDesktop
-        ? 10
-        : isTablet
-        ? 9.5
-        : 9;
-
-    final double typeFontSize = isDesktop
-        ? 11
-        : isTablet
-        ? 10.5
-        : 10;
-
-    final double chapterFontSize = isDesktop
-        ? 11
-        : isTablet
-        ? 10.5
-        : 10;
-
-    final double viewsFontSize = isDesktop
-        ? 11
-        : isTablet
-        ? 10.5
-        : 10;
-
-    final double iconSize = isDesktop
-        ? 14
-        : isTablet
-        ? 13
-        : 12;
-
-    final EdgeInsetsGeometry statusPadding = isDesktop
-        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-        : isTablet
-        ? const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5)
-        : const EdgeInsets.symmetric(horizontal: 6, vertical: 3);
-
-    final EdgeInsetsGeometry ratingPadding = isDesktop
-        ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-        : isTablet
-        ? const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5)
-        : const EdgeInsets.symmetric(horizontal: 6, vertical: 3);
-
-    final EdgeInsetsGeometry typePadding = isDesktop
-        ? const EdgeInsets.symmetric(horizontal: 10, vertical: 5)
-        : isTablet
-        ? const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5)
-        : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
-
-    final EdgeInsetsGeometry chapterPadding = isDesktop
-        ? const EdgeInsets.symmetric(horizontal: 10, vertical: 3)
-        : isTablet
-        ? const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5)
-        : const EdgeInsets.symmetric(horizontal: 8, vertical: 2);
-
-    final EdgeInsetsGeometry viewsPadding = isDesktop
-        ? const EdgeInsets.symmetric(horizontal: 10, vertical: 3)
-        : isTablet
-        ? const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5)
-        : const EdgeInsets.symmetric(horizontal: 8, vertical: 2);
-
-    final double placeholderIconSize = isDesktop
-        ? 40
-        : isTablet
-        ? 36
-        : 32;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(borderRadius),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: isDesktop
-                        ? 12
-                        : isTablet
-                        ? 11
-                        : 10,
-                    offset: const Offset(0, 4),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          splashColor: colorScheme.primary.withValues(alpha: 0.1),
+          highlightColor: colorScheme.primary.withValues(alpha: 0.05),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cover Image with Badges & Vignette
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(borderRadius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: _isHovered
+                              ? (isDark ? 0.45 : 0.2)
+                              : (isDark ? 0.3 : 0.1),
+                        ),
+                        blurRadius: _isHovered ? 16 : 8,
+                        offset: Offset(0, _isHovered ? 8 : 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(borderRadius),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (displayUrl.isNotEmpty)
-                      Image.network(
-                        displayUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildPlaceholder(placeholderIconSize),
-                      )
-                    else
-                      _buildPlaceholder(placeholderIconSize),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(borderRadius),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Cached Image
+                        if (displayUrl.isNotEmpty)
+                          CachedNetworkImage(
+                            imageUrl: displayUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) => ShimmerBox(
+                              borderRadius: borderRadius,
+                            ),
+                            errorBuilder: (_, _, _) =>
+                                _buildPlaceholder(iconSize * 3),
+                          )
+                        else
+                          _buildPlaceholder(iconSize * 3),
 
-                    // Top Right Badges (Status & Rating)
-                    Positioned(
-                      top: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      right: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if (status != null && status!.isNotEmpty)
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 4),
-                              padding: statusPadding,
-                              decoration: BoxDecoration(
-                                color: status?.toLowerCase() == 'ongoing'
-                                    ? Colors.green.withValues(alpha: 0.8)
-                                    : status?.toLowerCase() == 'completed' ||
-                                          status?.toLowerCase() == 'finished' ||
-                                          status?.toLowerCase() == 'end'
-                                    ? Colors.blue.withValues(alpha: 0.8)
-                                    : Colors.orange.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                status!.toUpperCase(),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: statusFontSize,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                          Container(
-                            padding: ratingPadding,
+                        // Gradient Vignette Scrim (Top & Bottom for Contrast)
+                        Positioned.fill(
+                          child: DecoratedBox(
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                stops: const [0.0, 0.25, 0.65, 1.0],
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.55),
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.8),
+                                ],
+                              ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.star_rounded,
-                                  color: Colors.amber,
-                                  size: iconSize + 2,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  (rating == null || rating == 0)
-                                      ? 'N/A'
-                                      : rating!.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: ratingFontSize,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          ),
+                        ),
+
+                        // Top Left: Type Badge
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getTypeColor(widget.type)
+                                  .withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(6),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 4,
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Type Badge (Manga/Manhwa/Manhua)
-                    Positioned(
-                      top: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      left: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      child: Container(
-                        padding: typePadding,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          type.toUpperCase(),
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: typeFontSize,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Bottom Badges
-                    Positioned(
-                      bottom: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      left: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      right: isDesktop
-                          ? 12
-                          : isTablet
-                          ? 10
-                          : 8,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: chapterPadding,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Ch. ${latestChapter?.number.toInt() ?? 0}',
-                              style: TextStyle(
+                              widget.type.toUpperCase(),
+                              style: GoogleFonts.inter(
                                 color: Colors.white,
-                                fontSize: chapterFontSize,
-                                fontWeight: FontWeight.bold,
+                                fontSize: badgeFontSize,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
-                          Container(
-                            padding: viewsPadding,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.visibility_outlined,
-                                  color: Colors.white,
-                                  size: iconSize,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  views,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: viewsFontSize,
+                        ),
+
+                        // Top Right: Status & Rating Badges
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (widget.status != null &&
+                                  widget.status!.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(widget.status)
+                                        .withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(6),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.3),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    widget.status!.toUpperCase(),
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: badgeFontSize - 0.5,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.4,
+                                    ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.star_rounded,
+                                      color: const Color(0xFFFBBF24),
+                                      size: iconSize + 2,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      (widget.rating == null ||
+                                              widget.rating == 0)
+                                          ? 'N/A'
+                                          : widget.rating!.toStringAsFixed(1),
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: badgeFontSize,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+
+                        // Bottom Badges: Latest Chapter & Views
+                        Positioned(
+                          bottom: 8,
+                          left: 8,
+                          right: 8,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.95),
+                                    borderRadius: BorderRadius.circular(6),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.3),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    'Ch. ${widget.latestChapter?.number.toInt() ?? 0}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: badgeFontSize + 0.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.visibility_outlined,
+                                      color: Colors.white70,
+                                      size: iconSize,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      widget.views,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: badgeFontSize,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+
+              // Title and Genres Information
+              const SizedBox(height: 8),
+              Text(
+                widget.title,
+                style: GoogleFonts.inter(
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  height: 1.25,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (widget.genres.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  widget.genres.join(' • '),
+                  style: GoogleFonts.inter(
+                    fontSize: genreFontSize,
+                    color: isDark ? Colors.white60 : Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            genres.join(', '),
-            style: TextStyle(fontSize: genreFontSize, color: Colors.grey),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -361,7 +380,7 @@ class DiscoverCard extends StatelessWidget {
       color: AppColors.primary.withValues(alpha: 0.1),
       child: Center(
         child: Icon(
-          Icons.image_outlined,
+          Icons.menu_book_rounded,
           color: AppColors.primary.withValues(alpha: 0.5),
           size: iconSize,
         ),

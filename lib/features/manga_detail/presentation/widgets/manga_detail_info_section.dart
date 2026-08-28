@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../models/manga_detail.dart';
 
 class MangaDetailInfoSection extends StatelessWidget {
@@ -14,23 +14,34 @@ class MangaDetailInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final typeStr = manga.type.isNotEmpty ? manga.type.toUpperCase() : 'MANGA';
+    final statusStr = manga.status?.toUpperCase() ?? 'ONGOING';
+
+    final isCompleted = statusStr.contains('COMPLETE');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Status & trending badge
+        // Status & Type badges
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.2),
+                color: colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.12),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colorScheme.primary.withValues(alpha: 0.3),
+                  width: 0.8,
+                ),
               ),
               child: Text(
-                'TRENDING #1',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 10,
+                typeStr,
+                style: GoogleFonts.inter(
+                  color: colorScheme.primary,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
                 ),
@@ -38,16 +49,25 @@ class MangaDetailInfoSection extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.2),
+                color: isCompleted
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : Colors.amber.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: (isCompleted ? const Color(0xFF10B981) : Colors.amber)
+                      .withValues(alpha: 0.35),
+                  width: 0.8,
+                ),
               ),
               child: Text(
-                manga.status?.toUpperCase() ?? 'ONGOING',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 10,
+                statusStr,
+                style: GoogleFonts.inter(
+                  color: isCompleted
+                      ? (isDark ? const Color(0xFF34D399) : const Color(0xFF059669))
+                      : (isDark ? Colors.amberAccent : Colors.amber.shade800),
+                  fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
                 ),
@@ -55,40 +75,42 @@ class MangaDetailInfoSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         // Title
         Text(
           manga.title,
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-            shadows: [
-              Shadow(
-                color: isDark ? Colors.black87 : Colors.white70,
-                offset: const Offset(1, 1),
-                blurRadius: 2,
-              ),
-            ],
+          style: GoogleFonts.inter(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            height: 1.25,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         // Author
-        Text(
-          'By ${manga.author}',
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.black54,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            shadows: [
-              Shadow(
-                color: isDark ? Colors.black87 : Colors.white70,
-                offset: const Offset(1, 1),
-                blurRadius: 2,
+        if (manga.author.isNotEmpty)
+          Row(
+            children: [
+              Icon(
+                Icons.person_outline_rounded,
+                size: 16,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  manga.author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
       ],
     );
   }

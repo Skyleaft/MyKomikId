@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../discover/presentation/discover_screen.dart';
 import '../../home/presentation/home_screen.dart';
@@ -18,22 +17,30 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  late final PageController _pageController;
   String? _discoverSortBy;
   String? _discoverSearch;
   DateTime? _lastBackPressTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+    _checkForUpdate();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   void _navigateToDiscover({String? sortBy, String? search}) {
     setState(() {
       _discoverSortBy = sortBy;
       _discoverSearch = search;
-      _currentIndex = 2;
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _checkForUpdate();
+    _navigateTo(2);
   }
 
   Future<void> _checkForUpdate() async {
@@ -84,18 +91,28 @@ class _MainScreenState extends State<MainScreen> {
 
   void _navigateTo(int index) {
     if (index != _currentIndex) {
+      final prevIndex = _currentIndex;
       setState(() {
         _currentIndex = index;
       });
+
+      if (_pageController.hasClients) {
+        final diff = (index - prevIndex).abs();
+        if (diff == 1) {
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          _pageController.jumpToPage(index);
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth >= 1024;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     final screens = [
       HomeScreen(
         key: const ValueKey('home'),
@@ -117,9 +134,7 @@ class _MainScreenState extends State<MainScreen> {
 
         // If not on Home tab, switch to Home first
         if (_currentIndex != 0) {
-          setState(() {
-            _currentIndex = 0;
-          });
+          _navigateTo(0);
           return;
         }
 
@@ -139,97 +154,27 @@ class _MainScreenState extends State<MainScreen> {
         }
       },
       child: Scaffold(
-        body: Row(
+        body: Stack(
           children: [
-            if (isDesktop)
-              NavigationRail(
-                selectedIndex: _currentIndex,
-                onDestinationSelected: _navigateTo,
-                backgroundColor: isDark
-                    ? AppColors.backgroundDark
-                    : AppColors.backgroundLight,
-                labelType: NavigationRailLabelType.all,
-                selectedIconTheme: IconThemeData(color: AppColors.primary),
-                selectedLabelTextStyle: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-                unselectedLabelTextStyle: TextStyle(
-                  color: isDark ? Colors.white60 : Colors.black54,
-                  fontSize: 12,
-                ),
-                leading: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 40,
-                    height: 40,
-                    errorBuilder: (_, _, _) => Icon(
-                      Icons.auto_stories_rounded,
-                      color: AppColors.primary,
-                      size: 32,
-                    ),
-                  ),
-                ),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home_rounded),
-                    label: Text('Home'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.collections_bookmark_outlined),
-                    selectedIcon: Icon(Icons.collections_bookmark_rounded),
-                    label: Text('Library'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.explore_outlined),
-                    selectedIcon: Icon(Icons.explore_rounded),
-                    label: Text('Discover'),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.more_horiz_rounded),
-                    selectedIcon: Icon(Icons.more_horiz_rounded),
-                    label: Text('More'),
-                  ),
-                ],
-              ),
-            Expanded(
-              child: Stack(
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.0, 0.03),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: KeyedSubtree(
-                      key: ValueKey<int>(_currentIndex),
-                      child: screens[_currentIndex],
-                    ),
-                  ),
-                  if (!isDesktop)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: AppBottomNav(
-                        currentIndex: _currentIndex,
-                        onTap: _navigateTo,
-                      ),
-                    ),
-                ],
+            PageView(
+              controller: _pageController,
+              physics: const BouncingScrollPhysics(),
+              onPageChanged: (index) {
+                if (_currentIndex != index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                }
+              },
+              children: screens,
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AppBottomNav(
+                currentIndex: _currentIndex,
+                onTap: _navigateTo,
               ),
             ),
           ],

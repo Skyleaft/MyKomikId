@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../history/models/progression.dart';
 import '../../models/manga_detail.dart';
@@ -22,24 +23,55 @@ class MangaDetailChapterTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final bool isAvailable = chapter.isChapterAvailable;
-    final Color chapterBgColor = isAvailable
-        ? isDark
-            ? AppColors.slate700.withValues(alpha: 0.1)
-            : AppColors.primary.withValues(alpha: 0.1)
-        : Colors.grey.shade600;
-    final Color textColor = isDark ? Colors.white : Colors.black87;
+
+    final UserChapterLog? log = progression?.chapterLogs
+        .where((l) => l.chapterNumber == chapter.chapterNumber)
+        .firstOrNull;
+
+    final bool isCompleted = log?.isCompleted ?? false;
+    final bool isCurrentlyReading =
+        log != null && !isCompleted && log.lastReadPage > 0;
+
+    final Color chapterBgColor = isCurrentlyReading
+        ? colorScheme.primary.withValues(alpha: isDark ? 0.16 : 0.08)
+        : (isDark
+            ? const Color(0xFF1E293B).withValues(alpha: 0.5)
+            : Colors.white.withValues(alpha: 0.85));
+
+    final Color borderColor = isCurrentlyReading
+        ? colorScheme.primary.withValues(alpha: 0.4)
+        : (isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.06));
+
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
     return InkWell(
-      onTap: isAvailable ? onTap : null,
+      onTap: isAvailable
+          ? () {
+              HapticFeedback.selectionClick();
+              onTap?.call();
+            }
+          : null,
       borderRadius: BorderRadius.circular(16),
       child: Opacity(
-        opacity: isAvailable ? 1.0 : 0.6,
+        opacity: isAvailable ? 1.0 : 0.5,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: chapterBgColor,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,23 +81,37 @@ class MangaDetailChapterTile extends StatelessWidget {
                 children: [
                   // Chapter number box
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.slate700.withValues(alpha: 0.4)
-                          : AppColors.primary.withValues(alpha: 0.1),
+                      color: isCurrentlyReading
+                          ? colorScheme.primary
+                              .withValues(alpha: isDark ? 0.3 : 0.15)
+                          : (isDark
+                              ? const Color(0xFF0F172A)
+                              : colorScheme.primary
+                                  .withValues(alpha: 0.08)),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isCurrentlyReading
+                            ? colorScheme.primary.withValues(alpha: 0.5)
+                            : (isDark
+                                ? Colors.white10
+                                : Colors.black.withValues(alpha: 0.05)),
+                        width: 1,
+                      ),
                     ),
                     child: Center(
                       child: Text(
                         chapter.chapterNumber % 1 == 0
                             ? chapter.chapterNumber.toInt().toString()
                             : chapter.chapterNumber.toString(),
-                        style: TextStyle(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: textColor,
+                          fontSize: 15,
+                          color: isCurrentlyReading
+                              ? colorScheme.primary
+                              : textColor,
                         ),
                       ),
                     ),
@@ -77,16 +123,22 @@ class MangaDetailChapterTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          chapter.title,
+                          chapter.title.isNotEmpty
+                              ? chapter.title
+                              : 'Chapter ${chapter.chapterNumber % 1 == 0 ? chapter.chapterNumber.toInt() : chapter.chapterNumber}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: textColor,
+                          style: GoogleFonts.inter(
+                            fontWeight: isCurrentlyReading
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                            fontSize: 14.5,
+                            color: isCurrentlyReading
+                                ? colorScheme.primary
+                                : textColor,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 5),
                         Wrap(
                           spacing: 6,
                           runSpacing: 4,
@@ -100,19 +152,21 @@ class MangaDetailChapterTile extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  color: colorScheme.primary
+                                      .withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.25),
                                     width: 0.5,
                                   ),
                                 ),
                                 child: Text(
                                   chapter.language.toUpperCase(),
-                                  style: TextStyle(
+                                  style: GoogleFonts.inter(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
+                                    color: colorScheme.primary,
                                   ),
                                 ),
                               ),
@@ -139,33 +193,29 @@ class MangaDetailChapterTile extends StatelessWidget {
                                         width: 12,
                                         height: 12,
                                         margin: const EdgeInsets.only(right: 4),
-                                        child: chapter.chapterProviderIcon!
-                                                .toLowerCase()
-                                                .endsWith('.ico')
-                                            ? Icon(
-                                                Icons.link,
-                                                size: 10,
-                                                color: textColor.withValues(alpha: 0.6),
-                                              )
-                                            : CachedNetworkImage(
-                                                imageUrl: chapter.chapterProviderIcon!,
-                                                width: 12,
-                                                height: 12,
-                                                errorBuilder: (context, error, stackTrace) =>
-                                                    Icon(
-                                                  Icons.link,
-                                                  size: 10,
-                                                  color: textColor.withValues(alpha: 0.6),
-                                                ),
-                                              ),
+                                        child: CachedNetworkImage(
+                                          imageUrl: chapter
+                                              .chapterProviderIcon!,
+                                          width: 12,
+                                          height: 12,
+                                          errorBuilder: (_, _, _) => Icon(
+                                            Icons.link_rounded,
+                                            size: 10,
+                                            color: isDark
+                                                ? Colors.white60
+                                                : Colors.black54,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                     Text(
                                       chapter.chapterProvider!,
-                                      style: TextStyle(
+                                      style: GoogleFonts.inter(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w600,
-                                        color: textColor.withValues(alpha: 0.7),
+                                        color: isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
                                       ),
                                     ),
                                   ],
@@ -177,16 +227,19 @@ class MangaDetailChapterTile extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  Icons.remove_red_eye_outlined,
-                                  color: textColor.withValues(alpha: 0.5),
+                                  Icons.visibility_outlined,
+                                  color:
+                                      isDark ? Colors.white54 : Colors.black45,
                                   size: 12,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
                                   formatViewCount(chapter.totalView),
-                                  style: TextStyle(
-                                    color: textColor.withValues(alpha: 0.5),
-                                    fontSize: 9,
+                                  style: GoogleFonts.inter(
+                                    color: isDark
+                                        ? Colors.white54
+                                        : Colors.black45,
+                                    fontSize: 9.5,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -194,15 +247,15 @@ class MangaDetailChapterTile extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         // Date row
                         Row(
                           children: [
                             Text(
                               DateFormat('MMM dd, yyyy').format(chapter.date),
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 fontSize: 11,
-                                color: textColor.withValues(alpha: 0.6),
+                                color: isDark ? Colors.white60 : Colors.black54,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -210,16 +263,16 @@ class MangaDetailChapterTile extends StatelessWidget {
                               '·',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: textColor.withValues(alpha: 0.4),
+                                color: isDark ? Colors.white38 : Colors.black38,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               timeAgo(chapter.date),
-                              style: TextStyle(
+                              style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontStyle: FontStyle.italic,
-                                color: textColor.withValues(alpha: 0.5),
+                                color: isDark ? Colors.white54 : Colors.black45,
                               ),
                             ),
                           ],
@@ -232,19 +285,22 @@ class MangaDetailChapterTile extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildCompletionBadge(),
+                      _buildCompletionBadge(
+                          context, isCompleted, isCurrentlyReading, log),
                       const SizedBox(width: 4),
                       Icon(
-                        Icons.chevron_right,
-                        color: textColor.withValues(alpha: 0.3),
+                        Icons.chevron_right_rounded,
+                        color: isDark ? Colors.white38 : Colors.black38,
                         size: 20,
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              _buildProgressionBar(),
+              if (isCurrentlyReading) ...[
+                const SizedBox(height: 8),
+                _buildProgressionBar(context, log),
+              ],
             ],
           ),
         ),
@@ -252,83 +308,116 @@ class MangaDetailChapterTile extends StatelessWidget {
     );
   }
 
-  Widget _buildCompletionBadge() {
-    final double chapterNumber = chapter.chapterNumber;
-    final bool isRead = progression != null &&
-        progression!.chapterLogs.any(
-          (log) => log.chapterNumber == chapterNumber && log.isCompleted,
-        );
+  Widget _buildCompletionBadge(
+    BuildContext context,
+    bool isCompleted,
+    bool isCurrentlyReading,
+    UserChapterLog? log,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    if (!isRead) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.2),
-            blurRadius: 4,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
+    if (isCompleted) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981)
+              .withValues(alpha: isDark ? 0.2 : 0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFF10B981).withValues(alpha: 0.3),
+            width: 0.8,
           ),
-        ],
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle, color: Colors.white, size: 14),
-          SizedBox(width: 4),
-          Text(
-            'READ',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.check_circle_rounded,
+              color:
+                  isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+              size: 13,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressionBar() {
-    if (progression == null) return const SizedBox.shrink();
-
-    UserChapterLog? log;
-    for (final l in progression!.chapterLogs) {
-      if (l.chapterNumber == chapter.chapterNumber) {
-        log = l;
-        break;
-      }
+            const SizedBox(width: 3),
+            Text(
+              'READ',
+              style: GoogleFonts.inter(
+                color:
+                    isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                fontSize: 9.5,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
-    if (log == null || log.isCompleted) {
+    if (isCurrentlyReading && log != null && log.lastReadPage > 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary
+              .withValues(alpha: isDark ? 0.22 : 0.14),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.35),
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          'PG. ${log.lastReadPage}',
+          style: GoogleFonts.inter(
+            color: theme.colorScheme.primary,
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.4,
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildProgressionBar(BuildContext context, UserChapterLog? log) {
+    if (log == null || log.isCompleted || log.totalPages <= 0) {
       return const SizedBox.shrink();
     }
 
-    final double progressPercentage = log.totalPages <= 0
-        ? 0.0
-        : (log.lastReadPage / log.totalPages).clamp(0.0, 1.0);
+    final double progressPercentage =
+        (log.lastReadPage / log.totalPages).clamp(0.0, 1.0);
+
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        LinearProgressIndicator(
-          value: progressPercentage,
-          backgroundColor: Colors.white10,
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-          minHeight: 4,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progressPercentage,
+            backgroundColor: isDark
+                ? Colors.white10
+                : Colors.black.withValues(alpha: 0.06),
+            valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary),
+            minHeight: 4,
+          ),
         ),
         const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Progress: ${(progressPercentage * 100).toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              'Page ${log.lastReadPage} of ${log.totalPages} (${(progressPercentage * 100).toInt()}%)',
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white60 : Colors.black54,
+              ),
             ),
           ],
         ),

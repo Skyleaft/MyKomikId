@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../history/models/progression.dart';
 import '../../models/manga_detail.dart';
 import 'status_selection_sheet.dart';
@@ -37,39 +38,61 @@ class MangaDetailActionBar extends StatelessWidget {
   }
 
   Widget _buildDefaultActionButtons(BuildContext context) {
-    final availableChapters = chapters.where((c) => c.isChapterAvailable).toList();
-    final firstChapter = availableChapters.isNotEmpty ? availableChapters.last : null;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final availableChapters =
+        chapters.where((c) => c.isChapterAvailable).toList();
+    final firstChapter =
+        availableChapters.isNotEmpty ? availableChapters.last : null;
 
     return Row(
       children: [
         Expanded(
           flex: 4,
-          child: ElevatedButton.icon(
-            onPressed: isLoadingChapters || firstChapter == null
-                ? null
-                : () => onReadChapter(firstChapter),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isLoadingChapters || firstChapter == null
-                  ? Colors.grey[700]
-                  : AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(36),
-              ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                if (!isLoadingChapters && firstChapter != null)
+                  BoxShadow(
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+              ],
             ),
-            icon: const Icon(Icons.menu_book),
-            label: const Text(
-              'Start Chapter 1',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            child: ElevatedButton.icon(
+              onPressed: isLoadingChapters || firstChapter == null
+                  ? null
+                  : () => onReadChapter(firstChapter),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+              icon: const Icon(Icons.menu_book_rounded, size: 20),
+              label: Text(
+                'Start Chapter 1',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  letterSpacing: 0.2,
+                ),
+              ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-        _buildLibraryButton(context),
+        _buildLibraryButton(context, isDark, colorScheme),
         if (isInLibrary) ...[
           const SizedBox(width: 10),
-          _buildFavoriteButton(),
+          _buildFavoriteButton(context, isDark),
         ],
       ],
     );
@@ -79,6 +102,10 @@ class MangaDetailActionBar extends StatelessWidget {
     BuildContext context,
     MangaProgression currentProgression,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     // Find exact or next uncompleted chapter
     Chapter? targetChapter;
     for (final c in chapters) {
@@ -98,56 +125,90 @@ class MangaDetailActionBar extends StatelessWidget {
             ? currentProgression.currentChapter.toInt().toString()
             : currentProgression.currentChapter.toString());
 
-    final buttonText = 'Resume Ch. $numStr (Pg. ${currentProgression.currentPage})';
+    final buttonText =
+        'Resume Ch. $numStr (Pg. ${currentProgression.currentPage})';
 
     return Row(
       children: [
         Expanded(
           flex: 4,
-          child: ElevatedButton.icon(
-            onPressed: targetChapter != null
-                ? () => onReadChapter(targetChapter!)
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(36),
-              ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: Text(
-              buttonText,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              overflow: TextOverflow.ellipsis,
+            child: ElevatedButton.icon(
+              onPressed: targetChapter != null
+                  ? () => onReadChapter(targetChapter!)
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+              icon: const Icon(Icons.play_arrow_rounded, size: 22),
+              label: Text(
+                buttonText,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
+                  letterSpacing: 0.2,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),
         const SizedBox(width: 10),
-        _buildLibraryButton(context),
+        _buildLibraryButton(context, isDark, colorScheme),
         if (isInLibrary) ...[
           const SizedBox(width: 10),
-          _buildFavoriteButton(),
+          _buildFavoriteButton(context, isDark),
         ],
       ],
     );
   }
 
-  Widget _buildLibraryButton(BuildContext context) {
+  Widget _buildLibraryButton(
+    BuildContext context,
+    bool isDark,
+    ColorScheme colorScheme,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: isInLibrary
-            ? AppColors.primary.withValues(alpha: 0.15)
-            : Colors.grey[800],
+            ? colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14)
+            : (isDark
+                ? const Color(0xFF1E293B)
+                : Colors.black.withValues(alpha: 0.05)),
         shape: BoxShape.circle,
+        border: Border.all(
+          color: isInLibrary
+              ? colorScheme.primary.withValues(alpha: 0.4)
+              : (isDark ? Colors.white12 : Colors.black12),
+          width: 1,
+        ),
       ),
       child: IconButton(
+        tooltip: isInLibrary ? 'In Library' : 'Add to Library',
         icon: Icon(
-          isInLibrary ? Icons.bookmark : Icons.bookmark_border,
-          color: isInLibrary ? AppColors.primary : Colors.white70,
+          isInLibrary ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+          color: isInLibrary
+              ? colorScheme.primary
+              : (isDark ? Colors.white70 : Colors.black54),
         ),
         onPressed: () async {
+          HapticFeedback.selectionClick();
           if (isInLibrary) {
             onRemoveFromLibrary();
           } else {
@@ -161,20 +222,34 @@ class MangaDetailActionBar extends StatelessWidget {
     );
   }
 
-  Widget _buildFavoriteButton() {
+  Widget _buildFavoriteButton(BuildContext context, bool isDark) {
     return Container(
       decoration: BoxDecoration(
         color: isFavorite
-            ? Colors.red.withValues(alpha: 0.15)
-            : Colors.grey[800],
+            ? Colors.red.withValues(alpha: isDark ? 0.22 : 0.14)
+            : (isDark
+                ? const Color(0xFF1E293B)
+                : Colors.black.withValues(alpha: 0.05)),
         shape: BoxShape.circle,
+        border: Border.all(
+          color: isFavorite
+              ? Colors.red.withValues(alpha: 0.4)
+              : (isDark ? Colors.white12 : Colors.black12),
+          width: 1,
+        ),
       ),
       child: IconButton(
+        tooltip: isFavorite ? 'Favorited' : 'Add to Favorites',
         icon: Icon(
-          isFavorite ? Icons.favorite : Icons.favorite_border,
-          color: isFavorite ? Colors.red : Colors.white70,
+          isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: isFavorite
+              ? Colors.redAccent
+              : (isDark ? Colors.white70 : Colors.black54),
         ),
-        onPressed: onToggleFavorite,
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          onToggleFavorite();
+        },
       ),
     );
   }
