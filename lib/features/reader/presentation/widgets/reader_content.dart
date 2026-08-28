@@ -20,6 +20,8 @@ class ReaderContentWidget extends StatefulWidget {
   final GestureTapCallback onDoubleTap;
   final VoidCallback onToggleUI;
   final Map<String, String>? httpHeaders;
+  final Map<int, double>? pageAspectRatios;
+  final void Function(int index, double ratio)? onAspectRatioResolved;
 
   const ReaderContentWidget({
     super.key,
@@ -37,6 +39,8 @@ class ReaderContentWidget extends StatefulWidget {
     required this.onDoubleTap,
     required this.onToggleUI,
     this.httpHeaders,
+    this.pageAspectRatios,
+    this.onAspectRatioResolved,
   });
 
   @override
@@ -55,7 +59,13 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
   }
 
   void _precacheNearbyPages(int currentIndex) {
-    if (widget.pageUrls.isEmpty) return;
+    if (!mounted || widget.pageUrls.isEmpty) return;
+
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final contentWidth = math.min(screenWidth, 800.0);
+    final memCacheWidth =
+        (contentWidth * devicePixelRatio).round().clamp(400, 1600);
 
     // Precache next 3 pages and previous 1 page
     for (int offset = -1; offset <= 3; offset++) {
@@ -65,7 +75,11 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
         if (!_precachedUrls.contains(url)) {
           _precachedUrls.add(url);
           precacheImage(
-            CachedNetworkImageProvider(url, headers: widget.httpHeaders),
+            CachedNetworkImageProvider(
+              url,
+              headers: widget.httpHeaders,
+              maxWidth: memCacheWidth,
+            ),
             context,
           );
         }
@@ -76,6 +90,12 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final contentWidth = math.min(screenWidth, 800.0);
+    final webtoonMemCacheWidth =
+        (contentWidth * devicePixelRatio).round().clamp(400, 1600);
+    final pagedMemCacheWidth =
+        (screenWidth * devicePixelRatio).round().clamp(600, 2048);
 
     return Positioned.fill(
       child: GestureDetector(
@@ -99,7 +119,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                 clipBehavior: Clip.none,
                 trackpadScrollCausesScale: false,
                 child: CustomScrollView(
-                  scrollCacheExtent: const ScrollCacheExtent.pixels(3000),
+                  scrollCacheExtent: const ScrollCacheExtent.pixels(1500),
                   controller: widget.scrollController,
                   physics:
                       widget.transformationController.value
@@ -109,45 +129,62 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                           : const BouncingScrollPhysics(),
                   slivers: [
                     SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        _precacheNearbyPages(index);
-                        final url = widget.pageUrls[index];
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final url = widget.pageUrls[index];
+                          final ratio = widget.pageAspectRatios?[index] ?? 1.5;
+                          final imageHeight = contentWidth * ratio;
 
-                        final contentWidth = math.min(screenWidth, 800.0);
-                        final imageHeight = contentWidth * 1.5;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) _precacheNearbyPages(index);
+                          });
 
-                        return Align(
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: contentWidth,
-                            child: AppNetworkImage(
-                              imageUrl: url,
-                              httpHeaders: widget.httpHeaders,
-                              fit: BoxFit.fitWidth,
-                              width: contentWidth,
-                              gaplessPlayback: true,
-                              placeholder: Container(
-                                height: imageHeight,
+                          return RepaintBoundary(
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                key: GlobalObjectKey('webtoon_page_$index'),
                                 width: contentWidth,
-                                color: Colors.black,
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                                child: AppNetworkImage(
+                                  imageUrl: url,
+                                  httpHeaders: widget.httpHeaders,
+                                  fit: BoxFit.fitWidth,
+                                  width: contentWidth,
+                                  memCacheWidth: webtoonMemCacheWidth,
+                                  onAspectRatioResolved: (aspect) {
+                                    widget.onAspectRatioResolved?.call(index, aspect);
+                                  },
+                                  gaplessPlayback: true,
+                                  placeholder: Container(
+                                    height: imageHeight,
+                                    width: contentWidth,
+                                    color: Colors.black,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: Container(
+                                    height: imageHeight,
+                                    color: Colors.black,
+                                    child: const Icon(
+                                      Icons.broken_image,
+                                      color: Colors.white24,
+                                    ),
                                   ),
                                 ),
                               ),
-                              errorWidget: Container(
-                                height: imageHeight,
-                                color: Colors.black,
-                                child: const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.white24,
-                                ),
-                              ),
                             ),
-                          ),
-                        );
-                      }, childCount: widget.pageUrls.isEmpty ? 0 : widget.pageUrls.length),
+                          );
+                        },
+                        childCount:
+                            widget.pageUrls.isEmpty
+                                ? 0
+                                : widget.pageUrls.length,
+                        addAutomaticKeepAlives: false,
+                        addRepaintBoundaries: false,
+                      ),
                     ),
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -184,7 +221,8 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                   _precacheNearbyPages(index);
                   widget.onPageChanged(index);
                 },
-                itemCount: widget.pageUrls.isEmpty ? 0 : widget.pageUrls.length + 1,
+                itemCount:
+                    widget.pageUrls.isEmpty ? 0 : widget.pageUrls.length + 1,
                 itemBuilder: (context, index) {
                   if (index == widget.pageUrls.length) {
                     return Center(
@@ -217,28 +255,32 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                       ),
                     );
                   }
-                  _precacheNearbyPages(index);
                   final url = widget.pageUrls[index];
                   return Center(
                     child: InteractiveViewer(
                       minScale: 1.0,
                       maxScale: 4.0,
-                      child: AppNetworkImage(
-                        imageUrl: url,
-                        httpHeaders: widget.httpHeaders,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                        placeholder: Container(
-                          color: Colors.black,
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                      child: RepaintBoundary(
+                        child: AppNetworkImage(
+                          imageUrl: url,
+                          httpHeaders: widget.httpHeaders,
+                          fit: BoxFit.contain,
+                          memCacheWidth: pagedMemCacheWidth,
+                          gaplessPlayback: true,
+                          placeholder: Container(
+                            color: Colors.black,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            ),
                           ),
-                        ),
-                        errorWidget: Container(
-                          color: Colors.black,
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Colors.white24,
+                          errorWidget: Container(
+                            color: Colors.black,
+                            child: const Icon(
+                              Icons.broken_image,
+                              color: Colors.white24,
+                            ),
                           ),
                         ),
                       ),

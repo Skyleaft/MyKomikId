@@ -14,6 +14,12 @@ class ReaderContent {
   final MangaProgression? progression;
   final Map<String, String>? httpHeaders;
 
+  /// TODO: [Backend Enhancement - Page Dimension Metadata]
+  /// When the backend/scraping API supports returning image dimensions e.g. [{"url": "...", "width": 700, "height": 2200}],
+  /// populate [pageAspectRatios] or [pageDimensions] directly from API response to eliminate layout shifts and enable
+  /// instantaneous 100% exact scroll offset calculations without client-side lazy measurement.
+  final Map<int, double>? pageAspectRatios;
+
   ReaderContent({
     required this.mangaId,
     required this.mangaTitle,
@@ -25,6 +31,7 @@ class ReaderContent {
     this.currentPage = 1,
     this.progression,
     this.httpHeaders,
+    this.pageAspectRatios,
   }) : totalPages = pageUrls.length;
 
   ReaderContent copyWith({
@@ -38,6 +45,7 @@ class ReaderContent {
     int? currentPage,
     MangaProgression? progression,
     Map<String, String>? httpHeaders,
+    Map<int, double>? pageAspectRatios,
   }) {
     return ReaderContent(
       mangaId: mangaId ?? this.mangaId,
@@ -50,6 +58,7 @@ class ReaderContent {
       currentPage: currentPage ?? this.currentPage,
       progression: progression ?? this.progression,
       httpHeaders: httpHeaders ?? this.httpHeaders,
+      pageAspectRatios: pageAspectRatios ?? this.pageAspectRatios,
     );
   }
 

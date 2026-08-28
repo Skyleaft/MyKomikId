@@ -85,9 +85,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
 
         final progression = _controller.progression;
         int startingPage = 1;
-        if (progression != null &&
-            progression.currentChapter == chapter.chapterNumber) {
-          startingPage = progression.currentPage;
+        if (progression != null) {
+          final log = progression.chapterLogs
+              .where((l) =>
+                  l.chapterId == chapter.id ||
+                  l.chapterNumber == chapter.chapterNumber)
+              .firstOrNull;
+          if (log != null && log.lastReadPage > 0) {
+            startingPage = log.lastReadPage;
+          } else if (progression.currentChapter == chapter.chapterNumber &&
+              progression.currentPage > 0) {
+            startingPage = progression.currentPage;
+          }
         }
 
         final content = ReaderContent(
