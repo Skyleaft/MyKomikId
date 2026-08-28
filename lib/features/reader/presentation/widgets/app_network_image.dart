@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 
@@ -17,6 +18,7 @@ class AppNetworkImage extends StatefulWidget {
   final int? memCacheWidth;
   final int? memCacheHeight;
   final ValueChanged<double>? onAspectRatioResolved;
+  final String? debugLabel;
 
   const AppNetworkImage({
     super.key,
@@ -34,6 +36,7 @@ class AppNetworkImage extends StatefulWidget {
     this.memCacheWidth,
     this.memCacheHeight,
     this.onAspectRatioResolved,
+    this.debugLabel,
   });
 
   @override
@@ -191,7 +194,7 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
+    final imageWidget = CachedNetworkImage(
       key: _imageKey,
       imageUrl: widget.imageUrl,
       httpHeaders: widget.httpHeaders,
@@ -229,5 +232,43 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       fadeInDuration: const Duration(milliseconds: 150),
       fadeOutDuration: const Duration(milliseconds: 150),
     );
+
+    if (kDebugMode &&
+        widget.debugLabel != null &&
+        widget.debugLabel!.isNotEmpty) {
+      return Stack(
+        children: [
+          imageWidget,
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  widget.debugLabel!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return imageWidget;
   }
 }

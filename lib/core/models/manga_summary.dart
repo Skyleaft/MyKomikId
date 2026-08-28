@@ -165,7 +165,10 @@ class LatestChapterSummary {
       id: json['id'] as String? ?? '',
       number: (json['number'] as num? ?? json['chapterNumber'] as num? ?? 0).toDouble(),
       link: json['link'] as String?,
-      pages: rawPages?.map((e) => e as String).toList() ?? [],
+      pages: rawPages
+              ?.map((e) => e is Map ? (e['url']?.toString() ?? '') : e.toString())
+              .toList() ??
+          [],
       language: json['language'] as String? ?? '',
       chapterProvider: json['chapterProvider'] as String?,
       chapterProviderIcon: json['chapterProviderIcon'] as String?,

@@ -128,11 +128,15 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                           ? const NeverScrollableScrollPhysics()
                           : const BouncingScrollPhysics(),
                   slivers: [
-                    SliverList(
+                    SliverVariedExtentList(
+                      itemExtentBuilder: (index, dimensions) {
+                        final ratio = widget.pageAspectRatios?[index] ?? 1.4;
+                        return contentWidth * ratio;
+                      },
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final url = widget.pageUrls[index];
-                          final ratio = widget.pageAspectRatios?[index] ?? 1.5;
+                          final ratio = widget.pageAspectRatios?[index] ?? 1.4;
                           final imageHeight = contentWidth * ratio;
 
                           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -151,6 +155,8 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                                   fit: BoxFit.fitWidth,
                                   width: contentWidth,
                                   memCacheWidth: webtoonMemCacheWidth,
+                                  debugLabel:
+                                      'P. ${index + 1}/${widget.pageUrls.length} • ${ratio.toStringAsFixed(2)}',
                                   onAspectRatioResolved: (aspect) {
                                     widget.onAspectRatioResolved?.call(index, aspect);
                                   },
@@ -266,6 +272,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                           httpHeaders: widget.httpHeaders,
                           fit: BoxFit.contain,
                           memCacheWidth: pagedMemCacheWidth,
+                          debugLabel: 'P. ${index + 1}/${widget.pageUrls.length}',
                           gaplessPlayback: true,
                           placeholder: Container(
                             color: Colors.black,

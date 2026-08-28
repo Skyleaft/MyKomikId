@@ -162,7 +162,11 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
         chapterId: chapterToRead.id,
         allChapters: detail.chapters,
         chapterTitle: chapterToRead.title,
-        pageUrls: pages.map((p) => _apiService.getLocalImageUrl(p, null)).toList(),
+        pages: pages
+            .map((p) => p.copyWith(
+                  url: _apiService.getLocalImageUrl(p.url, null),
+                ))
+            .toList(),
         currentPage: manga.currentPage > 1 ? manga.currentPage : 1,
       );
 

@@ -106,8 +106,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           chapterId: chapter.id,
           allChapters: _controller.chapters,
           chapterTitle: chapter.title,
-          pageUrls: pages
-              .map((p) => _apiService.getLocalImageUrl(p, null))
+          pages: pages
+              .map((p) => p.copyWith(
+                    url: _apiService.getLocalImageUrl(p.url, null),
+                  ))
               .toList(),
           currentPage: startingPage,
           progression: progression,

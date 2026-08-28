@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../config/app_config.dart';
 import '../models/manga_summary.dart';
 import '../models/paged_response.dart';
+import '../models/chapter_page.dart';
 import '../../features/discover/models/advanced_recommendation_request.dart';
 
 class MangaApiService {
@@ -401,7 +402,7 @@ class MangaApiService {
     }
   }
 
-  Future<List<String>> getChapterPages(
+  Future<List<ChapterPage>> getChapterPages(
     String mangaId,
     dynamic chapterId, {
     CancelToken? cancelToken,
@@ -415,10 +416,10 @@ class MangaApiService {
       if (unwrapped is Map<String, dynamic>) {
         final pages = unwrapped['pages'] as List<dynamic>?;
         if (pages != null) {
-          return pages.map((p) => p.toString()).toList();
+          return pages.map((p) => ChapterPage.fromDynamic(p)).toList();
         }
       } else if (unwrapped is List) {
-        return unwrapped.map((e) => e.toString()).toList();
+        return unwrapped.map((e) => ChapterPage.fromDynamic(e)).toList();
       }
       return [];
     } catch (e) {

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -40,6 +40,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   Timer? _debounceTimer;
   bool _isSliderScrolling = false;
   bool _isRestoringScroll = false;
+  bool _isJumpingToPage = false;
+  double _accumulatedBottomOverscroll = 0.0;
   double _targetProgress = 0.0;
 
   bool _isAutoScrolling = false;
@@ -49,7 +51,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   final TransformationController _transformationController =
       TransformationController();
-  final ScrollController _scrollController = ScrollController();
+  late final ScrollController _scrollController;
   late AnimationController _animationController;
   late PageController _pageController;
 
@@ -87,11 +89,12 @@ class _ReaderScreenState extends State<ReaderScreen>
     _pageController = PageController(
       initialPage:
           widget.content.currentPage > 1 &&
-                  widget.content.currentPage <= _pageUrls.length
-              ? widget.content.currentPage - 1
-              : 0,
+              widget.content.currentPage <= _pageUrls.length
+          ? widget.content.currentPage - 1
+          : 0,
     );
 
+    double initialScrollOffset = 0.0;
     if (widget.content.currentPage > 1 &&
         widget.content.currentPage <= _pageUrls.length) {
       _isRestoringScroll = true;
@@ -100,6 +103,18 @@ class _ReaderScreenState extends State<ReaderScreen>
           (widget.content.currentPage - 1) / (_pageUrls.length - 1);
       _progress = _targetProgress;
 
+      initialScrollOffset = _calculateEstimatedOffset(
+        widget.content.currentPage - 1,
+        800.0,
+      );
+    }
+
+    _scrollController = ScrollController(
+      initialScrollOffset: initialScrollOffset,
+    );
+
+    if (widget.content.currentPage > 1 &&
+        widget.content.currentPage <= _pageUrls.length) {
       _restoreInitialScroll();
     }
 
@@ -111,40 +126,85 @@ class _ReaderScreenState extends State<ReaderScreen>
     _checkInitialFullscreen();
   }
 
+  double _calculateAverageRatio() {
+    if (_pageAspectRatios.isNotEmpty) {
+      final sum = _pageAspectRatios.values.fold(0.0, (a, b) => a + b);
+      return sum / _pageAspectRatios.length;
+    }
+    return 1.4;
+  }
+
   double _calculateEstimatedOffset(int targetIndex, double contentWidth) {
+    if (targetIndex <= 0 || _pageUrls.isEmpty) return 0.0;
+    final avgRatio = _calculateAverageRatio();
     double offset = 0.0;
     for (int i = 0; i < targetIndex; i++) {
-      final ratio = _pageAspectRatios[i] ?? 1.5;
+      final ratio = _pageAspectRatios[i] ?? avgRatio;
       offset += contentWidth * ratio;
     }
     return offset;
   }
 
-  void _restoreInitialScroll([int retryCount = 0]) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients || !_isWebtoonMode) return;
-      if (widget.content.currentPage <= 1 || _pageUrls.isEmpty) return;
+  int? _getClosestVisiblePageIndex() {
+    int? bestIndex;
+    double minDistance = double.infinity;
 
-      final targetIndex = widget.content.currentPage - 1;
+    for (int i = 0; i < _pageUrls.length; i++) {
+      final key = GlobalObjectKey('webtoon_page_$i');
+      final ctx = key.currentContext;
+      if (ctx != null) {
+        final renderBox = ctx.findRenderObject() as RenderBox?;
+        if (renderBox != null && renderBox.hasSize && renderBox.attached) {
+          final pos = renderBox.localToGlobal(Offset.zero);
+          final distance = pos.dy.abs();
+          if (distance < minDistance) {
+            minDistance = distance;
+            bestIndex = i;
+          }
+        }
+      }
+    }
+    return bestIndex;
+  }
+
+  void _jumpToWebtoonPage(
+    int targetIndex, {
+    double? explicitOffset,
+    int retryCount = 0,
+  }) {
+    _isJumpingToPage = true;
+    _isRestoringScroll = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients || !_isWebtoonMode) {
+        _isJumpingToPage = false;
+        _isRestoringScroll = false;
+        return;
+      }
+      if (targetIndex < 0 || targetIndex >= _pageUrls.length) {
+        _isJumpingToPage = false;
+        _isRestoringScroll = false;
+        return;
+      }
+
       final screenWidth = MediaQuery.of(context).size.width;
       final contentWidth = (screenWidth < 800.0 ? screenWidth : 800.0);
-      final estimatedOffset = _calculateEstimatedOffset(
-        targetIndex,
-        contentWidth,
-      );
+      final targetOffset =
+          explicitOffset ??
+          _calculateEstimatedOffset(targetIndex, contentWidth);
 
       if (_scrollController.hasClients) {
         final maxScroll = _scrollController.position.maxScrollExtent;
-        _scrollController.jumpTo(
-          estimatedOffset.clamp(
-            0.0,
-            maxScroll > 0 ? maxScroll : estimatedOffset,
-          ),
-        );
+        final safeTarget = maxScroll > 0
+            ? targetOffset.clamp(0.0, maxScroll)
+            : targetOffset.clamp(0.0, double.infinity);
+        _scrollController.jumpTo(safeTarget);
       }
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_scrollController.hasClients || !_isRestoringScroll) {
+        if (!mounted || !_scrollController.hasClients) {
+          _isJumpingToPage = false;
+          _isRestoringScroll = false;
           return;
         }
 
@@ -158,20 +218,71 @@ class _ReaderScreenState extends State<ReaderScreen>
           );
 
           setState(() {
-            _currentPage = widget.content.currentPage;
-            _progress = _targetProgress;
+            _currentPage = targetIndex + 1;
+            _progress = _pageUrls.length > 1
+                ? (targetIndex / (_pageUrls.length - 1)).clamp(0.0, 1.0)
+                : 0.0;
             _isRestoringScroll = false;
           });
+          _debounceSaveProgression();
+
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                _isJumpingToPage = false;
+              });
+            }
+          });
         } else if (retryCount < 3) {
-          // If layout needs one extra cycle to mount target sliver, retry once
-          _restoreInitialScroll(retryCount + 1);
+          final visibleIndex = _getClosestVisiblePageIndex();
+          if (visibleIndex != null && visibleIndex != targetIndex) {
+            final avgRatio = _calculateAverageRatio();
+            final deltaPages = targetIndex - visibleIndex;
+            final currentOffset = _scrollController.offset;
+            final correctedOffset =
+                currentOffset + (deltaPages * contentWidth * avgRatio);
+
+            _jumpToWebtoonPage(
+              targetIndex,
+              explicitOffset: correctedOffset,
+              retryCount: retryCount + 1,
+            );
+          } else {
+            setState(() {
+              _isRestoringScroll = false;
+            });
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (mounted) {
+                setState(() {
+                  _isJumpingToPage = false;
+                });
+              }
+            });
+            _onScroll();
+          }
         } else {
           setState(() {
             _isRestoringScroll = false;
           });
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              setState(() {
+                _isJumpingToPage = false;
+              });
+            }
+          });
+          _onScroll();
         }
       });
     });
+  }
+
+  void _restoreInitialScroll() {
+    if (widget.content.currentPage <= 1 || _pageUrls.isEmpty) {
+      _isRestoringScroll = false;
+      return;
+    }
+    _jumpToWebtoonPage(widget.content.currentPage - 1);
   }
 
   Future<void> _checkInitialFullscreen() async {
@@ -197,10 +308,9 @@ class _ReaderScreenState extends State<ReaderScreen>
             .where((l) => l.chapterId == targetChapterId)
             .fold<UserChapterLog?>(
               null,
-              (prev, l) =>
-                  prev == null || l.lastReadAt.isAfter(prev.lastReadAt)
-                      ? l
-                      : prev,
+              (prev, l) => prev == null || l.lastReadAt.isAfter(prev.lastReadAt)
+                  ? l
+                  : prev,
             );
         setState(() {
           _chapterInitialReadingTimeSeconds =
@@ -231,18 +341,13 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   void _onScroll() {
-    if (_isSliderScrolling || _isRestoringScroll) return;
+    if (_isSliderScrolling || _isRestoringScroll || _isJumpingToPage) return;
     if (!_scrollController.hasClients) return;
     if (_pageUrls.isEmpty) return;
 
     final position = _scrollController.position;
     if (!position.hasContentDimensions) return;
     final maxScroll = position.maxScrollExtent;
-
-    if (maxScroll > 0 && position.pixels >= maxScroll + 80 && !_isLoading) {
-      _changeChapter(true);
-      return;
-    }
 
     if (!_isWebtoonMode) return;
 
@@ -262,18 +367,27 @@ class _ReaderScreenState extends State<ReaderScreen>
 
           if (top <= targetYThreshold && bottom > 0) {
             activePage = i + 1;
+            break;
           }
         }
       }
     }
 
     if (activePage == null && maxScroll > 0) {
-      final currentScroll = position.pixels.clamp(0.0, maxScroll);
-      final progress = (currentScroll / maxScroll).clamp(0.0, 1.0);
-      activePage = ((progress * (_pageUrls.length - 1)).round() + 1).clamp(
-        1,
-        _pageUrls.length,
-      );
+      final currentScroll = position.pixels;
+      final screenWidth = MediaQuery.of(context).size.width;
+      final contentWidth = (screenWidth < 800.0 ? screenWidth : 800.0);
+      double cumulativeOffset = 0.0;
+      for (int i = 0; i < _pageUrls.length; i++) {
+        final ratio = _pageAspectRatios[i] ?? 1.4;
+        final pageHeight = contentWidth * ratio;
+        if (currentScroll < cumulativeOffset + (pageHeight * 0.7)) {
+          activePage = i + 1;
+          break;
+        }
+        cumulativeOffset += pageHeight;
+      }
+      activePage ??= _pageUrls.length;
     }
 
     if (activePage != null && activePage != _currentPage) {
@@ -345,6 +459,11 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       PaintingBinding.instance.imageCache.clearLiveImages();
       _pageAspectRatios.clear();
+      for (int i = 0; i < pages.length; i++) {
+        if (pages[i].aspectRatio != null) {
+          _pageAspectRatios[i] = pages[i].aspectRatio!;
+        }
+      }
       await _saveProgression();
 
       _sessionStartTime = DateTime.now();
@@ -352,7 +471,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       setState(() {
         _pageUrls = pages
-            .map((p) => _apiService.getLocalImageUrl(p, null))
+            .map((p) => _apiService.getLocalImageUrl(p.url, null))
             .toList();
 
         _chapterId = targetChapter.id;
@@ -550,7 +669,8 @@ class _ReaderScreenState extends State<ReaderScreen>
       final double pageAmount = MediaQuery.of(context).size.height * 0.8;
       final double currentOffset = _scrollController.offset;
 
-      if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyS) {
+      if (key == LogicalKeyboardKey.arrowDown ||
+          key == LogicalKeyboardKey.keyS) {
         _scrollSmoothly(currentOffset + scrollAmount);
       } else if (key == LogicalKeyboardKey.arrowUp ||
           key == LogicalKeyboardKey.keyW) {
@@ -571,18 +691,20 @@ class _ReaderScreenState extends State<ReaderScreen>
 
       // Handle forward & backward paging considering RTL mode
       final bool isForward = _isRtlMode
-          ? (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyA)
+          ? (key == LogicalKeyboardKey.arrowLeft ||
+                key == LogicalKeyboardKey.keyA)
           : (key == LogicalKeyboardKey.arrowRight ||
-              key == LogicalKeyboardKey.arrowDown ||
-              key == LogicalKeyboardKey.pageDown ||
-              key == LogicalKeyboardKey.keyD);
+                key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.pageDown ||
+                key == LogicalKeyboardKey.keyD);
 
       final bool isBackward = _isRtlMode
-          ? (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.keyD)
+          ? (key == LogicalKeyboardKey.arrowRight ||
+                key == LogicalKeyboardKey.keyD)
           : (key == LogicalKeyboardKey.arrowLeft ||
-              key == LogicalKeyboardKey.arrowUp ||
-              key == LogicalKeyboardKey.pageUp ||
-              key == LogicalKeyboardKey.keyA);
+                key == LogicalKeyboardKey.arrowUp ||
+                key == LogicalKeyboardKey.pageUp ||
+                key == LogicalKeyboardKey.keyA);
 
       if (isForward) {
         if (_currentPage < _pageUrls.length) {
@@ -716,6 +838,24 @@ class _ReaderScreenState extends State<ReaderScreen>
               onNotification: (notification) {
                 if (notification is UserScrollNotification) {
                   _isRestoringScroll = false;
+                  _isJumpingToPage = false;
+                } else if (notification is OverscrollNotification) {
+                  if (_isWebtoonMode &&
+                      notification.overscroll > 0 &&
+                      notification.metrics.pixels >=
+                          notification.metrics.maxScrollExtent &&
+                      !_isLoading &&
+                      !_isRestoringScroll &&
+                      !_isJumpingToPage &&
+                      !_isSliderScrolling) {
+                    _accumulatedBottomOverscroll += notification.overscroll;
+                    if (_accumulatedBottomOverscroll >= 150) {
+                      _accumulatedBottomOverscroll = 0;
+                      _changeChapter(true);
+                    }
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  _accumulatedBottomOverscroll = 0;
                 }
                 return false;
               },
@@ -770,7 +910,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.5),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -799,6 +941,39 @@ class _ReaderScreenState extends State<ReaderScreen>
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            // Floating Debug Info HUD (Debug Mode Only)
+            if (kDebugMode)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                top: _showUI ? 70 : 20,
+                left: 20,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.6),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      'Debug: Page $_currentPage / ${_pageUrls.length} • '
+                      '${_isWebtoonMode ? 'Scroll: ${_scrollController.hasClients ? _scrollController.offset.toInt() : 0}px' : 'Paged Mode'}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -832,10 +1007,12 @@ class _ReaderScreenState extends State<ReaderScreen>
                           if (_isWebtoonMode && _scrollController.hasClients) {
                             _isRestoringScroll = false;
                             final targetIndex = targetPage - 1;
-                            final screenWidth =
-                                MediaQuery.of(context).size.width;
-                            final contentWidth =
-                                (screenWidth < 800.0 ? screenWidth : 800.0);
+                            final screenWidth = MediaQuery.of(
+                              context,
+                            ).size.width;
+                            final contentWidth = (screenWidth < 800.0
+                                ? screenWidth
+                                : 800.0);
                             final estimatedOffset = _calculateEstimatedOffset(
                               targetIndex,
                               contentWidth,
@@ -849,19 +1026,6 @@ class _ReaderScreenState extends State<ReaderScreen>
                                 maxScroll > 0 ? maxScroll : estimatedOffset,
                               ),
                             );
-
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              final targetKey =
-                                  GlobalObjectKey('webtoon_page_$targetIndex');
-                              final targetContext = targetKey.currentContext;
-                              if (targetContext != null) {
-                                Scrollable.ensureVisible(
-                                  targetContext,
-                                  alignment: 0.0,
-                                  duration: Duration.zero,
-                                );
-                              }
-                            });
                           }
 
                           if (!_isWebtoonMode && _pageController.hasClients) {
@@ -873,6 +1037,9 @@ class _ReaderScreenState extends State<ReaderScreen>
                         },
                         onProgressChangeEnd: (_) {
                           _isSliderScrolling = false;
+                          if (_isWebtoonMode) {
+                            _jumpToWebtoonPage(_currentPage - 1);
+                          }
                         },
                         onNextChapter: () => _changeChapter(true),
                         onPreviousChapter: () => _changeChapter(false),
