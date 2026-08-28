@@ -112,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen>
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );

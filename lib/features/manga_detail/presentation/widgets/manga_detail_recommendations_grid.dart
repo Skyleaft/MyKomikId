@@ -40,7 +40,7 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CircularProgressIndicator(color: AppColors.primary),
+                CircularProgressIndicator(color: AppColors.primary),
                 const SizedBox(height: 16),
                 Text(
                   hasFilters
@@ -167,7 +167,7 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
                     onPressed: onClearFilters,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
+                      side: BorderSide(color: AppColors.primary),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 10,

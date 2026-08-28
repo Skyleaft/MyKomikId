@@ -108,7 +108,7 @@ class ReaderChapterPickerSheet extends StatelessWidget {
                             )
                           : null,
                       trailing: isCurrent
-                          ? const Icon(
+                          ? Icon(
                               Icons.check_circle_rounded,
                               color: AppColors.primary,
                               size: 18,

@@ -26,7 +26,7 @@ class MangaDetailInfoSection extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
+              child: Text(
                 'TRENDING #1',
                 style: TextStyle(
                   color: AppColors.primary,
@@ -45,7 +45,7 @@ class MangaDetailInfoSection extends StatelessWidget {
               ),
               child: Text(
                 manga.status?.toUpperCase() ?? 'ONGOING',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.primary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,

@@ -88,7 +88,7 @@ class HomeTrendingSection extends StatelessWidget {
               ),
               TextButton(
                 onPressed: onNavigateToDiscover,
-                child: const Text(
+                child: Text(
                   'View all',
                   style: TextStyle(
                     color: AppColors.primary,

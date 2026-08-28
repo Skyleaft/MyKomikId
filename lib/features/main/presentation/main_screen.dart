@@ -149,8 +149,8 @@ class _MainScreenState extends State<MainScreen> {
                     ? AppColors.backgroundDark
                     : AppColors.backgroundLight,
                 labelType: NavigationRailLabelType.all,
-                selectedIconTheme: const IconThemeData(color: AppColors.primary),
-                selectedLabelTextStyle: const TextStyle(
+                selectedIconTheme: IconThemeData(color: AppColors.primary),
+                selectedLabelTextStyle: TextStyle(
                   color: AppColors.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
@@ -165,7 +165,7 @@ class _MainScreenState extends State<MainScreen> {
                     'assets/images/logo.png',
                     width: 40,
                     height: 40,
-                    errorBuilder: (_, _, _) => const Icon(
+                    errorBuilder: (_, _, _) => Icon(
                       Icons.auto_stories_rounded,
                       color: AppColors.primary,
                       size: 32,

@@ -66,7 +66,7 @@ class HomeContinueReadingSection extends StatelessWidget {
               TextButton(
                 onPressed: onNavigateToHistory ??
                     () => Navigator.pushNamed(context, AppRoutes.history),
-                child: const Text(
+                child: Text(
                   'View all',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -244,7 +244,7 @@ class HomeContinueReadingSection extends StatelessWidget {
                           value: progress,
                           minHeight: 3,
                           backgroundColor: Colors.white24,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
+                          valueColor: AlwaysStoppedAnimation<Color>(
                             AppColors.primary,
                           ),
                         ),

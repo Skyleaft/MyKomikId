@@ -112,7 +112,7 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
@@ -323,7 +323,7 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
         child: Container(
           color: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
           padding: const EdgeInsets.all(24.0),
-          child: const Center(
+          child: Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           ),
         ),

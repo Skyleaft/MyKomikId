@@ -85,7 +85,7 @@ class SearchScrapCard extends StatelessWidget {
                                   width: 1,
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
@@ -93,7 +93,7 @@ class SearchScrapCard extends StatelessWidget {
                                     size: 10,
                                     color: AppColors.primary,
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
                                     'In Library',
                                     style: TextStyle(

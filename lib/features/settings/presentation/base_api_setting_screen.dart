@@ -131,7 +131,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Save',
               style: TextStyle(
                 color: AppColors.primary,
@@ -197,7 +197,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                           ),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
@@ -205,7 +205,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                             color: AppColors.primary,
                             size: 24,
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Text(
                             'Add New API Endpoint',
                             style: TextStyle(
@@ -287,7 +287,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: AppColors.primary, size: 28),
+          Icon(Icons.check_circle, color: AppColors.primary, size: 28),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -313,7 +313,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                           color: AppColors.primary.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Default',
                           style: TextStyle(
                             fontSize: 11,
@@ -347,7 +347,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Edit',
                   style: TextStyle(
                     color: AppColors.primary,
@@ -487,7 +487,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Default',
                             style: TextStyle(
                               fontSize: 10,
@@ -521,7 +521,7 @@ class _BaseApiSettingScreenState extends State<BaseApiSettingScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Edit',
                     style: TextStyle(
                       color: AppColors.primary,
@@ -710,7 +710,7 @@ class _ConfigureApiDialogState extends State<ConfigureApiDialog> {
                 children: [
                   Text(
                     widget.existingConfig != null ? 'Edit API' : 'Add New API',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
@@ -830,11 +830,11 @@ class _ConfigureApiDialogState extends State<ConfigureApiDialog> {
                             },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
+                        side: BorderSide(color: AppColors.primary),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(

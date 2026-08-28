@@ -5,12 +5,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../auth/services/auth_service.dart';
 import '../../history/models/progression.dart';
 import '../../history/services/progression_service.dart';
 import '../../library/models/library_manga.dart';
 import '../../manga_detail/services/manga_detail_service.dart';
 import 'base_api_setting_screen.dart';
+import 'theme_setting_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -171,6 +173,7 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authService = Provider.of<AuthService>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       backgroundColor: isDark
@@ -205,7 +208,16 @@ class _MoreScreenState extends State<MoreScreen> {
                 context,
                 icon: Icons.palette_outlined,
                 title: 'Theme',
-                onTap: () {},
+                subtitle: '${themeProvider.themeModeName} • ${themeProvider.currentScheme.name}',
+                onTap: () {
+                  if (!context.mounted) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ThemeSettingScreen(),
+                    ),
+                  );
+                },
               ),
               _buildMenuItem(
                 context,
@@ -329,9 +341,9 @@ class _MoreScreenState extends State<MoreScreen> {
           color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Center(
+        child: Center(
           child: CircularProgressIndicator(
-            color: AppColors.primary,
+            color: Theme.of(context).colorScheme.primary,
             strokeWidth: 2,
           ),
         ),
@@ -527,7 +539,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -539,10 +551,10 @@ class _MoreScreenState extends State<MoreScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _formatReadingTime(_totalReadingTimeSeconds),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ],
@@ -704,7 +716,7 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
           CircleAvatar(
             radius: 32,
-            backgroundColor: AppColors.primary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             backgroundImage: user?.photoURL != null
                 ? NetworkImage(user!.photoURL!)
                 : null,
@@ -777,7 +789,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ],
       ),
       child: ListTile(
-        leading: Icon(icon, color: AppColors.primary),
+        leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
         title: Text(
           title,
           style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),

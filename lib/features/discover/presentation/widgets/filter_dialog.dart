@@ -142,12 +142,12 @@ class _FilterDialogState extends State<FilterDialog> {
             color: isDark ? AppColors.backgroundDark : Colors.white,
             borderRadius: BorderRadius.circular(24),
           ),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(color: AppColors.primary),
-              SizedBox(height: 16),
-              Text('Loading filters...'),
+              const SizedBox(height: 16),
+              const Text('Loading filters...'),
             ],
           ),
         ),
@@ -210,7 +210,7 @@ class _FilterDialogState extends State<FilterDialog> {
                 ),
                 TextButton(
                   onPressed: _resetAll,
-                  child: const Text(
+                  child: Text(
                     'Reset All',
                     style: TextStyle(
                       color: AppColors.primary,
@@ -492,7 +492,7 @@ class _FilterDialogState extends State<FilterDialog> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.touch_app_outlined,
+              Icon(Icons.touch_app_outlined,
                   size: 16, color: AppColors.primary),
               const SizedBox(width: 8),
               Expanded(

@@ -203,7 +203,7 @@ class LibraryMangaGridCard extends StatelessWidget {
                         if (manga.type.isNotEmpty && manga.type != 'Unknown')
                           Text(
                             manga.type.toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,

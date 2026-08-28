@@ -151,7 +151,7 @@ class _AdvancedRecommendationScreenState
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
+      builder: (context) => Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       ),
     );
@@ -280,7 +280,7 @@ class _AdvancedRecommendationScreenState
         ],
       ),
       body: _isLoadingHistory
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
           : Column(
@@ -315,7 +315,7 @@ class _AdvancedRecommendationScreenState
                           if (_likedIds.isNotEmpty || _dislikedIds.isNotEmpty)
                             Text(
                               '${_likedIds.length} 👍 • ${_dislikedIds.length} 👎',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,

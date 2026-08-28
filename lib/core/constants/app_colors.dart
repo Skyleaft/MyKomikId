@@ -1,8 +1,25 @@
 import 'package:flutter/material.dart';
+import '../di/injection.dart';
+import '../theme/theme_provider.dart';
 
 class AppColors {
-  static const Color primary = Color.fromRGBO(52, 152, 219, 1);
-  static const Color secondary = Color.fromARGB(255, 40, 59, 75);
+  static const Color defaultPrimary = Color.fromRGBO(52, 152, 219, 1);
+  static const Color defaultSecondary = Color.fromARGB(255, 40, 59, 75);
+
+  static Color get primary {
+    if (getIt.isRegistered<ThemeProvider>()) {
+      return getIt<ThemeProvider>().primaryColor;
+    }
+    return defaultPrimary;
+  }
+
+  static Color get secondary {
+    if (getIt.isRegistered<ThemeProvider>()) {
+      return getIt<ThemeProvider>().currentScheme.secondary;
+    }
+    return defaultSecondary;
+  }
+
   static const Color backgroundLight = Color.fromRGBO(232, 246, 248, 1);
   static const Color backgroundDark = Color.fromRGBO(28, 40, 51, 1);
   static const Color cardDark = Color.fromRGBO(38, 50, 56, 1);

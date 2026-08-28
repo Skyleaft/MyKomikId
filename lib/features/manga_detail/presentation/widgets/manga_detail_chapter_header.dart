@@ -62,7 +62,7 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            const Icon(Icons.search, color: AppColors.primary, size: 20),
+            Icon(Icons.search, color: AppColors.primary, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
@@ -116,7 +116,7 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Chapters',
               style: TextStyle(
                 fontSize: 20,
@@ -129,7 +129,7 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
                 IconButton(
                   tooltip: 'Search Chapters',
                   onPressed: () => setState(() => _isSearching = true),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.search,
                     color: AppColors.primary,
                     size: 20,
@@ -138,7 +138,7 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
                 IconButton(
                   tooltip: 'Scrape Chapters Online',
                   onPressed: widget.onScrapChapters,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.cloud_download_outlined,
                     color: AppColors.primary,
                     size: 20,
@@ -176,7 +176,7 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
                   onPressed: widget.onToggleSort,
                   icon: Text(
                     widget.isAscending ? 'Oldest' : 'Latest',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.primary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -185,7 +185,7 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
                   label: AnimatedRotation(
                     turns: widget.isAscending ? 0.5 : 0,
                     duration: const Duration(milliseconds: 300),
-                    child: const Icon(
+                    child: Icon(
                       Icons.swap_vert,
                       color: AppColors.primary,
                       size: 16,
