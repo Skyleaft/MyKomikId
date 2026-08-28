@@ -27,11 +27,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, RouteAware {
+    with
+        SingleTickerProviderStateMixin,
+        RouteAware,
+        AutomaticKeepAliveClientMixin {
   late final HomeController _controller;
   late final TabController _trendingTabController;
   final MangaApiService _apiService = getIt<MangaApiService>();
   bool _isRouteSubscribed = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -158,6 +164,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListenableBuilder(
@@ -168,6 +175,9 @@ class _HomeScreenState extends State<HomeScreen>
           color: AppColors.primary,
           child: SafeArea(
             child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               slivers: [
                 SliverAppBar(
                   floating: true,

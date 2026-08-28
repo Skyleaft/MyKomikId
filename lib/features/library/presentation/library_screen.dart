@@ -22,10 +22,14 @@ class LibraryScreen extends StatefulWidget {
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
+class _LibraryScreenState extends State<LibraryScreen>
+    with RouteAware, AutomaticKeepAliveClientMixin {
   late final LibraryController _controller;
   final MangaApiService _apiService = getIt<MangaApiService>();
   final MangaDetailService _detailService = getIt<MangaDetailService>();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -263,6 +267,7 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListenableBuilder(
@@ -273,6 +278,9 @@ class _LibraryScreenState extends State<LibraryScreen> with RouteAware {
             color: AppColors.primary,
             onRefresh: _controller.refresh,
             child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               slivers: [
                 SliverAppBar(
                   floating: true,

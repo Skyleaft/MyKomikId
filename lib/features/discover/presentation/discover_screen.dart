@@ -28,9 +28,13 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> {
+class _DiscoverScreenState extends State<DiscoverScreen>
+    with AutomaticKeepAliveClientMixin {
   final MangaApiService _apiService = getIt<MangaApiService>();
   final MangaDetailService _detailService = getIt<MangaDetailService>();
+
+  @override
+  bool get wantKeepAlive => true;
 
   final List<MangaSummary> _items = [];
   bool _isLoading = false;
@@ -44,12 +48,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   MangaAdvancedFilter _filter = const MangaAdvancedFilter();
   late MangaSortOption _sortOption;
 
+  late final ScrollController _scrollController;
+  bool _showScrollToTop = false;
+
   Timer? _debounceTimer;
   int _requestCounter = 0;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
     _searchQuery = widget.initialSearch;
     _sortOption = MangaSortOption(
       field: widget.sortBy ?? 'updatedAt',
@@ -75,7 +83,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    final show = _scrollController.hasClients && _scrollController.offset > 400;
+    if (show != _showScrollToTop) {
+      setState(() {
+        _showScrollToTop = show;
+      });
+    }
+  }
+
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   Future<void> _fetchData({bool refresh = false}) async {
@@ -513,162 +542,226 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
-      child: RefreshIndicator(
-        color: AppColors.primary,
-        backgroundColor: isDark
-            ? AppColors.backgroundDark
-            : AppColors.backgroundLight,
-        onRefresh: () async {
-          _fetchData(refresh: true);
-        },
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollEndNotification &&
-                notification.metrics.extentAfter < 500 &&
-                !_isSemanticSearch) {
-              _fetchData();
-            }
-            return false;
-          },
-          child: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                floating: true,
-                snap: true,
-                backgroundColor:
-                    (isDark
-                            ? AppColors.backgroundDark
-                            : AppColors.backgroundLight)
-                        .withValues(alpha: 0.8),
-                surfaceTintColor: Colors.transparent,
-                expandedHeight: 146,
-                toolbarHeight: 0,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: ClipRRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: DiscoverHeader(
-                          isDark: isDark,
-                          onSearch: _onSearch,
-                          onShowQueue: _onShowQueue,
-                          onSearchScrapSource: _onSearchScrapSource,
-                          onFilter: _onFilter,
-                          onAdvancedRecommendation: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.advancedRecommendation,
+      child: Stack(
+        children: [
+          RefreshIndicator(
+            color: AppColors.primary,
+            backgroundColor: isDark
+                ? AppColors.backgroundDark
+                : AppColors.backgroundLight,
+            onRefresh: () async {
+              _fetchData(refresh: true);
+            },
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollEndNotification &&
+                    notification.metrics.extentAfter < 500 &&
+                    !_isSemanticSearch) {
+                  _fetchData();
+                }
+                return false;
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                slivers: [
+                  SliverAppBar(
+                    floating: true,
+                    snap: true,
+                    backgroundColor:
+                        (isDark
+                                ? AppColors.backgroundDark
+                                : AppColors.backgroundLight)
+                            .withValues(alpha: 0.8),
+                    surfaceTintColor: Colors.transparent,
+                    expandedHeight: 146,
+                    toolbarHeight: 0,
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: ClipRRect(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: DiscoverHeader(
+                              isDark: isDark,
+                              onSearch: _onSearch,
+                              onShowQueue: _onShowQueue,
+                              onSearchScrapSource: _onSearchScrapSource,
+                              onFilter: _onFilter,
+                              onAdvancedRecommendation: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.advancedRecommendation,
+                              ),
+                              hasFilters: _hasActiveFilters,
+                              isSemanticSearch: _isSemanticSearch,
+                              onSemanticSearchChanged: (value) {
+                                setState(() {
+                                  _isSemanticSearch = value;
+                                });
+                                _fetchData(refresh: true);
+                              },
+                            ),
                           ),
-                          hasFilters: _hasActiveFilters,
-                          isSemanticSearch: _isSemanticSearch,
-                          onSemanticSearchChanged: (value) {
-                            setState(() {
-                              _isSemanticSearch = value;
-                            });
-                            _fetchData(refresh: true);
-                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_hasActiveFilters)
+                    SliverToBoxAdapter(
+                      child: _buildActiveFilterChips(isDark),
+                    ),
+                  if (_isLoading)
+                    const SliverToBoxAdapter(
+                      child: DiscoverGridSkeleton(itemCount: 8),
+                    )
+                  else if (_items.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 64,
+                                color: isDark ? Colors.grey[600] : Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No manga found',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _hasActiveFilters
+                                    ? 'Try changing your search terms or filters.'
+                                    : 'No manga available at the moment.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                ),
+                              ),
+                              if (_hasActiveFilters) ...[
+                                const SizedBox(height: 16),
+                                ElevatedButton.icon(
+                                  onPressed: _clearAllFilters,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Reset Filters'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
+                      sliver: SliverGrid(
+                        gridDelegate: _buildGridDelegate(),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          if (index == _items.length) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            );
+                          }
+                          final item = _items[index];
+
+                          return DiscoverCard(
+                            title: item.title,
+                            type: item.type,
+                            latestChapter: item.latestChapter,
+                            views: formatViewCount(item.totalView),
+                            genres: item.genres ?? [],
+                            status: item.status,
+                            rating: item.rating,
+                            imageUrl: _apiService.getLocalImageUrl(
+                              item.localImageUrl,
+                              item.imageUrl,
+                            ),
+                            onTap: () => _navigateToDetail(item),
+                          );
+                        }, childCount: _items.length + (_isMoreLoading ? 1 : 0)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 20,
+            bottom: 90,
+            child: IgnorePointer(
+              ignoring: !_showScrollToTop,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 250),
+                offset: _showScrollToTop ? Offset.zero : const Offset(0, 1),
+                curve: Curves.easeOutCubic,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 250),
+                  opacity: _showScrollToTop ? 1.0 : 0.0,
+                  curve: Curves.easeInOut,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _scrollToTop,
+                      borderRadius: BorderRadius.circular(28),
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? const Color(0xFF1E293B).withValues(alpha: 0.92)
+                              : Colors.white.withValues(alpha: 0.92),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.keyboard_arrow_up_rounded,
+                          color: AppColors.primary,
+                          size: 28,
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              if (_hasActiveFilters)
-                SliverToBoxAdapter(
-                  child: _buildActiveFilterChips(isDark),
-                ),
-              if (_isLoading)
-                const SliverToBoxAdapter(
-                  child: DiscoverGridSkeleton(itemCount: 8),
-                )
-              else if (_items.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off_rounded,
-                            size: 64,
-                            color: isDark ? Colors.grey[600] : Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No manga found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _hasActiveFilters
-                                ? 'Try changing your search terms or filters.'
-                                : 'No manga available at the moment.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
-                            ),
-                          ),
-                          if (_hasActiveFilters) ...[
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: _clearAllFilters,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Reset Filters'),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
-                  sliver: SliverGrid(
-                    gridDelegate: _buildGridDelegate(),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      if (index == _items.length) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        );
-                      }
-                      final item = _items[index];
-
-                      return DiscoverCard(
-                        title: item.title,
-                        type: item.type,
-                        latestChapter: item.latestChapter,
-                        views: formatViewCount(item.totalView),
-                        genres: item.genres ?? [],
-                        status: item.status,
-                        rating: item.rating,
-                        imageUrl: _apiService.getLocalImageUrl(
-                          item.localImageUrl,
-                          item.imageUrl,
-                        ),
-                        onTap: () => _navigateToDetail(item),
-                      );
-                    }, childCount: _items.length + (_isMoreLoading ? 1 : 0)),
-                  ),
-                ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
