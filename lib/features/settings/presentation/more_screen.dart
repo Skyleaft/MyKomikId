@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -6,12 +7,15 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/widgets/alert_banner.dart';
 import '../../auth/services/auth_service.dart';
 import '../../history/models/progression.dart';
 import '../../history/services/progression_service.dart';
 import '../../library/models/library_manga.dart';
 import '../../manga_detail/services/manga_detail_service.dart';
+import '../services/storage_service.dart';
 import 'base_api_setting_screen.dart';
+import 'storage_setting_screen.dart';
 import 'theme_setting_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -25,18 +29,30 @@ class _MoreScreenState extends State<MoreScreen> {
   String _appVersion = 'Loading...';
   final _progressionService = getIt<ProgressionService>();
   final _apiService = getIt<MangaApiService>();
+  final _storageService = getIt<StorageService>();
 
   List<MangaProgression> _progressions = [];
   Map<String, Map<String, dynamic>> _mangaDetailsMap = {};
   bool _isLoadingStats = true;
   int _totalChaptersRead = 0;
   int _totalReadingTimeSeconds = 0;
+  int _cacheSizeBytes = 0;
 
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
     _loadStats();
+    _loadCacheSize();
+  }
+
+  Future<void> _loadCacheSize() async {
+    final size = await _storageService.getCacheSizeBytes();
+    if (mounted) {
+      setState(() {
+        _cacheSizeBytes = size;
+      });
+    }
   }
 
   Future<void> _loadStats() async {
@@ -238,19 +254,33 @@ class _MoreScreenState extends State<MoreScreen> {
                 context,
                 icon: Icons.download_done_rounded,
                 title: 'Downloaded Chapters',
-                onTap: () {},
+                subtitle: 'Offline storage (Coming soon)',
+                onTap: _showDownloadsInfoDialog,
               ),
               _buildMenuItem(
                 context,
                 icon: Icons.cleaning_services_outlined,
                 title: 'Clear Cache',
-                onTap: () {},
+                subtitle: _cacheSizeBytes > 0
+                    ? StorageService.formatBytes(_cacheSizeBytes)
+                    : '0 B',
+                onTap: _handleClearCache,
               ),
               _buildMenuItem(
                 context,
                 icon: Icons.data_usage_outlined,
                 title: 'Storage Usage',
-                onTap: () {},
+                subtitle: 'Detailed breakdown & cache management',
+                onTap: () async {
+                  if (!context.mounted) return;
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const StorageSettingScreen(),
+                    ),
+                  );
+                  _loadCacheSize();
+                },
               ),
 
               const SizedBox(height: 24),
@@ -689,6 +719,156 @@ class _MoreScreenState extends State<MoreScreen> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleClearCache() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Clear Cache?',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'This will delete temporary image covers, page buffers, and cached network responses. Your bookmarks and reading progression will NOT be deleted.',
+            style: TextStyle(
+              color: isDark ? Colors.white70 : const Color(0xFF475569),
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Clear Now'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      HapticFeedback.mediumImpact();
+      await _storageService.clearCache();
+      await _loadCacheSize();
+      if (mounted) {
+        AlertBanner.show(
+          context,
+          'Cache cleared successfully!',
+          type: AlertBannerType.success,
+        );
+      }
+    }
+  }
+
+  void _showDownloadsInfoDialog() {
+    HapticFeedback.selectionClick();
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.download_rounded,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Offline Downloads',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Chapter download feature is currently under active development. In an upcoming update, you will be able to download full manga chapters for smooth offline reading on the go!',
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : const Color(0xFF475569),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : theme.colorScheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Storage management is already configured and ready for downloaded packages.',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Got it'),
             ),
           ],
         );
