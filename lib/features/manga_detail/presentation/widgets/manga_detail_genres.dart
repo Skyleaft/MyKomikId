@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../models/manga_detail.dart';
 
 class MangaDetailGenres extends StatelessWidget {
@@ -15,7 +15,7 @@ class MangaDetailGenres extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildProviderChips(),
-        _buildGenreTags(),
+        _buildGenreTags(context),
       ],
     );
   }
@@ -82,25 +82,29 @@ class MangaDetailGenres extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: color),
+            Icon(icon, size: 13, color: color),
             const SizedBox(width: 5),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: color,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(width: 3),
-            Icon(Icons.open_in_new, size: 11, color: color),
+            Icon(Icons.open_in_new_rounded, size: 11, color: color),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGenreTags() {
+  Widget _buildGenreTags(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -109,8 +113,9 @@ class MangaDetailGenres extends StatelessWidget {
           ...manga.genres!.map(
             (genre) => _buildTag(
               genre,
-              AppColors.primary.withValues(alpha: 0.2),
-              AppColors.primary,
+              colorScheme.primary.withValues(alpha: isDark ? 0.18 : 0.12),
+              colorScheme.primary,
+              isDark: isDark,
             ),
           ),
         if (manga.categories != null)
@@ -119,36 +124,51 @@ class MangaDetailGenres extends StatelessWidget {
               category,
               Colors.tealAccent.withValues(alpha: 0.15),
               Colors.tealAccent[400] ?? Colors.teal,
+              isDark: isDark,
             ),
           ),
         _buildTag(
           manga.status?.toUpperCase() ?? 'ONGOING',
-          Colors.grey.withValues(alpha: 0.2),
-          Colors.grey,
+          isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.06),
+          isDark ? Colors.white70 : Colors.black54,
+          isDark: isDark,
         ),
         if (manga.releaseDate != null)
           _buildTag(
             'START: ${DateFormat('yyyy').format(manga.releaseDate!)}',
-            Colors.blueAccent.withValues(alpha: 0.2),
+            Colors.blueAccent.withValues(alpha: 0.15),
             Colors.blueAccent,
+            isDark: isDark,
           ),
       ],
     );
   }
 
-  Widget _buildTag(String label, Color bgColor, Color textColor) {
+  Widget _buildTag(
+    String label,
+    Color bgColor,
+    Color textColor, {
+    required bool isDark,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: textColor.withValues(alpha: 0.25),
+          width: 0.8,
+        ),
       ),
       child: Text(
         label.toUpperCase(),
-        style: TextStyle(
+        style: GoogleFonts.inter(
           color: textColor,
-          fontSize: 10,
+          fontSize: 10.5,
           fontWeight: FontWeight.bold,
+          letterSpacing: 0.4,
         ),
       ),
     );

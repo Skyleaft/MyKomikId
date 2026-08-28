@@ -4,6 +4,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
 import '../../../core/models/manga_summary.dart';
 import '../../../core/widgets/alert_banner.dart';
+import '../../../core/widgets/shimmer_box.dart';
 import '../../../routes/app_pages.dart';
 import '../../reader/models/reader_content.dart';
 import '../controllers/manga_detail_controller.dart';
@@ -35,7 +36,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     with SingleTickerProviderStateMixin {
   late final MangaDetailController _controller;
   late final TabController _tabController;
+  late final ScrollController _scrollController;
   final MangaApiService _apiService = getIt<MangaApiService>();
+  bool _showStickyRead = false;
 
   @override
   void initState() {
@@ -43,6 +46,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     _controller = MangaDetailController(manga: widget.manga);
     _controller.addListener(_onControllerChanged);
     _controller.init();
+
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
 
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
@@ -53,12 +59,24 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     });
   }
 
+  void _onScroll() {
+    final shouldShow = _scrollController.hasClients &&
+        _scrollController.offset > 450;
+    if (shouldShow != _showStickyRead) {
+      setState(() {
+        _showStickyRead = shouldShow;
+      });
+    }
+  }
+
   void _onControllerChanged() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _tabController.dispose();
@@ -66,11 +84,41 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Future<void> _navigateToReader(BuildContext context, Chapter chapter) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Opening Chapter ${chapter.chapterNumber % 1 == 0 ? chapter.chapterNumber.toInt() : chapter.chapterNumber}...',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
 
@@ -140,11 +188,43 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   }
 
   Future<void> _navigateToDetail(BuildContext context, MangaSummary item) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Loading ${item.title}...',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
 
@@ -165,254 +245,371 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     }
   }
 
+  Chapter? _getQuickReadTargetChapter() {
+    if (_controller.chapters.isEmpty) return null;
+
+    final progression = _controller.progression;
+    if (progression != null && progression.currentChapter > 0) {
+      final chapter = _controller.chapters
+          .where((c) => c.chapterNumber == progression.currentChapter)
+          .firstOrNull;
+      if (chapter != null) return chapter;
+    }
+
+    // Default to lowest chapter number (Start Reading)
+    return _controller.chapters.reduce(
+      (a, b) => a.chapterNumber < b.chapterNumber ? a : b,
+    );
+  }
+
+  String _getQuickReadLabel(Chapter chapter) {
+    final progression = _controller.progression;
+    final chNumStr = chapter.chapterNumber % 1 == 0
+        ? chapter.chapterNumber.toInt().toString()
+        : chapter.chapterNumber.toString();
+
+    if (progression != null && progression.currentChapter > 0) {
+      return 'Continue Ch. $chNumStr';
+    }
+    return 'Start Ch. $chNumStr';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final heroImageUrl = _apiService.getLocalImageUrl(
       widget.manga.localImageUrl,
       widget.manga.imageUrl,
     );
 
+    final targetChapter = _getQuickReadTargetChapter();
+    final quickReadLabel = targetChapter != null
+        ? _getQuickReadLabel(targetChapter)
+        : '';
+
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
         return Scaffold(
-          body: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: _controller.refresh,
-            child: CustomScrollView(
-              slivers: [
-                // Parallax Header
-                MangaDetailAppBar(
-                  manga: widget.manga,
-                  heroImageUrl: heroImageUrl,
-                ),
+          body: Stack(
+            children: [
+              RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: _controller.refresh,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    // Parallax Header
+                    MangaDetailAppBar(
+                      manga: widget.manga,
+                      heroImageUrl: heroImageUrl,
+                    ),
 
-                // Main Info Container
-                SliverToBoxAdapter(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.backgroundDark
-                          : AppColors.backgroundLight,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
+                    // Main Info Container
+                    SliverToBoxAdapter(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.backgroundDark
+                              : AppColors.backgroundLight,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MangaDetailInfoSection(
+                              manga: widget.manga,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(height: 16),
+                            MangaDetailStatsRow(
+                              rating: widget.manga.rating,
+                              chapterCount: _controller.chapters.length,
+                              totalView: widget.manga.totalView,
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              height: 1,
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            MangaDetailGenres(manga: widget.manga),
+                            const SizedBox(height: 24),
+                            MangaDetailSynopsis(
+                              description: widget.manga.description,
+                            ),
+                            const SizedBox(height: 24),
+                            MangaDetailActionBar(
+                              chapters: _controller.chapters,
+                              isLoadingChapters: _controller.isLoadingChapters,
+                              isInLibrary: _controller.isInLibrary,
+                              isFavorite: _controller.isFavorite,
+                              progression: _controller.progression,
+                              onReadChapter: (ch) =>
+                                  _navigateToReader(context, ch),
+                              onAddToLibrary: (status) async {
+                                await _controller.addToLibrary(status);
+                                if (context.mounted) {
+                                  AlertBanner.show(
+                                    context,
+                                    'Added to library as $status',
+                                    type: AlertBannerType.success,
+                                  );
+                                }
+                              },
+                              onRemoveFromLibrary: () async {
+                                await _controller.removeFromLibrary();
+                                if (context.mounted) {
+                                  AlertBanner.show(
+                                    context,
+                                    'Removed from library',
+                                    type: AlertBannerType.success,
+                                  );
+                                }
+                              },
+                              onToggleFavorite: () async {
+                                final isFav =
+                                    await _controller.toggleFavorite();
+                                if (context.mounted) {
+                                  AlertBanner.show(
+                                    context,
+                                    isFav
+                                        ? 'Added to favorites'
+                                        : 'Removed from favorites',
+                                    type: AlertBannerType.success,
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
                       ),
                     ),
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        MangaDetailInfoSection(
-                          manga: widget.manga,
-                          isDark: isDark,
+
+                    // Pinned Tab Bar
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: MangaDetailTabBarDelegate(
+                        backgroundColor: isDark
+                            ? AppColors.backgroundDark
+                            : AppColors.backgroundLight,
+                        tabBar: TabBar(
+                          controller: _tabController,
+                          indicatorColor: colorScheme.primary,
+                          labelColor: colorScheme.primary,
+                          unselectedLabelColor: Colors.grey,
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          tabs: const [
+                            Tab(text: 'Chapters'),
+                            Tab(text: 'Recommendations'),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        MangaDetailStatsRow(
-                          rating: widget.manga.rating,
-                          chapterCount: _controller.chapters.length,
-                          totalView: widget.manga.totalView,
+                      ),
+                    ),
+
+                    // Chapter Search & Sort Header
+                    if (_tabController.index == 0)
+                      SliverToBoxAdapter(
+                        child: Container(
+                          color: isDark
+                              ? AppColors.backgroundDark
+                              : AppColors.backgroundLight,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          child: MangaDetailChapterHeader(
+                            isAscending: _controller.isAscending,
+                            currentFilter: _controller.chapterFilter,
+                            onFilterChanged: _controller.setChapterFilter,
+                            onToggleSort: _controller.toggleSort,
+                            onSearchChanged: _controller.setSearchQuery,
+                            onScrapChapters: () async {
+                              try {
+                                _controller.startScrapingFeedback();
+                                AlertBanner.show(
+                                  context,
+                                  'Scraping chapters queued...',
+                                  type: AlertBannerType.info,
+                                );
+                                await _apiService
+                                    .scrapChapterPagesNew(widget.manga.id);
+                              } catch (e) {
+                                _controller.clearScrapingProgress();
+                                if (context.mounted) {
+                                  AlertBanner.show(
+                                    context,
+                                    'Failed to scrap chapters: $e',
+                                    type: AlertBannerType.error,
+                                  );
+                                }
+                              }
+                            },
+                          ),
                         ),
-                        const SizedBox(height: 16),
-                        Container(
-                          height: 1,
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          margin: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+
+                    // Real-time SignalR Chapter Scraping Progress Card
+                    if (_tabController.index == 0 &&
+                        _controller.scrapingProgress != null)
+                      SliverToBoxAdapter(
+                        child: MangaDetailScrapingProgressCard(
+                          progress: _controller.scrapingProgress!,
+                          onDismiss: _controller.clearScrapingProgress,
                         ),
-                        MangaDetailGenres(manga: widget.manga),
-                        const SizedBox(height: 24),
-                        MangaDetailSynopsis(
-                          description: widget.manga.description,
-                        ),
-                        const SizedBox(height: 24),
-                        MangaDetailActionBar(
-                          chapters: _controller.chapters,
-                          isLoadingChapters: _controller.isLoadingChapters,
-                          isInLibrary: _controller.isInLibrary,
-                          isFavorite: _controller.isFavorite,
-                          progression: _controller.progression,
-                          onReadChapter: (ch) => _navigateToReader(context, ch),
-                          onAddToLibrary: (status) async {
-                            await _controller.addToLibrary(status);
-                            if (context.mounted) {
-                              AlertBanner.show(
+                      ),
+
+                    // Tab Content (Chapters or Recommendations)
+                    if (_tabController.index == 0)
+                      _buildChapterList(isDark)
+                    else ...[
+                      SliverToBoxAdapter(
+                        child: Container(
+                          color: isDark
+                              ? AppColors.backgroundDark
+                              : AppColors.backgroundLight,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          child: MangaDetailRecommendationsHeader(
+                            manga: widget.manga,
+                            totalCount: _controller.recommendations.length,
+                            isLoading: _controller.isLoadingRecommendations,
+                            selectedStatus: _controller.recommendationStatus,
+                            selectedType: _controller.recommendationType,
+                            selectedGenres: _controller.recommendationGenres,
+                            onOpenFilter: () {
+                              SimilarMangaFilterSheet.show(
                                 context,
-                                'Added to library as $status',
-                                type: AlertBannerType.success,
-                              );
-                            }
-                          },
-                          onRemoveFromLibrary: () async {
-                            await _controller.removeFromLibrary();
-                            if (context.mounted) {
-                              AlertBanner.show(
-                                context,
-                                'Removed from library',
-                                type: AlertBannerType.success,
-                              );
-                            }
-                          },
-                          onToggleFavorite: () async {
-                            final isFav = await _controller.toggleFavorite();
-                            if (context.mounted) {
-                              AlertBanner.show(
-                                context,
-                                isFav
-                                    ? 'Added to favorites'
-                                    : 'Removed from favorites',
-                                type: AlertBannerType.success,
-                              );
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Pinned Tab Bar
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: MangaDetailTabBarDelegate(
-                    backgroundColor: isDark
-                        ? AppColors.backgroundDark
-                        : AppColors.backgroundLight,
-                    tabBar: TabBar(
-                      controller: _tabController,
-                      indicatorColor: AppColors.primary,
-                      labelColor: AppColors.primary,
-                      unselectedLabelColor: Colors.grey,
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      tabs: const [
-                        Tab(text: 'Chapters'),
-                        Tab(text: 'Recommendations'),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Chapter Search & Sort Header
-                if (_tabController.index == 0)
-                  SliverToBoxAdapter(
-                    child: Container(
-                      color: isDark
-                          ? AppColors.backgroundDark
-                          : AppColors.backgroundLight,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      child: MangaDetailChapterHeader(
-                        isAscending: _controller.isAscending,
-                        currentFilter: _controller.chapterFilter,
-                        onFilterChanged: _controller.setChapterFilter,
-                        onToggleSort: _controller.toggleSort,
-                        onSearchChanged: _controller.setSearchQuery,
-                        onScrapChapters: () async {
-                          try {
-                            _controller.startScrapingFeedback();
-                            AlertBanner.show(
-                              context,
-                              'Scraping chapters queued...',
-                              type: AlertBannerType.info,
-                            );
-                            await _apiService.scrapChapterPagesNew(widget.manga.id);
-                          } catch (e) {
-                            _controller.clearScrapingProgress();
-                            if (context.mounted) {
-                              AlertBanner.show(
-                                context,
-                                'Failed to scrap chapters: $e',
-                                type: AlertBannerType.error,
-                              );
-                            }
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-
-                // Real-time SignalR Chapter Scraping Progress Card
-                if (_tabController.index == 0 && _controller.scrapingProgress != null)
-                  SliverToBoxAdapter(
-                    child: MangaDetailScrapingProgressCard(
-                      progress: _controller.scrapingProgress!,
-                      onDismiss: _controller.clearScrapingProgress,
-                    ),
-                  ),
-
-                // Tab Content (Chapters or Recommendations)
-                if (_tabController.index == 0)
-                  _buildChapterList(isDark)
-                else ...[
-                  SliverToBoxAdapter(
-                    child: Container(
-                      color: isDark
-                          ? AppColors.backgroundDark
-                          : AppColors.backgroundLight,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      child: MangaDetailRecommendationsHeader(
-                        manga: widget.manga,
-                        totalCount: _controller.recommendations.length,
-                        isLoading: _controller.isLoadingRecommendations,
-                        selectedStatus: _controller.recommendationStatus,
-                        selectedType: _controller.recommendationType,
-                        selectedGenres: _controller.recommendationGenres,
-                        onOpenFilter: () {
-                          SimilarMangaFilterSheet.show(
-                            context,
-                            currentGenres: _controller.recommendationGenres,
-                            currentType: _controller.recommendationType,
-                            currentStatus: _controller.recommendationStatus,
-                            mangaGenres: widget.manga.genres ?? [],
-                            onApply: (genres, type, status) {
-                              _controller.setRecommendationFilters(
-                                genres: genres,
-                                type: type,
-                                status: status,
+                                currentGenres: _controller.recommendationGenres,
+                                currentType: _controller.recommendationType,
+                                currentStatus: _controller.recommendationStatus,
+                                mangaGenres: widget.manga.genres ?? [],
+                                onApply: (genres, type, status) {
+                                  _controller.setRecommendationFilters(
+                                    genres: genres,
+                                    type: type,
+                                    status: status,
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
+                            onClearFilters:
+                                _controller.clearRecommendationFilters,
+                            onRemoveGenre:
+                                _controller.removeRecommendationGenre,
+                            onRemoveType: () =>
+                                _controller.setRecommendationType(null),
+                            onRemoveStatus: () =>
+                                _controller.setRecommendationStatus(null),
+                            onQuickToggleGenre:
+                                _controller.toggleRecommendationGenre,
+                            onRefresh: () => _controller.loadRecommendations(
+                                forceReload: true),
+                          ),
+                        ),
+                      ),
+                      MangaDetailRecommendationsGrid(
+                        recommendations: _controller.recommendations,
+                        isLoading: _controller.isLoadingRecommendations,
+                        errorMessage: _controller.recommendationErrorMessage,
+                        hasFilters: _controller.hasRecommendationFilters,
                         onClearFilters: _controller.clearRecommendationFilters,
-                        onRemoveGenre: _controller.removeRecommendationGenre,
-                        onRemoveType: () => _controller.setRecommendationType(null),
-                        onRemoveStatus: () => _controller.setRecommendationStatus(null),
-                        onQuickToggleGenre: _controller.toggleRecommendationGenre,
-                        onRefresh: () => _controller.loadRecommendations(forceReload: true),
+                        onRetry: () => _controller.loadRecommendations(
+                            forceReload: true),
+                        onSelectRecommendation: (item) =>
+                            _navigateToDetail(context, item),
+                      ),
+                    ],
+
+                    SliverToBoxAdapter(
+                      child: Container(
+                        height: 96,
+                        color: isDark
+                            ? AppColors.backgroundDark
+                            : AppColors.backgroundLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Floating Sticky Quick Read Pill Button
+              if (targetChapter != null)
+                Positioned(
+                  bottom: 24,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      offset: _showStickyRead
+                          ? Offset.zero
+                          : const Offset(0, 2),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 240),
+                        opacity: _showStickyRead ? 1.0 : 0.0,
+                        child: IgnorePointer(
+                          ignoring: !_showStickyRead,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(28),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.primary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () =>
+                                  _navigateToReader(context, targetChapter),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorScheme.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 24,
+                              ),
+                              label: Text(
+                                quickReadLabel,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.5,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  MangaDetailRecommendationsGrid(
-                    recommendations: _controller.recommendations,
-                    isLoading: _controller.isLoadingRecommendations,
-                    errorMessage: _controller.recommendationErrorMessage,
-                    hasFilters: _controller.hasRecommendationFilters,
-                    onClearFilters: _controller.clearRecommendationFilters,
-                    onRetry: () => _controller.loadRecommendations(forceReload: true),
-                    onSelectRecommendation: (item) =>
-                        _navigateToDetail(context, item),
-                  ),
-                ],
-
-                SliverToBoxAdapter(
-                  child: Container(
-                    height: 48,
-                    color: isDark
-                        ? AppColors.backgroundDark
-                        : AppColors.backgroundLight,
-                  ),
                 ),
-              ],
-            ),
+            ],
           ),
         );
       },
@@ -425,13 +622,55 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         : AppColors.backgroundLight;
 
     if (_controller.isLoadingChapters) {
-      return SliverToBoxAdapter(
-        child: Container(
-          color: bgColor,
-          padding: const EdgeInsets.all(24.0),
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          ),
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            return Container(
+              color: bgColor,
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.slate700.withValues(alpha: 0.1)
+                      : AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const ShimmerBox(
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const ShimmerBox(
+                            width: 140,
+                            height: 14,
+                            borderRadius: 4,
+                          ),
+                          const SizedBox(height: 8),
+                          ShimmerBox(
+                            width: 80,
+                            height: 10,
+                            borderRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+          childCount: 6,
         ),
       );
     }
@@ -442,7 +681,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
       return SliverToBoxAdapter(
         child: Container(
           color: bgColor,
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(32.0),
           child: Center(
             child: Text(
               _controller.searchQuery.isEmpty

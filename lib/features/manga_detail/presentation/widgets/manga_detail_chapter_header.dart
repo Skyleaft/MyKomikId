@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/manga_detail_controller.dart';
 
 class MangaDetailChapterHeader extends StatefulWidget {
@@ -48,21 +49,27 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     if (_isSearching) {
       return Container(
-        height: 48,
+        height: 46,
         decoration: BoxDecoration(
           color: isDark
-              ? AppColors.slate700.withValues(alpha: 0.3)
-              : AppColors.primary.withValues(alpha: 0.08),
+              ? const Color(0xFF1E293B)
+              : colorScheme.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: colorScheme.primary.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: [
-            Icon(Icons.search, color: AppColors.primary, size: 20),
+            Icon(Icons.search_rounded, color: colorScheme.primary, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
@@ -70,16 +77,15 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 autofocus: true,
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: isDark ? Colors.white : Colors.black87,
-                  fontSize: 14,
+                  fontSize: 13.5,
                 ),
                 decoration: InputDecoration(
                   hintText: 'Search chapter number or title...',
-                  hintStyle: TextStyle(
-                    color: (isDark ? Colors.white70 : Colors.black54)
-                        .withValues(alpha: 0.5),
-                    fontSize: 14,
+                  hintStyle: GoogleFonts.inter(
+                    color: (isDark ? Colors.white60 : Colors.black45),
+                    fontSize: 13.5,
                   ),
                   border: InputBorder.none,
                   isDense: true,
@@ -92,9 +98,9 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
             ),
             IconButton(
               icon: Icon(
-                Icons.close,
+                Icons.close_rounded,
                 color: isDark ? Colors.white70 : Colors.black54,
-                size: 20,
+                size: 18,
               ),
               onPressed: () {
                 setState(() {
@@ -118,42 +124,51 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
           children: [
             Text(
               'Chapters',
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                color: colorScheme.primary,
               ),
             ),
             Row(
               children: [
                 IconButton(
                   tooltip: 'Search Chapters',
-                  onPressed: () => setState(() => _isSearching = true),
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _isSearching = true);
+                  },
                   icon: Icon(
-                    Icons.search,
-                    color: AppColors.primary,
+                    Icons.search_rounded,
+                    color: colorScheme.primary,
                     size: 20,
                   ),
                 ),
                 IconButton(
                   tooltip: 'Scrape Chapters Online',
-                  onPressed: widget.onScrapChapters,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    widget.onScrapChapters();
+                  },
                   icon: Icon(
                     Icons.cloud_download_outlined,
-                    color: AppColors.primary,
+                    color: colorScheme.primary,
                     size: 20,
                   ),
                 ),
                 PopupMenuButton<ChapterFilterOption>(
                   tooltip: 'Filter chapters',
                   initialValue: widget.currentFilter,
-                  onSelected: widget.onFilterChanged,
+                  onSelected: (option) {
+                    HapticFeedback.selectionClick();
+                    widget.onFilterChanged(option);
+                  },
                   icon: Icon(
                     widget.currentFilter == ChapterFilterOption.all
                         ? Icons.filter_list_rounded
                         : Icons.filter_alt_rounded,
                     color: widget.currentFilter == ChapterFilterOption.all
-                        ? AppColors.primary
+                        ? colorScheme.primary
                         : Colors.amber,
                     size: 20,
                   ),
@@ -173,22 +188,26 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
                   ],
                 ),
                 TextButton.icon(
-                  onPressed: widget.onToggleSort,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    widget.onToggleSort();
+                  },
                   icon: Text(
                     widget.isAscending ? 'Oldest' : 'Latest',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 14,
+                    style: GoogleFonts.inter(
+                      color: colorScheme.primary,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   label: AnimatedRotation(
                     turns: widget.isAscending ? 0.5 : 0,
                     duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
                     child: Icon(
-                      Icons.swap_vert,
-                      color: AppColors.primary,
-                      size: 16,
+                      Icons.swap_vert_rounded,
+                      color: colorScheme.primary,
+                      size: 18,
                     ),
                   ),
                 ),
@@ -202,19 +221,21 @@ class _MangaDetailChapterHeaderState extends State<MangaDetailChapterHeader> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                    border:
+                        Border.all(color: Colors.amber.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         'Filtered: ${_getFilterLabel(widget.currentFilter)}',
-                        style: const TextStyle(
-                          color: Colors.amber,
+                        style: GoogleFonts.inter(
+                          color: isDark ? Colors.amberAccent : Colors.amber.shade800,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
