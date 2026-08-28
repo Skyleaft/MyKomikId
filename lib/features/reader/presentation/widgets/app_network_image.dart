@@ -6,6 +6,7 @@ class AppNetworkImage extends StatefulWidget {
   final String imageUrl;
   final BoxFit fit;
   final double? width;
+  final double? height;
   final Widget? placeholder;
   final Widget? errorWidget;
   final bool gaplessPlayback;
@@ -13,12 +14,16 @@ class AppNetworkImage extends StatefulWidget {
   final Map<String, String>? httpHeaders;
   final int? maxHeightDiskCache;
   final int? maxWidthDiskCache;
+  final int? memCacheWidth;
+  final int? memCacheHeight;
+  final ValueChanged<double>? onAspectRatioResolved;
 
   const AppNetworkImage({
     super.key,
     required this.imageUrl,
     this.fit = BoxFit.fitWidth,
     this.width,
+    this.height,
     this.placeholder,
     this.errorWidget,
     this.gaplessPlayback = true,
@@ -26,6 +31,9 @@ class AppNetworkImage extends StatefulWidget {
     this.httpHeaders,
     this.maxHeightDiskCache,
     this.maxWidthDiskCache,
+    this.memCacheWidth,
+    this.memCacheHeight,
+    this.onAspectRatioResolved,
   });
 
   @override
@@ -33,98 +41,18 @@ class AppNetworkImage extends StatefulWidget {
 }
 
 class _AppNetworkImageState extends State<AppNetworkImage> {
-  double? _aspectRatio;
-
-  ImageStream? _imageStream;
-  ImageStreamListener? _imageStreamListener;
-  Timer? _timeoutTimer;
-  bool _isErrorOrTimeout = false;
   int _retryCount = 0;
   bool _isRetrying = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _resolveImage();
-  }
+  Key _imageKey = UniqueKey();
 
   @override
   void didUpdateWidget(covariant AppNetworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl) {
       _retryCount = 0;
-      _aspectRatio = null;
-      _resolveImage();
+      _isRetrying = false;
+      _imageKey = UniqueKey();
     }
-  }
-
-  @override
-  void dispose() {
-    _timeoutTimer?.cancel();
-    if (_imageStreamListener != null) {
-      _imageStream?.removeListener(_imageStreamListener!);
-    }
-    super.dispose();
-  }
-
-  void _resolveImage() {
-    _timeoutTimer?.cancel();
-    if (_imageStreamListener != null) {
-      _imageStream?.removeListener(_imageStreamListener!);
-    }
-
-    if (mounted) {
-      setState(() {
-        _isErrorOrTimeout = false;
-        _isRetrying = false;
-      });
-    }
-
-    if (widget.timeout != null) {
-      _timeoutTimer = Timer(widget.timeout!, () {
-        if (mounted && _aspectRatio == null) {
-          setState(() {
-            _isErrorOrTimeout = true;
-            _isRetrying = false;
-          });
-        }
-      });
-    }
-
-    final provider = CachedNetworkImageProvider(
-      widget.imageUrl,
-      headers: widget.httpHeaders,
-      maxHeight: widget.maxHeightDiskCache,
-      maxWidth: widget.maxWidthDiskCache,
-    );
-
-    _imageStream = provider.resolve(const ImageConfiguration());
-    _imageStreamListener = ImageStreamListener(
-      (info, _) {
-        _timeoutTimer?.cancel();
-        final ratio =
-            info.image.width.toDouble() / info.image.height.toDouble();
-
-        if (mounted) {
-          setState(() {
-            _aspectRatio = ratio;
-            _isErrorOrTimeout = false;
-            _isRetrying = false;
-          });
-        }
-      },
-      onError: (dynamic exception, StackTrace? stackTrace) {
-        _timeoutTimer?.cancel();
-        if (mounted) {
-          setState(() {
-            _isErrorOrTimeout = true;
-            _isRetrying = false;
-          });
-        }
-      },
-    );
-
-    _imageStream?.addListener(_imageStreamListener!);
   }
 
   Future<void> _forceReload() async {
@@ -142,14 +70,17 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     } catch (_) {}
 
     if (mounted) {
-      _resolveImage();
+      setState(() {
+        _imageKey = UniqueKey();
+        _isRetrying = false;
+      });
     }
   }
 
   Widget _buildPlaceholder() {
     return widget.placeholder ??
         Container(
-          height: (widget.width ?? 300) * 1.4,
+          height: widget.width != null ? widget.width! * 1.4 : null,
           width: widget.width,
           color: Colors.black,
           child: const Center(
@@ -173,7 +104,7 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     }
 
     return Container(
-      height: (widget.width ?? 300) * 1.2,
+      height: widget.width != null ? widget.width! * 1.2 : null,
       width: widget.width,
       color: const Color(0xFF141414),
       padding: const EdgeInsets.all(16),
@@ -260,40 +191,43 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isErrorOrTimeout) {
-      return _buildErrorWidget();
-    }
-
-    if (_aspectRatio == null) {
-      return _buildPlaceholder();
-    }
-
-    Widget imageWidget = CachedNetworkImage(
+    return CachedNetworkImage(
+      key: _imageKey,
       imageUrl: widget.imageUrl,
       httpHeaders: widget.httpHeaders,
       fit: widget.fit,
       width: widget.width,
+      height: widget.height,
+      memCacheWidth: widget.memCacheWidth,
+      memCacheHeight: widget.memCacheHeight,
       maxHeightDiskCache: widget.maxHeightDiskCache,
       maxWidthDiskCache: widget.maxWidthDiskCache,
+      imageBuilder: widget.onAspectRatioResolved != null
+          ? (context, imageProvider) {
+              imageProvider.resolve(const ImageConfiguration()).addListener(
+                ImageStreamListener(
+                  (info, _) {
+                    final w = info.image.width;
+                    final h = info.image.height;
+                    if (w > 0 && widget.onAspectRatioResolved != null) {
+                      widget.onAspectRatioResolved!(h / w);
+                    }
+                  },
+                ),
+              );
+              return Image(
+                image: imageProvider,
+                fit: widget.fit,
+                width: widget.width,
+                height: widget.height,
+                gaplessPlayback: widget.gaplessPlayback,
+              );
+            }
+          : null,
       placeholder: (context, url) => _buildPlaceholder(),
       errorBuilder: (context, url, error) => _buildErrorWidget(),
-    );
-
-    if (widget.width != null) {
-      return AspectRatio(
-        aspectRatio: _aspectRatio!,
-        child: imageWidget,
-      );
-    }
-
-    return FittedBox(
-      fit: widget.fit,
-      alignment: Alignment.center,
-      child: SizedBox(
-        width: 1000,
-        height: 1000 / _aspectRatio!,
-        child: imageWidget,
-      ),
+      fadeInDuration: const Duration(milliseconds: 150),
+      fadeOutDuration: const Duration(milliseconds: 150),
     );
   }
 }
