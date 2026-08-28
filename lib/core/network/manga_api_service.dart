@@ -7,6 +7,7 @@ import '../models/manga_summary.dart';
 import '../models/paged_response.dart';
 import '../models/chapter_page.dart';
 import '../../features/discover/models/advanced_recommendation_request.dart';
+import '../../features/discover/models/query_paged_manga_request.dart';
 
 class MangaApiService {
   static const String _tokenKey = 'auth_token';
@@ -178,6 +179,26 @@ class MangaApiService {
           'page': page,
           'pageSize': pageSize,
         },
+      );
+
+      final unwrapped = _unwrap(response.data) as Map<String, dynamic>;
+      return PagedResponse.fromJson(
+        unwrapped,
+        (json) => MangaSummary.fromJson(json),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<PagedResponse<MangaSummary>> queryPagedManga(
+    QueryPagedMangaRequest request,
+  ) async {
+    try {
+      final response = await _dio.request(
+        '/api/v1/manga',
+        data: request.toMap(),
+        options: Options(method: 'QUERY'),
       );
 
       final unwrapped = _unwrap(response.data) as Map<String, dynamic>;

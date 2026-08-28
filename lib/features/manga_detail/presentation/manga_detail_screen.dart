@@ -115,12 +115,17 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
           progression: progression,
         );
 
+        _controller.pauseSignalR();
+
         await Navigator.pushNamed(
           context,
           AppRoutes.reader,
           arguments: content,
         );
-        _controller.refreshProgression();
+        if (mounted) {
+          _controller.resumeSignalR();
+          _controller.refreshProgression();
+        }
       }
     } catch (e) {
       if (context.mounted) {

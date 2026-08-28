@@ -9,6 +9,7 @@ import '../models/chapter_scraping_progress.dart';
 class MangaSignalRService {
   HubConnection? _hubConnection;
   String? _currentBaseUrl;
+  final Set<String> _joinedMangaGroups = {};
 
   final _scrapingProgressController =
       StreamController<ChapterScrapingProgress>.broadcast();
@@ -27,6 +28,18 @@ class MangaSignalRService {
     await _ensureConnection();
   }
 
+  Future<void> disconnect() async {
+    if (_hubConnection != null &&
+        _hubConnection!.state != HubConnectionState.Disconnected) {
+      try {
+        await _hubConnection!.stop();
+        debugPrint('SignalR Hub disconnected manually');
+      } catch (e) {
+        debugPrint('Failed to disconnect SignalR Hub: $e');
+      }
+    }
+  }
+
   Future<void> _ensureConnection() async {
     final baseUrl = AppConfig.baseUrl;
 
@@ -34,6 +47,15 @@ class MangaSignalRService {
       if (_hubConnection!.state == HubConnectionState.Disconnected) {
         try {
           await _hubConnection!.start();
+          debugPrint('SignalR Hub restarted');
+          for (final id in _joinedMangaGroups) {
+            try {
+              await _hubConnection!.invoke('JoinMangaGroup', args: [id]);
+              debugPrint('SignalR: Re-joined manga group "$id"');
+            } catch (e) {
+              debugPrint('SignalR: Error re-joining manga group "$id": $e');
+            }
+          }
         } catch (e) {
           debugPrint('Failed to restart SignalR Hub connection: $e');
         }
@@ -81,8 +103,16 @@ class MangaSignalRService {
         debugPrint('SignalR Hub reconnecting... Error: $error');
       });
 
-      _hubConnection!.onreconnected(({connectionId}) {
+      _hubConnection!.onreconnected(({connectionId}) async {
         debugPrint('SignalR Hub reconnected. ConnectionId: $connectionId');
+        for (final id in _joinedMangaGroups) {
+          try {
+            await _hubConnection!.invoke('JoinMangaGroup', args: [id]);
+            debugPrint('SignalR: Re-joined manga group "$id"');
+          } catch (e) {
+            debugPrint('SignalR: Error re-joining manga group "$id": $e');
+          }
+        }
       });
 
       await _hubConnection!.start();
@@ -128,6 +158,7 @@ class MangaSignalRService {
 
   Future<void> joinMangaGroup(String mangaId) async {
     if (mangaId.isEmpty) return;
+    _joinedMangaGroups.add(mangaId);
     await _ensureConnection();
 
     if (_hubConnection?.state == HubConnectionState.Connected) {
@@ -142,6 +173,7 @@ class MangaSignalRService {
 
   Future<void> leaveMangaGroup(String mangaId) async {
     if (mangaId.isEmpty) return;
+    _joinedMangaGroups.remove(mangaId);
 
     if (_hubConnection?.state == HubConnectionState.Connected) {
       try {
@@ -154,6 +186,7 @@ class MangaSignalRService {
   }
 
   void dispose() {
+    _joinedMangaGroups.clear();
     _scrapingProgressController.close();
     _chaptersUpdatedController.close();
     _hubConnection?.stop();

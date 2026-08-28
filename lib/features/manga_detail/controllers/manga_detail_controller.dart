@@ -165,6 +165,15 @@ class MangaDetailController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> pauseSignalR() async {
+    await _signalRService.leaveMangaGroup(manga.id);
+    await _signalRService.disconnect();
+  }
+
+  Future<void> resumeSignalR() async {
+    await _signalRService.joinMangaGroup(manga.id);
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
@@ -174,6 +183,7 @@ class MangaDetailController extends ChangeNotifier {
     _progressSubscription?.cancel();
     _chaptersUpdatedSubscription?.cancel();
     _signalRService.leaveMangaGroup(manga.id);
+    _signalRService.disconnect();
     super.dispose();
   }
 
