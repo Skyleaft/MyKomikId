@@ -25,11 +25,15 @@ class MoreScreen extends StatefulWidget {
   State<MoreScreen> createState() => _MoreScreenState();
 }
 
-class _MoreScreenState extends State<MoreScreen> {
+class _MoreScreenState extends State<MoreScreen>
+    with AutomaticKeepAliveClientMixin {
   String _appVersion = 'Loading...';
   final _progressionService = getIt<ProgressionService>();
   final _apiService = getIt<MangaApiService>();
   final _storageService = getIt<StorageService>();
+
+  @override
+  bool get wantKeepAlive => true;
 
   List<MangaProgression> _progressions = [];
   Map<String, Map<String, dynamic>> _mangaDetailsMap = {};
@@ -187,6 +191,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authService = Provider.of<AuthService>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -197,6 +202,9 @@ class _MoreScreenState extends State<MoreScreen> {
           : AppColors.backgroundLight,
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
