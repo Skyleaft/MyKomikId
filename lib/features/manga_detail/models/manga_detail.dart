@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../../core/models/manga_summary.dart';
+import '../../../core/models/chapter_page.dart';
 import '../../history/models/progression.dart';
 
 class MangaDetail {
@@ -255,7 +256,7 @@ class Chapter {
   final String? chapterProvider;
   final String? chapterProviderIcon;
   final String? link;
-  final List<String> pages;
+  final List<ChapterPage> pages;
   final String language;
   final int totalView;
 
@@ -275,6 +276,8 @@ class Chapter {
     this.totalView = 0,
   });
 
+  List<String> get pageUrls => pages.map((p) => p.url).toList();
+
   Chapter copyWith({
     String? id,
     String? title,
@@ -286,7 +289,7 @@ class Chapter {
     String? chapterProvider,
     String? chapterProviderIcon,
     String? link,
-    List<String>? pages,
+    List<ChapterPage>? pages,
     String? language,
     int? totalView,
   }) {
@@ -309,7 +312,10 @@ class Chapter {
 
   factory Chapter.fromMap(Map<String, dynamic> map) {
     final rawPages = map['pages'] as List<dynamic>?;
-    final pagesList = rawPages?.map((e) => e as String).toList() ?? [];
+    final List<ChapterPage> pagesList = rawPages
+            ?.map((e) => ChapterPage.fromDynamic(e))
+            .toList() ??
+        [];
     final numVal = map['number'] ?? map['chapterNumber'] ?? 0;
     return Chapter(
       id: map['id'] as String? ?? (numVal.toString()),
@@ -347,7 +353,7 @@ class Chapter {
       'chapterProvider': chapterProvider,
       'chapterProviderIcon': chapterProviderIcon,
       'link': link,
-      'pages': pages,
+      'pages': pages.map((p) => p.toMap()).toList(),
       'language': language,
       'totalView': totalView,
     };

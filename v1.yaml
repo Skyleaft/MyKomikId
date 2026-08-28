@@ -79,6 +79,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga:
+    get:
+      tags:
+        - Manga
+      summary: Get paged list of manga
+      operationId: GetPagedManga
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: updatedAt
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            default: desc
+        - name: nsfw
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfPagedResponseOfMangaSummaryResponse"
   /api/v1/manga/trending:
     get:
       tags:
@@ -232,66 +297,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
-  /api/v1/manga:
-    get:
-      tags:
-        - Manga
-      summary: Get paged list of manga
-      operationId: GetPagedManga
-      parameters:
-        - name: search
-          in: query
-          schema:
-            type: string
-        - name: genres
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: type
-          in: query
-          schema:
-            type: string
-        - name: page
-          in: query
-          schema:
-            pattern: ^-?(?:0|[1-9]\d*)$
-            type:
-              - integer
-              - string
-            format: int32
-            default: 1
-        - name: pageSize
-          in: query
-          schema:
-            pattern: ^-?(?:0|[1-9]\d*)$
-            type:
-              - integer
-              - string
-            format: int32
-            default: 10
-        - name: sortBy
-          in: query
-          schema:
-            type: string
-            default: updatedAt
-        - name: orderBy
-          in: query
-          schema:
-            type: string
-            default: desc
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseOfPagedResponseOfMangaSummaryResponse"
   /api/v1/manga/{mangaId}/chapters/{chapterId}:
     get:
       tags:
@@ -1248,6 +1253,14 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/dashboard/sync-anilist:
+    post:
+      tags:
+        - Dashboard
+      operationId: SyncAnilist
+      responses:
+        "200":
+          description: OK
   /api/v1/dashboard/stats:
     get:
       tags:
@@ -1724,6 +1737,33 @@ components:
             - "null"
             - string
           format: date-time
+    ChapterPageResponse:
+      required:
+        - url
+        - width
+        - height
+      type: object
+      properties:
+        url:
+          type:
+            - "null"
+            - string
+        width:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        height:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        alternateUrl:
+          type:
+            - "null"
+            - string
     ChapterResponse:
       required:
         - id
@@ -1753,7 +1793,7 @@ components:
         pages:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/ChapterPageResponse"
         language:
           type: string
         chapterProvider:
@@ -1828,6 +1868,133 @@ components:
         userId:
           type: string
           format: uuid
+    MangaAdvancedFilter:
+      type: object
+      properties:
+        search:
+          type:
+            - "null"
+            - string
+        includedGenres:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        genreMatchMode:
+          type:
+            - "null"
+            - string
+        excludedGenres:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        statuses:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        types:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        author:
+          type:
+            - "null"
+            - string
+        minRating:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - "null"
+            - number
+            - string
+          format: double
+        maxRating:
+          pattern: ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+          type:
+            - "null"
+            - number
+            - string
+          format: double
+        minPopularity:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        maxPopularity:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        minTotalView:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        maxTotalView:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        minChapters:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        maxChapters:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        startReleaseDate:
+          type:
+            - "null"
+            - string
+          format: date-time
+        endReleaseDate:
+          type:
+            - "null"
+            - string
+          format: date-time
+        nsfw:
+          type:
+            - "null"
+            - boolean
+        anilistId:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - "null"
+            - integer
+            - string
+          format: int32
+        unlinkedAnilist:
+          type:
+            - "null"
+            - boolean
+    MangaSortOption:
+      type: object
+      properties:
+        field:
+          type: string
+        direction:
+          type: string
     MangaSummaryResponse:
       required:
         - id
@@ -1835,6 +2002,7 @@ components:
         - anilistId
         - mangaUpdateId
         - title
+        - synonyms
         - author
         - type
         - genres
@@ -1881,6 +2049,12 @@ components:
           format: int64
         title:
           type: string
+        synonyms:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
         author:
           type: string
         type:
@@ -2107,6 +2281,31 @@ components:
           type:
             - "null"
             - string
+    QueryPagedMangaRequest:
+      type: object
+      properties:
+        filter:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MangaAdvancedFilter"
+        sorts:
+          type:
+            - "null"
+            - array
+          items:
+            $ref: "#/components/schemas/MangaSortOption"
+        page:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+        pageSize:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
     RegisterFcmTokenRequest:
       required:
         - fcmToken
@@ -2142,6 +2341,7 @@ components:
         - mangaUpdateId
         - author
         - type
+        - synonyms
         - genres
         - categories
         - description
@@ -2181,6 +2381,12 @@ components:
           type: string
         type:
           type: string
+        synonyms:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
         genres:
           type: array
           items:

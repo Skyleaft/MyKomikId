@@ -1,5 +1,6 @@
 import '../../manga_detail/models/manga_detail.dart';
 import '../../history/models/progression.dart';
+import '../../../core/models/chapter_page.dart';
 
 class ReaderContent {
   final String mangaId;
@@ -9,15 +10,11 @@ class ReaderContent {
   final String chapterId;
   final String chapterTitle;
   final List<String> pageUrls;
+  final List<ChapterPage>? pages;
   final int currentPage;
   final int totalPages;
   final MangaProgression? progression;
   final Map<String, String>? httpHeaders;
-
-  /// TODO: [Backend Enhancement - Page Dimension Metadata]
-  /// When the backend/scraping API supports returning image dimensions e.g. [{"url": "...", "width": 700, "height": 2200}],
-  /// populate [pageAspectRatios] or [pageDimensions] directly from API response to eliminate layout shifts and enable
-  /// instantaneous 100% exact scroll offset calculations without client-side lazy measurement.
   final Map<int, double>? pageAspectRatios;
 
   ReaderContent({
@@ -27,12 +24,22 @@ class ReaderContent {
     required this.chapterId,
     required this.allChapters,
     required this.chapterTitle,
-    required this.pageUrls,
+    List<String>? pageUrls,
+    this.pages,
     this.currentPage = 1,
     this.progression,
     this.httpHeaders,
-    this.pageAspectRatios,
-  }) : totalPages = pageUrls.length;
+    Map<int, double>? pageAspectRatios,
+  })  : pageUrls = pageUrls ?? pages?.map((p) => p.url).toList() ?? [],
+        pageAspectRatios = pageAspectRatios ??
+            (pages != null
+                ? {
+                    for (int i = 0; i < pages.length; i++)
+                      if (pages[i].aspectRatio != null) i: pages[i].aspectRatio!,
+                  }
+                : null),
+        totalPages =
+            (pageUrls ?? pages?.map((p) => p.url).toList() ?? []).length;
 
   ReaderContent copyWith({
     String? mangaId,
@@ -42,6 +49,7 @@ class ReaderContent {
     String? chapterId,
     String? chapterTitle,
     List<String>? pageUrls,
+    List<ChapterPage>? pages,
     int? currentPage,
     MangaProgression? progression,
     Map<String, String>? httpHeaders,
@@ -54,7 +62,8 @@ class ReaderContent {
       allChapters: allChapters ?? this.allChapters,
       chapterId: chapterId ?? this.chapterId,
       chapterTitle: chapterTitle ?? this.chapterTitle,
-      pageUrls: pageUrls ?? this.pageUrls,
+      pageUrls: pageUrls ?? (pages == null ? this.pageUrls : null),
+      pages: pages ?? this.pages,
       currentPage: currentPage ?? this.currentPage,
       progression: progression ?? this.progression,
       httpHeaders: httpHeaders ?? this.httpHeaders,
@@ -64,9 +73,32 @@ class ReaderContent {
 
   factory ReaderContent.fromMap(Map<String, dynamic> map) {
     final rawPages =
-        map['pageUrls'] as List<dynamic>? ?? map['pages'] as List<dynamic>?;
-    final List<String> pagesList =
-        rawPages?.map((e) => e as String).toList() ?? [];
+        map['pages'] as List<dynamic>? ?? map['pageUrls'] as List<dynamic>?;
+    final List<ChapterPage> parsedPages = [];
+    final List<String> parsedUrls = [];
+    final Map<int, double> parsedRatios = {};
+
+    if (rawPages != null) {
+      for (int i = 0; i < rawPages.length; i++) {
+        final item = rawPages[i];
+        final page = ChapterPage.fromDynamic(item);
+        parsedPages.add(page);
+        parsedUrls.add(page.url);
+        if (page.aspectRatio != null) {
+          parsedRatios[i] = page.aspectRatio!;
+        }
+      }
+    }
+
+    if (map['pageAspectRatios'] is Map) {
+      (map['pageAspectRatios'] as Map).forEach((key, value) {
+        final k = key is int ? key : int.tryParse(key.toString());
+        final v = (value as num?)?.toDouble();
+        if (k != null && v != null) {
+          parsedRatios[k] = v;
+        }
+      });
+    }
 
     Map<String, String>? headers;
     if (map['httpHeaders'] is Map) {
@@ -92,9 +124,11 @@ class ReaderContent {
           [],
       chapterTitle:
           map['chapterTitle'] as String? ?? map['title'] as String? ?? '',
-      pageUrls: pagesList,
+      pageUrls: parsedUrls,
+      pages: parsedPages.isNotEmpty ? parsedPages : null,
       currentPage: map['currentPage'] as int? ?? 1,
       httpHeaders: headers,
+      pageAspectRatios: parsedRatios.isNotEmpty ? parsedRatios : null,
     );
   }
 
@@ -106,9 +140,15 @@ class ReaderContent {
       'chapterId': chapterId,
       'chapterTitle': chapterTitle,
       'pageUrls': pageUrls,
+      if (pages != null) 'pages': pages!.map((p) => p.toMap()).toList(),
       'currentPage': currentPage,
       'totalPages': totalPages,
       'httpHeaders': httpHeaders,
+      if (pageAspectRatios != null)
+        'pageAspectRatios': pageAspectRatios!.map(
+          (key, value) => MapEntry(key.toString(), value),
+        ),
     };
   }
 }
+
