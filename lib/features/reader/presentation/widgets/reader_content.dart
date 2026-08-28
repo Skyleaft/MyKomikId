@@ -6,6 +6,7 @@ import 'app_network_image.dart';
 import 'dart:math' as math;
 
 class ReaderContentWidget extends StatefulWidget {
+  final String? chapterId;
   final List<String> pageUrls;
   final bool isLoading;
   final bool showUI;
@@ -25,6 +26,7 @@ class ReaderContentWidget extends StatefulWidget {
 
   const ReaderContentWidget({
     super.key,
+    this.chapterId,
     required this.pageUrls,
     required this.isLoading,
     required this.showUI,
@@ -53,7 +55,8 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
   @override
   void didUpdateWidget(covariant ReaderContentWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.pageUrls != widget.pageUrls) {
+    if (oldWidget.pageUrls != widget.pageUrls ||
+        oldWidget.chapterId != widget.chapterId) {
       _precachedUrls.clear();
     }
   }
@@ -119,6 +122,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                 clipBehavior: Clip.none,
                 trackpadScrollCausesScale: false,
                 child: CustomScrollView(
+                  key: PageStorageKey('webtoon_scroll_${widget.chapterId ?? "default"}'),
                   scrollCacheExtent: const ScrollCacheExtent.pixels(1500),
                   controller: widget.scrollController,
                   physics:
@@ -147,7 +151,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                             child: Align(
                               alignment: Alignment.center,
                               child: SizedBox(
-                                key: GlobalObjectKey('webtoon_page_$index'),
+                                key: GlobalObjectKey('webtoon_${widget.chapterId ?? "default"}_page_$index'),
                                 width: contentWidth,
                                 child: AppNetworkImage(
                                   imageUrl: url,
@@ -221,6 +225,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                 ),
               )
             : PageView.builder(
+                key: PageStorageKey('paged_view_${widget.chapterId ?? "default"}'),
                 controller: widget.pageController,
                 reverse: widget.isRtlMode,
                 onPageChanged: (index) {
@@ -232,32 +237,36 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                 itemBuilder: (context, index) {
                   if (index == widget.pageUrls.length) {
                     return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white10),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => widget.onPageChanged(widget.pageUrls.length),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: Icon(
+                                Icons.arrow_forward_rounded,
+                                color: AppColors.primary,
+                                size: 40,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.arrow_forward_rounded,
-                              color: AppColors.primary,
-                              size: 40,
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Swipe or tap to load next chapter',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Swipe again to load next chapter',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }
