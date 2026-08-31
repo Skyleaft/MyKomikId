@@ -46,6 +46,7 @@ class AppNetworkImage extends StatefulWidget {
 class _AppNetworkImageState extends State<AppNetworkImage> {
   int _retryCount = 0;
   bool _isRetrying = false;
+  bool _aspectRatioReported = false;
   Key _imageKey = UniqueKey();
 
   @override
@@ -54,6 +55,7 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     if (oldWidget.imageUrl != widget.imageUrl) {
       _retryCount = 0;
       _isRetrying = false;
+      _aspectRatioReported = false;
       _imageKey = UniqueKey();
     }
   }
@@ -207,17 +209,25 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       maxWidthDiskCache: widget.maxWidthDiskCache,
       imageBuilder: widget.onAspectRatioResolved != null
           ? (context, imageProvider) {
-              imageProvider.resolve(const ImageConfiguration()).addListener(
-                ImageStreamListener(
+              if (!_aspectRatioReported) {
+                final stream = imageProvider.resolve(const ImageConfiguration());
+                late final ImageStreamListener listener;
+                listener = ImageStreamListener(
                   (info, _) {
                     final w = info.image.width;
                     final h = info.image.height;
-                    if (w > 0 && widget.onAspectRatioResolved != null) {
-                      widget.onAspectRatioResolved!(h / w);
+                    if (w > 0 && mounted && !_aspectRatioReported) {
+                      _aspectRatioReported = true;
+                      widget.onAspectRatioResolved?.call(h / w);
                     }
+                    stream.removeListener(listener);
                   },
-                ),
-              );
+                  onError: (exception, stackTrace) {
+                    stream.removeListener(listener);
+                  },
+                );
+                stream.addListener(listener);
+              }
               return Image(
                 image: imageProvider,
                 fit: widget.fit,

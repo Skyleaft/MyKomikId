@@ -260,9 +260,12 @@ class LibraryService {
     }
   }
 
+  List<LibraryManga>? _memoryCache;
+
   Future<void> clearLibrary() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_libraryKey);
+    _memoryCache = [];
     await getIt<NotificationService>().clearAllSubscribedTopics();
   }
 
@@ -299,14 +302,26 @@ class LibraryService {
   }
 
   Future<void> _saveAllToLocalCache(List<LibraryManga> library) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = library.map((m) => m.toJson()).toList();
-    await prefs.setStringList(_libraryKey, jsonList);
+    _memoryCache = List<LibraryManga>.from(library);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = library.map((m) => m.toJson()).toList();
+      await prefs.setStringList(_libraryKey, jsonList);
+    } catch (_) {}
   }
 
   Future<List<LibraryManga>> _loadFromLocalCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = prefs.getStringList(_libraryKey) ?? [];
-    return jsonList.map((json) => LibraryManga.fromJson(json)).toList();
+    if (_memoryCache != null) {
+      return List<LibraryManga>.from(_memoryCache!);
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = prefs.getStringList(_libraryKey) ?? [];
+      final list = jsonList.map((json) => LibraryManga.fromJson(json)).toList();
+      _memoryCache = list;
+      return List<LibraryManga>.from(list);
+    } catch (_) {
+      return [];
+    }
   }
 }

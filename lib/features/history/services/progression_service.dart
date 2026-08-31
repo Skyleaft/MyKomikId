@@ -162,9 +162,12 @@ class ProgressionService extends ChangeNotifier {
     await _saveAllToLocalCache(progressions, notify: true);
   }
 
+  List<MangaProgression>? _memoryCache;
+
   Future<void> clearAllProgressions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_progressionKey);
+    _memoryCache = [];
     _lastSyncTime = null;
     notifyListeners();
   }
@@ -229,24 +232,35 @@ class ProgressionService extends ChangeNotifier {
     List<MangaProgression> progressions, {
     bool notify = true,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = progressions.map((p) => p.toJson()).toList();
-    await prefs.setStringList(_progressionKey, jsonList);
+    _memoryCache = List<MangaProgression>.from(progressions);
     if (notify) {
       notifyListeners();
     }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = progressions.map((p) => p.toJson()).toList();
+      await prefs.setStringList(_progressionKey, jsonList);
+    } catch (_) {}
   }
 
   Future<List<MangaProgression>> _loadFromLocalCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = prefs.getStringList(_progressionKey) ?? [];
-    final list = <MangaProgression>[];
-    for (final json in jsonList) {
-      try {
-        list.add(MangaProgression.fromJson(json));
-      } catch (_) {}
+    if (_memoryCache != null) {
+      return List<MangaProgression>.from(_memoryCache!);
     }
-    return list;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = prefs.getStringList(_progressionKey) ?? [];
+      final list = <MangaProgression>[];
+      for (final json in jsonList) {
+        try {
+          list.add(MangaProgression.fromJson(json));
+        } catch (_) {}
+      }
+      _memoryCache = list;
+      return List<MangaProgression>.from(list);
+    } catch (_) {
+      return [];
+    }
   }
 }
 

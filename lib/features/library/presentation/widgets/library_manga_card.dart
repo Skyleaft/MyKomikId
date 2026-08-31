@@ -101,6 +101,8 @@ class LibraryMangaCard extends StatelessWidget {
                           ? CachedNetworkImage(
                               imageUrl: displayUrl,
                               fit: BoxFit.cover,
+                              memCacheWidth: 300,
+                              maxWidthDiskCache: 500,
                               errorBuilder: (context, url, error) =>
                                   _buildImagePlaceholder(),
                               placeholder: (context, url) =>

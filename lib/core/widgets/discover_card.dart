@@ -124,6 +124,8 @@ class _DiscoverCardState extends State<DiscoverCard> {
                           CachedNetworkImage(
                             imageUrl: displayUrl,
                             fit: BoxFit.cover,
+                            memCacheWidth: 400,
+                            maxWidthDiskCache: 600,
                             placeholder: (_, _) => ShimmerBox(
                               borderRadius: borderRadius,
                             ),

@@ -164,6 +164,8 @@ class HomeLatestUpdatesSection extends StatelessWidget {
                       ? CachedNetworkImage(
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
+                          memCacheWidth: 200,
+                          maxWidthDiskCache: 400,
                           fadeInDuration: const Duration(milliseconds: 200),
                           placeholder: (_, _) => Container(
                             color: isDark ? Colors.grey[850] : Colors.grey[200],

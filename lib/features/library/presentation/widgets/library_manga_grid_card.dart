@@ -69,6 +69,8 @@ class LibraryMangaGridCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: displayUrl,
                             fit: BoxFit.cover,
+                            memCacheWidth: 350,
+                            maxWidthDiskCache: 500,
                             errorBuilder: (context, url, error) =>
                                 Container(color: Colors.grey[850]),
                             placeholder: (context, url) =>

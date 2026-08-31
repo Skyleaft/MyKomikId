@@ -93,6 +93,8 @@ class HistoryItemCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: imageUrl,
                             fit: BoxFit.cover,
+                            memCacheWidth: 250,
+                            maxWidthDiskCache: 400,
                             fadeInDuration: const Duration(milliseconds: 200),
                             placeholder: (_, _) => Container(
                               color: isDark ? Colors.grey[850] : Colors.grey[200],

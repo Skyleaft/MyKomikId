@@ -45,7 +45,6 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void initState() {
     super.initState();
     _controller = MangaDetailController(manga: widget.manga);
-    _controller.addListener(_onControllerChanged);
     _controller.init();
 
     _scrollController = ScrollController();
@@ -70,15 +69,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     }
   }
 
-  void _onControllerChanged() {
-    if (mounted) setState(() {});
-  }
-
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _tabController.dispose();
     super.dispose();
