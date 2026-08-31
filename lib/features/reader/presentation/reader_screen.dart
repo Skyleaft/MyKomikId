@@ -200,7 +200,9 @@ class _ReaderScreenState extends State<ReaderScreen>
           return;
         }
 
-        final targetKey = GlobalObjectKey('webtoon_${_chapterId}_page_$targetIndex');
+        final targetKey = GlobalObjectKey(
+          'webtoon_${_chapterId}_page_$targetIndex',
+        );
         final targetContext = targetKey.currentContext;
         if (targetContext != null) {
           Scrollable.ensureVisible(
@@ -411,7 +413,7 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _debounceSaveProgression() {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(seconds: 1), () {
+    _debounceTimer = Timer(const Duration(seconds: 2), () {
       _saveProgression();
     });
   }
@@ -449,7 +451,10 @@ class _ReaderScreenState extends State<ReaderScreen>
     await _loadChapter(targetChapter);
   }
 
-  Future<void> _loadChapter(Chapter targetChapter, {int initialPage = 1}) async {
+  Future<void> _loadChapter(
+    Chapter targetChapter, {
+    int initialPage = 1,
+  }) async {
     _chapterCancelToken?.cancel();
     _chapterCancelToken = CancelToken();
 
@@ -894,7 +899,8 @@ class _ReaderScreenState extends State<ReaderScreen>
                       !_isSliderScrolling &&
                       notification.metrics.pixels >
                           notification.metrics.maxScrollExtent) {
-                    final overscrollAmount = notification.metrics.pixels -
+                    final overscrollAmount =
+                        notification.metrics.pixels -
                         notification.metrics.maxScrollExtent;
                     if (overscrollAmount >= 120) {
                       _accumulatedBottomOverscroll = 0;
@@ -1200,6 +1206,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       totalPages: _pageUrls.length,
       isCompleted: isCompleted,
       readingTimeSeconds: _chapterInitialReadingTimeSeconds,
+      manga: existingProgression?.manga,
     );
 
     try {
