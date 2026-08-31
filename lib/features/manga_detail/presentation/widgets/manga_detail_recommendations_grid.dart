@@ -106,7 +106,7 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Try Again'),
+                    label: const Text('Retry'),
                   ),
                 ],
               ],
@@ -188,34 +188,55 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
     }
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final isTablet = screenWidth >= 600;
-    final isDesktop = screenWidth >= 1024;
-    final int crossAxisCount = isDesktop ? 4 : (isTablet ? 3 : 2);
+    final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isDesktop = screenWidth >= 1024 && screenWidth < 1400;
+    final isLargeDesktop = screenWidth >= 1400;
 
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: 24,
-          crossAxisSpacing: 16,
-          childAspectRatio: 0.65,
+    final int crossAxisCount = isLargeDesktop
+        ? 6
+        : (isDesktop
+            ? 5
+            : (isTablet
+                ? 3
+                : 2));
+
+    return SliverToBoxAdapter(
+      child: Container(
+        color: bgColor,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 14,
+                  childAspectRatio: 0.65,
+                ),
+                itemCount: recommendations.length,
+                itemBuilder: (context, index) {
+                  final item = recommendations[index];
+                  return DiscoverCard(
+                    title: item.title,
+                    type: item.type,
+                    latestChapter: item.latestChapter,
+                    views: formatViewCount(item.totalView),
+                    genres: item.genres ?? [],
+                    status: item.status,
+                    rating: item.rating,
+                    localImageUrl: item.localImageUrl,
+                    imageUrl: item.imageUrl,
+                    onTap: () => onSelectRecommendation(item),
+                  );
+                },
+              ),
+            ),
+          ),
         ),
-        delegate: SliverChildBuilderDelegate((context, index) {
-          final item = recommendations[index];
-          return DiscoverCard(
-            title: item.title,
-            type: item.type,
-            latestChapter: item.latestChapter,
-            views: formatViewCount(item.totalView),
-            genres: item.genres ?? [],
-            status: item.status,
-            rating: item.rating,
-            localImageUrl: item.localImageUrl,
-            imageUrl: item.imageUrl,
-            onTap: () => onSelectRecommendation(item),
-          );
-        }, childCount: recommendations.length),
       ),
     );
   }

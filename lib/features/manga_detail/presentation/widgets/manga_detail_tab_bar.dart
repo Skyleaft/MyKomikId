@@ -22,14 +22,15 @@ class MangaDetailTabBarDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTabletOrDesktop = screenWidth >= 600;
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: backgroundColor.withValues(alpha: isDark ? 0.85 : 0.9),
+            color: backgroundColor.withValues(alpha: isDark ? 0.88 : 0.92),
             border: Border(
               bottom: BorderSide(
                 color: isDark
@@ -39,7 +40,23 @@ class MangaDetailTabBarDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
           ),
-          child: tabBar,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: isTabletOrDesktop
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 480),
+                          child: tabBar,
+                        ),
+                      )
+                    : tabBar,
+              ),
+            ),
+          ),
         ),
       ),
     );
