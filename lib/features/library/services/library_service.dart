@@ -99,23 +99,34 @@ class LibraryService {
   }
 
   Future<LibraryManga?> getLibraryManga(String mangaId) async {
-    final library = await getAllLibraryMangas();
+    final localLibrary = await _loadFromLocalCache();
+    _syncLibraryItemFromApi(mangaId);
     try {
-      return library.firstWhere((m) => m.id == mangaId);
+      return localLibrary.firstWhere((m) => m.id == mangaId);
     } catch (_) {
       return null;
     }
   }
 
-  Future<List<LibraryManga>> getAllLibraryMangas() async {
+  static const Duration _cacheTtl = Duration(minutes: 5);
+  DateTime? _lastSyncTime;
+
+  Future<List<LibraryManga>> getAllLibraryMangas({
+    bool forceSync = false,
+  }) async {
     final apiService = getIt<MangaApiService>();
     final syncService = getIt<SyncService>();
 
     // 1. Return local cache immediately for instant offline access
     final localLibrary = await _loadFromLocalCache();
 
-    // 2. Try to sync with API in the background
-    _syncLibraryFromApi(apiService, syncService);
+    final isStale = _lastSyncTime == null ||
+        DateTime.now().difference(_lastSyncTime!) > _cacheTtl;
+
+    // 2. Sync with API only if forced or if cache is stale & empty
+    if (forceSync || (isStale && localLibrary.isEmpty)) {
+      _syncLibraryFromApi(apiService, syncService);
+    }
 
     return localLibrary;
   }
@@ -133,6 +144,7 @@ class LibraryService {
     try {
       final libraryData = await apiService.getUserLibrary(userId: userId);
       final progressionData = await apiService.getUserProgression(userId);
+      _lastSyncTime = DateTime.now();
 
       final progressions = progressionData
           .map((e) => MangaProgression.fromMap(e))

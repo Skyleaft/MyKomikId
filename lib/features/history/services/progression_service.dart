@@ -69,14 +69,17 @@ class ProgressionService extends ChangeNotifier {
 
     // 2. Background sync only if explicitly requested or if no local data
     if ((syncFromApi || local == null) && !_syncingMangaIds.contains(mangaId)) {
-      _syncProgressionFromApi(mangaId);
+      syncProgressionFromApi(mangaId);
     }
 
     return local;
   }
 
-  Future<void> _syncProgressionFromApi(String mangaId) async {
-    if (_currentUserId.isEmpty || _syncingMangaIds.contains(mangaId)) return;
+  Future<MangaProgression?> syncProgressionFromApi(String mangaId) async {
+    if (_currentUserId.isEmpty || _syncingMangaIds.contains(mangaId)) {
+      final local = await _loadFromLocalCache();
+      return local.firstWhereOrNull((p) => p.mangaId == mangaId);
+    }
     _syncingMangaIds.add(mangaId);
 
     try {
@@ -85,11 +88,14 @@ class ProgressionService extends ChangeNotifier {
       if (data != null) {
         final progression = MangaProgression.fromMap(data);
         await _updateLocalCache(progression, overwrite: true, notify: true);
+        return progression;
       }
     } catch (_) {
     } finally {
       _syncingMangaIds.remove(mangaId);
     }
+    final local = await _loadFromLocalCache();
+    return local.firstWhereOrNull((p) => p.mangaId == mangaId);
   }
 
   Future<List<MangaProgression>> getAllProgressions({

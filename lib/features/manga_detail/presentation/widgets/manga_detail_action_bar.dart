@@ -10,9 +10,11 @@ class MangaDetailActionBar extends StatelessWidget {
   final bool isLoadingChapters;
   final bool isInLibrary;
   final bool isFavorite;
+  final String? libraryStatus;
   final MangaProgression? progression;
   final ValueChanged<Chapter> onReadChapter;
   final ValueChanged<String> onAddToLibrary;
+  final ValueChanged<String>? onChangeLibraryStatus;
   final VoidCallback onRemoveFromLibrary;
   final VoidCallback onToggleFavorite;
 
@@ -22,9 +24,11 @@ class MangaDetailActionBar extends StatelessWidget {
     required this.isLoadingChapters,
     required this.isInLibrary,
     required this.isFavorite,
+    this.libraryStatus,
     required this.progression,
     required this.onReadChapter,
     required this.onAddToLibrary,
+    this.onChangeLibraryStatus,
     required this.onRemoveFromLibrary,
     required this.onToggleFavorite,
   });
@@ -200,17 +204,21 @@ class MangaDetailActionBar extends StatelessWidget {
         ),
       ),
       child: IconButton(
-        tooltip: isInLibrary ? 'In Library' : 'Add to Library',
+        tooltip: isInLibrary
+            ? 'In Library (${libraryStatus != null ? StatusSelectionSheet.getLabel(libraryStatus!) : ''})'
+            : 'Add to Library',
         icon: Icon(
           isInLibrary ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
           color: isInLibrary
-              ? colorScheme.primary
+              ? (libraryStatus != null
+                  ? StatusSelectionSheet.getColor(libraryStatus!)
+                  : colorScheme.primary)
               : (isDark ? Colors.white70 : Colors.black54),
         ),
         onPressed: () async {
           HapticFeedback.selectionClick();
           if (isInLibrary) {
-            onRemoveFromLibrary();
+            _showLibraryOptionsSheet(context, isDark);
           } else {
             final selected = await StatusSelectionSheet.show(context);
             if (selected != null) {
@@ -219,6 +227,119 @@ class MangaDetailActionBar extends StatelessWidget {
           }
         },
       ),
+    );
+  }
+
+  void _showLibraryOptionsSheet(BuildContext context, bool isDark) {
+    final currentLabel = libraryStatus != null
+        ? StatusSelectionSheet.getLabel(libraryStatus!)
+        : 'In Library';
+    final currentColor = libraryStatus != null
+        ? StatusSelectionSheet.getColor(libraryStatus!)
+        : Theme.of(context).colorScheme.primary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: currentColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.bookmark_rounded, color: currentColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Library Status',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          'Current: $currentLabel',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: currentColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.swap_horiz_rounded, color: Colors.blue, size: 20),
+                ),
+                title: const Text('Change Reading Status', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Update to Plan to Read, Completed, etc.'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final selected = await StatusSelectionSheet.show(
+                    context,
+                    currentStatus: libraryStatus,
+                  );
+                  if (selected != null && selected != libraryStatus) {
+                    onChangeLibraryStatus?.call(selected);
+                  }
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                ),
+                title: const Text('Remove from Library', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Remove this manga from your collection'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onRemoveFromLibrary();
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

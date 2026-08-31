@@ -56,9 +56,8 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   @override
   void didPopNext() {
-    // Called when the top route has been popped off, and this screen shows up again
+    // Called when navigating back, reload from local cache without triggering network calls
     _controller.loadLibrary();
-    _controller.refresh();
   }
 
   Future<void> _navigateToMangaDetail(String mangaId) async {
@@ -188,6 +187,24 @@ class _LibraryScreenState extends State<LibraryScreen>
     }
   }
 
+  Future<void> _changeMangaStatus(LibraryManga manga) async {
+    final selected = await StatusSelectionSheet.show(
+      context,
+      currentStatus: manga.status,
+      title: 'Change Status',
+    );
+    if (selected != null && selected != manga.status) {
+      await _controller.updateMangaStatus(manga.id, selected);
+      if (mounted) {
+        AlertBanner.show(
+          context,
+          'Status changed to ${StatusSelectionSheet.getLabel(selected)}',
+          type: AlertBannerType.success,
+        );
+      }
+    }
+  }
+
   void _showMangaOptionsSheet(LibraryManga manga) {
     showModalBottomSheet(
       context: context,
@@ -240,14 +257,14 @@ class _LibraryScreenState extends State<LibraryScreen>
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.bookmark_outline_rounded),
-                title: Text('Change Status (Current: ${manga.status})'),
-                onTap: () async {
+                leading: Icon(
+                  Icons.bookmark_outline_rounded,
+                  color: StatusSelectionSheet.getColor(manga.status),
+                ),
+                title: Text('Change Status (${StatusSelectionSheet.getLabel(manga.status)})'),
+                onTap: () {
                   Navigator.pop(context);
-                  final selected = await StatusSelectionSheet.show(context);
-                  if (selected != null) {
-                    _controller.updateMangaStatus(manga.id, selected);
-                  }
+                  _changeMangaStatus(manga);
                 },
               ),
               ListTile(
@@ -371,7 +388,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           crossAxisCount: crossAxisCount,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 0.65,
+          childAspectRatio: 0.58,
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
           final manga = filteredMangas[index];
@@ -384,6 +401,7 @@ class _LibraryScreenState extends State<LibraryScreen>
             onTap: () => _navigateToMangaDetail(manga.id),
             onQuickRead: () => _quickReadManga(manga),
             onLongPress: () => _showMangaOptionsSheet(manga),
+            onStatusTap: () => _changeMangaStatus(manga),
           );
         }, childCount: filteredMangas.length),
       );
@@ -401,6 +419,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           onTap: () => _navigateToMangaDetail(manga.id),
           onQuickRead: () => _quickReadManga(manga),
           onLongPress: () => _showMangaOptionsSheet(manga),
+          onStatusTap: () => _changeMangaStatus(manga),
         );
       }, childCount: filteredMangas.length),
     );

@@ -136,12 +136,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           _searchQuery!.isNotEmpty) {
         final items = await _apiService.searchSemantic(
           _searchQuery!,
-          limit: _pageSize,
+          limit: 30,
         );
         response = PagedResponse<MangaSummary>(
           items: items,
           page: 1,
-          pageSize: _pageSize,
+          pageSize: 30,
           totalCount: items.length,
           totalPages: 1,
           hasPreviousPage: false,
@@ -234,11 +234,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       final cached = await _detailService.getDetail(item.id);
       if (cached != null && mounted) {
         FocusManager.instance.primaryFocus?.unfocus();
-        await Navigator.pushNamed(
-          context,
-          AppRoutes.detail,
-          arguments: cached,
-        );
+        await Navigator.pushNamed(context, AppRoutes.detail, arguments: cached);
         return;
       }
     } catch (_) {}
@@ -248,9 +244,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      ),
+      builder: (context) =>
+          Center(child: CircularProgressIndicator(color: AppColors.primary)),
     );
 
     try {
@@ -287,26 +282,26 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     final int crossAxisCount = isDesktop
         ? 5
         : isTablet
-            ? 3
-            : 2;
+        ? 3
+        : 2;
 
     final double mainAxisSpacing = isDesktop
         ? 32
         : isTablet
-            ? 28
-            : 24;
+        ? 28
+        : 24;
 
     final double crossAxisSpacing = isDesktop
         ? 24
         : isTablet
-            ? 20
-            : 16;
+        ? 20
+        : 16;
 
     final double childAspectRatio = isDesktop
         ? 0.75
         : isTablet
-            ? 0.70
-            : 0.65;
+        ? 0.70
+        : 0.65;
 
     return SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: crossAxisCount,
@@ -338,8 +333,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
             label: Text(genre, style: const TextStyle(fontSize: 12)),
-            avatar: const Icon(Icons.check_circle_rounded,
-                size: 14, color: Color(0xFF10B981)),
+            avatar: const Icon(
+              Icons.check_circle_rounded,
+              size: 14,
+              color: Color(0xFF10B981),
+            ),
             selected: true,
             selectedColor: const Color(0xFF10B981).withValues(alpha: 0.15),
             checkmarkColor: const Color(0xFF10B981),
@@ -363,8 +361,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
             label: Text('NOT: $genre', style: const TextStyle(fontSize: 12)),
-            avatar: const Icon(Icons.cancel_rounded,
-                size: 14, color: Color(0xFFEF4444)),
+            avatar: const Icon(
+              Icons.cancel_rounded,
+              size: 14,
+              color: Color(0xFFEF4444),
+            ),
             selected: true,
             selectedColor: const Color(0xFFEF4444).withValues(alpha: 0.15),
             checkmarkColor: const Color(0xFFEF4444),
@@ -409,8 +410,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
-            label:
-                Text('Status: $status', style: const TextStyle(fontSize: 12)),
+            label: Text(
+              'Status: $status',
+              style: const TextStyle(fontSize: 12),
+            ),
             selected: true,
             selectedColor: Colors.teal.withValues(alpha: 0.15),
             checkmarkColor: Colors.teal,
@@ -433,8 +436,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
-            label: Text('Author: ${_filter.author}',
-                style: const TextStyle(fontSize: 12)),
+            label: Text(
+              'Author: ${_filter.author}',
+              style: const TextStyle(fontSize: 12),
+            ),
             selected: true,
             selectedColor: Colors.purple.withValues(alpha: 0.15),
             checkmarkColor: Colors.purple,
@@ -455,8 +460,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
-            label: Text('⭐ ${_filter.minRating!.toStringAsFixed(1)}+',
-                style: const TextStyle(fontSize: 12)),
+            label: Text(
+              '⭐ ${_filter.minRating!.toStringAsFixed(1)}+',
+              style: const TextStyle(fontSize: 12),
+            ),
             selected: true,
             selectedColor: Colors.amber.withValues(alpha: 0.15),
             checkmarkColor: Colors.amber[800],
@@ -477,8 +484,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
-            label: Text('${_filter.minChapters}+ Chapters',
-                style: const TextStyle(fontSize: 12)),
+            label: Text(
+              '${_filter.minChapters}+ Chapters',
+              style: const TextStyle(fontSize: 12),
+            ),
             selected: true,
             selectedColor: Colors.orange.withValues(alpha: 0.15),
             checkmarkColor: Colors.orange[800],
@@ -499,10 +508,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         Padding(
           padding: const EdgeInsets.only(right: 8),
           child: InputChip(
-            label: Text(_filter.nsfw == true
-                ? '18+ Only'
-                : 'All Content (incl. 18+)',
-                style: const TextStyle(fontSize: 12)),
+            label: Text(
+              _filter.nsfw == true ? '18+ Only' : 'All Content (incl. 18+)',
+              style: const TextStyle(fontSize: 12),
+            ),
             selected: true,
             selectedColor: (_filter.nsfw == true ? Colors.red : Colors.orange)
                 .withValues(alpha: 0.15),
@@ -533,10 +542,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       margin: const EdgeInsets.only(top: 8, bottom: 4),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: chips,
-      ),
+      child: ListView(scrollDirection: Axis.horizontal, children: chips),
     );
   }
 
@@ -594,10 +600,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               onShowQueue: _onShowQueue,
                               onSearchScrapSource: _onSearchScrapSource,
                               onFilter: _onFilter,
-                              onAdvancedRecommendation: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.advancedRecommendation,
-                              ),
+                              onAdvancedRecommendation: () =>
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.advancedRecommendation,
+                                  ),
                               hasFilters: _hasActiveFilters,
                               isSemanticSearch: _isSemanticSearch,
                               onSemanticSearchChanged: (value) {
@@ -613,9 +620,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                     ),
                   ),
                   if (_hasActiveFilters)
-                    SliverToBoxAdapter(
-                      child: _buildActiveFilterChips(isDark),
-                    ),
+                    SliverToBoxAdapter(child: _buildActiveFilterChips(isDark)),
                   if (_isLoading)
                     const SliverToBoxAdapter(
                       child: DiscoverGridSkeleton(itemCount: 8),
@@ -632,7 +637,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               Icon(
                                 Icons.search_off_rounded,
                                 size: 64,
-                                color: isDark ? Colors.grey[600] : Colors.grey[400],
+                                color: isDark
+                                    ? Colors.grey[600]
+                                    : Colors.grey[400],
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -640,7 +647,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.primary,
+                                  color: isDark
+                                      ? Colors.white
+                                      : AppColors.primary,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -651,7 +660,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                               ),
                               if (_hasActiveFilters) ...[
@@ -672,34 +683,37 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
                       sliver: SliverGrid(
                         gridDelegate: _buildGridDelegate(),
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          if (index == _items.length) {
-                            return Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: CircularProgressIndicator(
-                                  color: AppColors.primary,
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            if (index == _items.length) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primary,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }
-                          final item = _items[index];
+                              );
+                            }
+                            final item = _items[index];
 
-                          return DiscoverCard(
-                            title: item.title,
-                            type: item.type,
-                            latestChapter: item.latestChapter,
-                            views: formatViewCount(item.totalView),
-                            genres: item.genres ?? [],
-                            status: item.status,
-                            rating: item.rating,
-                            imageUrl: _apiService.getLocalImageUrl(
-                              item.localImageUrl,
-                              item.imageUrl,
-                            ),
-                            onTap: () => _navigateToDetail(item),
-                          );
-                        }, childCount: _items.length + (_isMoreLoading ? 1 : 0)),
+                            return DiscoverCard(
+                              title: item.title,
+                              type: item.type,
+                              latestChapter: item.latestChapter,
+                              views: formatViewCount(item.totalView),
+                              genres: item.genres ?? [],
+                              status: item.status,
+                              rating: item.rating,
+                              imageUrl: _apiService.getLocalImageUrl(
+                                item.localImageUrl,
+                                item.imageUrl,
+                              ),
+                              onTap: () => _navigateToDetail(item),
+                            );
+                          },
+                          childCount: _items.length + (_isMoreLoading ? 1 : 0),
+                        ),
                       ),
                     ),
                 ],
@@ -738,7 +752,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.4 : 0.12,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),

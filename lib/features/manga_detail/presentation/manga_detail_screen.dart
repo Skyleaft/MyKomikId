@@ -22,6 +22,7 @@ import 'widgets/manga_detail_recommendations_grid.dart';
 import 'widgets/manga_detail_recommendations_header.dart';
 import 'widgets/manga_detail_scraping_progress_card.dart';
 import 'widgets/similar_manga_filter_sheet.dart';
+import 'widgets/status_selection_sheet.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final MangaDetail manga;
@@ -350,6 +351,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                               isLoadingChapters: _controller.isLoadingChapters,
                               isInLibrary: _controller.isInLibrary,
                               isFavorite: _controller.isFavorite,
+                              libraryStatus: _controller.libraryStatus,
                               progression: _controller.progression,
                               onReadChapter: (ch) =>
                                   _navigateToReader(context, ch),
@@ -358,7 +360,17 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                                 if (context.mounted) {
                                   AlertBanner.show(
                                     context,
-                                    'Added to library as $status',
+                                    'Added to library as ${StatusSelectionSheet.getLabel(status)}',
+                                    type: AlertBannerType.success,
+                                  );
+                                }
+                              },
+                              onChangeLibraryStatus: (newStatus) async {
+                                await _controller.updateLibraryStatus(newStatus);
+                                if (context.mounted) {
+                                  AlertBanner.show(
+                                    context,
+                                    'Status updated to ${StatusSelectionSheet.getLabel(newStatus)}',
                                     type: AlertBannerType.success,
                                   );
                                 }
