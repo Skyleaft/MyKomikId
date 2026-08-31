@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
@@ -14,6 +15,7 @@ import '../../history/services/progression_service.dart';
 import '../../library/models/library_manga.dart';
 import '../../manga_detail/services/manga_detail_service.dart';
 import '../services/storage_service.dart';
+import '../services/update_service.dart';
 import 'base_api_setting_screen.dart';
 import 'storage_setting_screen.dart';
 import 'theme_setting_screen.dart';
@@ -189,6 +191,151 @@ class _MoreScreenState extends State<MoreScreen>
     }
   }
 
+  int _versionTapCount = 0;
+  DateTime? _lastVersionTapTime;
+  bool _isCheckingUpdate = false;
+
+  void _handleVersionTap() {
+    final now = DateTime.now();
+    if (_lastVersionTapTime == null ||
+        now.difference(_lastVersionTapTime!) > const Duration(seconds: 2)) {
+      _versionTapCount = 1;
+    } else {
+      _versionTapCount++;
+    }
+    _lastVersionTapTime = now;
+
+    HapticFeedback.selectionClick();
+
+    if (_versionTapCount >= 5) {
+      _versionTapCount = 0;
+      _checkLatestVersionManual();
+    } else if (_versionTapCount >= 2) {
+      final remaining = 5 - _versionTapCount;
+      AlertBanner.show(
+        context,
+        'Tap $remaining more time${remaining > 1 ? 's' : ''} to check for updates',
+        type: AlertBannerType.info,
+        duration: const Duration(milliseconds: 1000),
+      );
+    }
+  }
+
+  Future<void> _checkLatestVersionManual() async {
+    if (_isCheckingUpdate) return;
+    setState(() => _isCheckingUpdate = true);
+
+    AlertBanner.show(
+      context,
+      'Checking for latest version...',
+      type: AlertBannerType.info,
+      duration: const Duration(seconds: 2),
+    );
+
+    try {
+      final updateService = UpdateService();
+      final releaseInfo = await updateService.getLatestReleaseInfo();
+
+      if (!mounted) return;
+
+      if (releaseInfo == null) {
+        AlertBanner.show(
+          context,
+          'Failed to check for updates. Check your connection.',
+          type: AlertBannerType.error,
+        );
+      } else if (releaseInfo['hasUpdate'] == true) {
+        _showUpdateDialog(releaseInfo);
+      } else {
+        AlertBanner.show(
+          context,
+          'You are already using the latest version ($_appVersion)',
+          type: AlertBannerType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AlertBanner.show(
+          context,
+          'Error checking update: $e',
+          type: AlertBannerType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingUpdate = false);
+      }
+    }
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> updateData) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.system_update_rounded, color: AppColors.primary),
+            const SizedBox(width: 10),
+            const Text(
+              'Update Available!',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'A new version (${updateData['version']}) is available.',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 180),
+              child: SingleChildScrollView(
+                child: Text(
+                  updateData['body'] ?? 'Performance improvements and bug fixes.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white70
+                        : Colors.grey.shade700,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              final url = Uri.parse(updateData['url']);
+              launchUrl(url, mode: LaunchMode.externalApplication);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Update Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -340,7 +487,7 @@ class _MoreScreenState extends State<MoreScreen>
                 icon: Icons.info_outline,
                 title: 'App Version',
                 subtitle: _appVersion,
-                onTap: () {},
+                onTap: _handleVersionTap,
               ),
               _buildMenuItem(
                 context,
@@ -1030,9 +1177,16 @@ class _MoreScreenState extends State<MoreScreen>
           ),
         ),
         const SizedBox(height: 24),
-        Text(
-          'App Version $_appVersion',
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
+        GestureDetector(
+          onTap: _handleVersionTap,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Text(
+              'App Version $_appVersion',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ),
         ),
       ],
     );

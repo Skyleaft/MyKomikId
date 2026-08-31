@@ -5,7 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 class UpdateService {
   final Dio _dio = Dio();
 
-  Future<Map<String, dynamic>?> checkForUpdate() async {
+  Future<Map<String, dynamic>?> getLatestReleaseInfo() async {
     try {
       final response = await _dio.get(
         'https://api.github.com/repos/Skyleaft/Open-Manga-Reader/releases/latest',
@@ -18,17 +18,27 @@ class UpdateService {
 
         final packageInfo = await PackageInfo.fromPlatform();
         final String currentVersion = packageInfo.version;
+        final bool hasUpdate = _isNewerVersion(currentVersion, latestVersion);
 
-        if (_isNewerVersion(currentVersion, latestVersion)) {
-          return {
-            'version': data['tag_name'],
-            'body': data['body'],
-            'url': data['html_url'],
-          };
-        }
+        return {
+          'hasUpdate': hasUpdate,
+          'currentVersion': currentVersion,
+          'version': data['tag_name'],
+          'latestVersion': data['tag_name'],
+          'body': data['body'],
+          'url': data['html_url'],
+        };
       }
     } catch (e) {
       debugPrint('Failed to check for updates: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> checkForUpdate() async {
+    final info = await getLatestReleaseInfo();
+    if (info != null && info['hasUpdate'] == true) {
+      return info;
     }
     return null;
   }
