@@ -23,12 +23,17 @@ extension ListExtensions<T> on List<T> {
 
 class ProgressionService extends ChangeNotifier {
   static const _progressionKey = 'manga_progression';
+  static const Duration _cacheTtl = Duration(minutes: 5);
+
+  DateTime? _lastSyncTime;
+  bool _isSyncingAll = false;
+  final Set<String> _syncingMangaIds = {};
 
   String get _currentUserId => getIt<MangaApiService>().userId ?? '';
 
   Future<void> saveProgression(MangaProgression progression) async {
-    // 1. Update local cache (merge)
-    await _updateLocalCache(progression, overwrite: false);
+    // 1. Update local cache (merge) and notify UI immediately
+    await _updateLocalCache(progression, overwrite: false, notify: true);
 
     // 2. Try API
     final apiService = getIt<MangaApiService>();
@@ -42,6 +47,7 @@ class ProgressionService extends ChangeNotifier {
             manga: progression.manga ?? updatedProgression.manga,
           ),
           overwrite: true,
+          notify: false,
         );
       }
     } catch (e) {
@@ -53,31 +59,51 @@ class ProgressionService extends ChangeNotifier {
     }
   }
 
-  Future<MangaProgression?> getProgression(String mangaId) async {
+  Future<MangaProgression?> getProgression(
+    String mangaId, {
+    bool syncFromApi = false,
+  }) async {
     // 1. Return local cache immediately
     final progressions = await _loadFromLocalCache();
     final local = progressions.firstWhereOrNull((p) => p.mangaId == mangaId);
 
-    // 2. Background sync from API
-    _syncProgressionFromApi(mangaId);
+    // 2. Background sync only if explicitly requested or if no local data
+    if ((syncFromApi || local == null) && !_syncingMangaIds.contains(mangaId)) {
+      _syncProgressionFromApi(mangaId);
+    }
 
     return local;
   }
 
   Future<void> _syncProgressionFromApi(String mangaId) async {
+    if (_currentUserId.isEmpty || _syncingMangaIds.contains(mangaId)) return;
+    _syncingMangaIds.add(mangaId);
+
     try {
       final apiService = getIt<MangaApiService>();
       final data = await apiService.getProgressionForManga(_currentUserId, mangaId);
       if (data != null) {
         final progression = MangaProgression.fromMap(data);
-        await _updateLocalCache(progression, overwrite: true);
+        await _updateLocalCache(progression, overwrite: true, notify: true);
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _syncingMangaIds.remove(mangaId);
+    }
   }
 
-  Future<List<MangaProgression>> getAllProgressions() async {
+  Future<List<MangaProgression>> getAllProgressions({
+    bool forceSync = false,
+  }) async {
     final local = await _loadFromLocalCache();
-    _syncAllProgressionsFromApi();
+
+    final isStale = _lastSyncTime == null ||
+        DateTime.now().difference(_lastSyncTime!) > _cacheTtl;
+
+    if (forceSync || (isStale && local.isEmpty)) {
+      _syncAllProgressionsFromApi();
+    }
+
     return local;
   }
 
@@ -86,9 +112,14 @@ class ProgressionService extends ChangeNotifier {
   }
 
   Future<void> _syncAllProgressionsFromApi() async {
+    if (_currentUserId.isEmpty || _isSyncingAll) return;
+    _isSyncingAll = true;
+
     try {
       final apiService = getIt<MangaApiService>();
       final data = await apiService.getUserProgression(_currentUserId);
+      _lastSyncTime = DateTime.now();
+
       final apiProgressions = data
           .map((json) => MangaProgression.fromMap(json))
           .toList();
@@ -111,26 +142,31 @@ class ProgressionService extends ChangeNotifier {
         }
       }
 
-      await _saveAllToLocalCache(merged);
+      await _saveAllToLocalCache(merged, notify: true);
       getIt<SyncService>().syncPendingActions();
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _isSyncingAll = false;
+    }
   }
 
   Future<void> deleteProgression(String mangaId) async {
     final progressions = await _loadFromLocalCache();
     progressions.removeWhere((p) => p.mangaId == mangaId);
-    await _saveAllToLocalCache(progressions);
+    await _saveAllToLocalCache(progressions, notify: true);
   }
 
   Future<void> clearAllProgressions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_progressionKey);
+    _lastSyncTime = null;
     notifyListeners();
   }
 
   Future<void> _updateLocalCache(
     MangaProgression progression, {
     bool overwrite = false,
+    bool notify = true,
   }) async {
     final progressions = await _loadFromLocalCache();
     final index = progressions.indexWhere(
@@ -180,14 +216,19 @@ class ProgressionService extends ChangeNotifier {
     } else {
       progressions.add(progression);
     }
-    await _saveAllToLocalCache(progressions);
+    await _saveAllToLocalCache(progressions, notify: notify);
   }
 
-  Future<void> _saveAllToLocalCache(List<MangaProgression> progressions) async {
+  Future<void> _saveAllToLocalCache(
+    List<MangaProgression> progressions, {
+    bool notify = true,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = progressions.map((p) => p.toJson()).toList();
     await prefs.setStringList(_progressionKey, jsonList);
-    notifyListeners();
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   Future<List<MangaProgression>> _loadFromLocalCache() async {

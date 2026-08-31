@@ -120,12 +120,17 @@ class LibraryService {
     return localLibrary;
   }
 
+  bool _isSyncing = false;
+
   Future<void> _syncLibraryFromApi(
     MangaApiService apiService,
     SyncService syncService,
   ) async {
+    final userId = _currentUserId;
+    if (userId.isEmpty || _isSyncing) return;
+    _isSyncing = true;
+
     try {
-      final userId = _currentUserId;
       final libraryData = await apiService.getUserLibrary(userId: userId);
       final progressionData = await apiService.getUserProgression(userId);
 
@@ -161,7 +166,10 @@ class LibraryService {
       );
 
       syncService.syncPendingActions();
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   Future<void> _syncLibraryItemFromApi(String mangaId) async {
