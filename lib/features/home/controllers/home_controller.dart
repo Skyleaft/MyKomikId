@@ -46,9 +46,9 @@ class HomeController extends ChangeNotifier {
     MangaApiService? apiService,
     ProgressionService? progressionService,
     MangaDetailService? detailService,
-  })  : _apiService = apiService ?? getIt<MangaApiService>(),
-        _progressionService = progressionService ?? getIt<ProgressionService>(),
-        _detailService = detailService ?? getIt<MangaDetailService>() {
+  }) : _apiService = apiService ?? getIt<MangaApiService>(),
+       _progressionService = progressionService ?? getIt<ProgressionService>(),
+       _detailService = detailService ?? getIt<MangaDetailService>() {
     _progressionService.addListener(_onProgressionServiceChanged);
   }
 
@@ -73,8 +73,12 @@ class HomeController extends ChangeNotifier {
 
   Future<void> fetchAllData() async {
     await Future.wait([
-      fetchHistory().catchError((e) => debugPrint('Error fetching history: $e')),
-      fetchTrendingForTab(0).catchError((e) => debugPrint('Error fetching trending: $e')),
+      fetchHistory().catchError(
+        (e) => debugPrint('Error fetching history: $e'),
+      ),
+      fetchTrendingForTab(
+        0,
+      ).catchError((e) => debugPrint('Error fetching trending: $e')),
       fetchLatest().catchError((e) => debugPrint('Error fetching latest: $e')),
       fetchTop()
           .then((_) => fetchRecommended())
@@ -185,7 +189,7 @@ class HomeController extends ChangeNotifier {
       final response = await _apiService.getPagedManga(
         sortBy: 'rating',
         orderBy: 'desc',
-        pageSize: 6,
+        pageSize: 15,
       );
       _topManga = response.items;
     } catch (_) {

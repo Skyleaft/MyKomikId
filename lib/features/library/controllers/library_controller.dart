@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/di/injection.dart';
-import '../../../core/network/manga_api_service.dart';
 import '../../manga_detail/models/manga_detail.dart';
 import '../../manga_detail/services/manga_detail_service.dart';
 import '../models/library_manga.dart';
@@ -15,7 +14,6 @@ enum LibrarySortOption {
 
 class LibraryController extends ChangeNotifier {
   final LibraryService _libraryService;
-  final MangaApiService _apiService;
   final MangaDetailService _detailService;
 
   List<LibraryManga> _libraryMangas = [];
@@ -38,10 +36,8 @@ class LibraryController extends ChangeNotifier {
 
   LibraryController({
     LibraryService? libraryService,
-    MangaApiService? apiService,
     MangaDetailService? detailService,
   })  : _libraryService = libraryService ?? getIt<LibraryService>(),
-        _apiService = apiService ?? getIt<MangaApiService>(),
         _detailService = detailService ?? getIt<MangaDetailService>();
 
   Map<String, int> get statusCounts {
@@ -146,9 +142,9 @@ class LibraryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadLibrary() async {
+  Future<void> loadLibrary({bool forceSync = false}) async {
     try {
-      final list = await _libraryService.getAllLibraryMangas();
+      final list = await _libraryService.getAllLibraryMangas(forceSync: forceSync);
       final Map<String, MangaDetail> details = {};
       for (final manga in list) {
         final detail = await _detailService.getDetail(manga.id);
@@ -166,10 +162,7 @@ class LibraryController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    try {
-      await _apiService.getUserLibrary();
-      await _apiService.getUserProgression();
-    } catch (_) {}
+    await _libraryService.refreshFromApi();
     await loadLibrary();
   }
 }

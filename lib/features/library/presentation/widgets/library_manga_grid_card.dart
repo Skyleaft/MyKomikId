@@ -3,6 +3,7 @@ import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/manga_api_service.dart';
 import '../../../manga_detail/models/manga_detail.dart';
+import '../../../manga_detail/presentation/widgets/status_selection_sheet.dart';
 import '../../models/library_manga.dart';
 
 class LibraryMangaGridCard extends StatelessWidget {
@@ -13,6 +14,7 @@ class LibraryMangaGridCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onQuickRead;
   final VoidCallback? onLongPress;
+  final VoidCallback? onStatusTap;
 
   const LibraryMangaGridCard({
     super.key,
@@ -23,6 +25,7 @@ class LibraryMangaGridCard extends StatelessWidget {
     required this.onTap,
     this.onQuickRead,
     this.onLongPress,
+    this.onStatusTap,
   });
 
   @override
@@ -210,6 +213,45 @@ class LibraryMangaGridCard extends StatelessWidget {
                             ),
                           ),
                       ],
+                    ),
+                    const SizedBox(height: 5),
+                    GestureDetector(
+                      onTap: onStatusTap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: StatusSelectionSheet.getColor(manga.status)
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color: StatusSelectionSheet.getColor(manga.status)
+                                .withValues(alpha: 0.35),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              StatusSelectionSheet.getLabel(manga.status),
+                              style: TextStyle(
+                                color: StatusSelectionSheet.getColor(manga.status),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: StatusSelectionSheet.getColor(manga.status),
+                              size: 12,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

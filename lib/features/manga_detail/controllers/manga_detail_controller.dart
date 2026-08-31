@@ -31,6 +31,7 @@ class MangaDetailController extends ChangeNotifier {
   bool _isLoadingChapters = true;
   bool _isInLibrary = false;
   bool _isFavorite = false;
+  String? _libraryStatus;
   MangaProgression? _progression;
   List<MangaSummary> _recommendations = [];
   bool _isLoadingRecommendations = false;
@@ -54,6 +55,7 @@ class MangaDetailController extends ChangeNotifier {
   bool get isLoadingChapters => _isLoadingChapters;
   bool get isInLibrary => _isInLibrary;
   bool get isFavorite => _isFavorite;
+  String? get libraryStatus => _libraryStatus;
   MangaProgression? get progression => _progression;
   List<MangaSummary> get recommendations => _recommendations;
   bool get isLoadingRecommendations => _isLoadingRecommendations;
@@ -90,6 +92,17 @@ class MangaDetailController extends ChangeNotifier {
        _signalRService = signalRService ?? getIt<MangaSignalRService>() {
     _chapters = List.from(manga.chapters);
     _sortChapters();
+    _progressionService.addListener(_onProgressionServiceChanged);
+  }
+
+  void _onProgressionServiceChanged() {
+    _reloadProgressionFromCache();
+  }
+
+  Future<void> _reloadProgressionFromCache() async {
+    final cached = await _progressionService.getProgression(manga.id);
+    _progression = cached;
+    notifyListeners();
   }
 
   Future<void> init() async {
@@ -176,6 +189,7 @@ class MangaDetailController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _progressionService.removeListener(_onProgressionServiceChanged);
     _searchDebounce?.cancel();
     _clearScrapingTimer?.cancel();
     _chaptersCancelToken?.cancel();
@@ -258,12 +272,15 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   Future<void> refreshProgression() async {
-    _progression = await _progressionService.getProgression(manga.id);
+    _progression = await _progressionService.syncProgressionFromApi(manga.id);
     notifyListeners();
   }
 
   Future<void> _loadProgression() async {
-    _progression = await _progressionService.getProgression(manga.id);
+    _progression = await _progressionService.getProgression(
+      manga.id,
+      syncFromApi: true,
+    );
     notifyListeners();
   }
 
@@ -340,6 +357,7 @@ class MangaDetailController extends ChangeNotifier {
     final libraryItem = await _libraryService.getLibraryManga(manga.id);
     _isInLibrary = libraryItem != null;
     _isFavorite = libraryItem?.isFavorite ?? false;
+    _libraryStatus = libraryItem?.status;
     notifyListeners();
   }
 
@@ -445,6 +463,14 @@ class MangaDetailController extends ChangeNotifier {
     await _libraryService.addToLibrary(libraryManga);
     _isInLibrary = true;
     _isFavorite = libraryManga.isFavorite;
+    _libraryStatus = status;
+    notifyListeners();
+  }
+
+  Future<void> updateLibraryStatus(String newStatus) async {
+    if (!_isInLibrary) return;
+    await _libraryService.updateStatus(manga.id, newStatus);
+    _libraryStatus = newStatus;
     notifyListeners();
   }
 
@@ -452,6 +478,7 @@ class MangaDetailController extends ChangeNotifier {
     await _libraryService.removeFromLibrary(manga.id);
     _isInLibrary = false;
     _isFavorite = false;
+    _libraryStatus = null;
     notifyListeners();
   }
 
