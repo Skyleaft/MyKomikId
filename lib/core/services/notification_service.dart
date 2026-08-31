@@ -298,6 +298,10 @@ class NotificationService {
       final lastToken = prefs.getString(_lastFcmTokenKey) ??
           await _messaging?.getToken();
 
+      // 1. Unsubscribe from topics while token is still active on FCM server
+      await clearAllSubscribedTopics();
+
+      // 2. Unregister token from backend
       if (lastToken != null && lastToken.isNotEmpty) {
         final apiService = getIt<MangaApiService>();
         try {
@@ -305,9 +309,14 @@ class NotificationService {
         } catch (_) {}
       }
 
-      await _messaging?.deleteToken();
+      // 3. Delete FCM token
+      try {
+        await _messaging?.deleteToken();
+      } catch (e) {
+        debugPrint('Error deleting FCM token: $e');
+      }
+
       await prefs.remove(_lastFcmTokenKey);
-      await clearAllSubscribedTopics();
       debugPrint('Successfully unregistered FCM token.');
     } catch (e) {
       debugPrint('Error unregistering FCM token: $e');
@@ -317,7 +326,7 @@ class NotificationService {
   // --- Library Topic Subscriptions ---
 
   String _formatTopicName(String mangaId) {
-    final sanitized = mangaId.trim();
+    final sanitized = mangaId.trim().replaceAll(RegExp(r'[^a-zA-Z0-9-_.~%]'), '_');
     return 'manga_$sanitized';
   }
 
@@ -390,13 +399,16 @@ class NotificationService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final subscribed = prefs.getStringList(_subscribedTopicsKey) ?? [];
-      for (final id in subscribed) {
-        final topic = _formatTopicName(id);
-        try {
-          await _messaging!.unsubscribeFromTopic(topic);
-        } catch (_) {}
-      }
       await prefs.remove(_subscribedTopicsKey);
+
+      if (subscribed.isNotEmpty) {
+        for (final id in subscribed) {
+          final topic = _formatTopicName(id);
+          try {
+            await _messaging!.unsubscribeFromTopic(topic);
+          } catch (_) {}
+        }
+      }
     } catch (e) {
       debugPrint('Error clearing FCM topics: $e');
     }
