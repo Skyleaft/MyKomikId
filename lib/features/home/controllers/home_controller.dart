@@ -48,7 +48,15 @@ class HomeController extends ChangeNotifier {
     MangaDetailService? detailService,
   })  : _apiService = apiService ?? getIt<MangaApiService>(),
         _progressionService = progressionService ?? getIt<ProgressionService>(),
-        _detailService = detailService ?? getIt<MangaDetailService>();
+        _detailService = detailService ?? getIt<MangaDetailService>() {
+    _progressionService.addListener(_onProgressionServiceChanged);
+  }
+
+  void _onProgressionServiceChanged() {
+    if (!_disposed) {
+      fetchHistory();
+    }
+  }
 
   void _safeNotifyListeners() {
     if (!_disposed) {
@@ -59,6 +67,7 @@ class HomeController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _progressionService.removeListener(_onProgressionServiceChanged);
     super.dispose();
   }
 

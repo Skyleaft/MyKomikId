@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/progression.dart';
 import '../../../core/di/injection.dart';
@@ -20,7 +21,7 @@ extension ListExtensions<T> on List<T> {
   }
 }
 
-class ProgressionService {
+class ProgressionService extends ChangeNotifier {
   static const _progressionKey = 'manga_progression';
 
   String get _currentUserId => getIt<MangaApiService>().userId ?? '';
@@ -124,6 +125,7 @@ class ProgressionService {
   Future<void> clearAllProgressions() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_progressionKey);
+    notifyListeners();
   }
 
   Future<void> _updateLocalCache(
@@ -185,6 +187,7 @@ class ProgressionService {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = progressions.map((p) => p.toJson()).toList();
     await prefs.setStringList(_progressionKey, jsonList);
+    notifyListeners();
   }
 
   Future<List<MangaProgression>> _loadFromLocalCache() async {
