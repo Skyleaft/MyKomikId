@@ -7,15 +7,18 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/config/app_config.dart';
 import '../../models/manga_detail.dart';
+import 'manga_detail_split_hero.dart';
 
 class MangaDetailAppBar extends StatelessWidget {
   final MangaDetail manga;
   final String heroImageUrl;
+  final int chapterCount;
 
   const MangaDetailAppBar({
     super.key,
     required this.manga,
     required this.heroImageUrl,
+    this.chapterCount = 0,
   });
 
   void _showExternalLinksSheet(BuildContext context) {
@@ -137,8 +140,11 @@ class MangaDetailAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600 && screenWidth < 1024;
+    final isDesktop = screenWidth >= 1024;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasExternalLinks =
         (manga.malId > 0) ||
         (manga.anilistId != null && manga.anilistId! > 0) ||
@@ -146,16 +152,19 @@ class MangaDetailAppBar extends StatelessWidget {
 
     final Color buttonBgColor = isDark
         ? const Color(0xFF0F172A).withValues(alpha: 0.72)
-        : Colors.white.withValues(alpha: 0.8);
+        : Colors.white.withValues(alpha: 0.85);
     final Color buttonIconColor = isDark ? Colors.white : Colors.black87;
     final Color buttonBorderColor = isDark
         ? Colors.white12
         : Colors.black.withValues(alpha: 0.08);
 
-    const double collapsedToolbarHeight = 72.0;
+    final double expandedBarHeight = isDesktop
+        ? 450.0
+        : (isTablet ? 410.0 : 380.0);
+    const double collapsedToolbarHeight = 68.0;
 
     return SliverAppBar(
-      expandedHeight: 400,
+      expandedHeight: expandedBarHeight,
       toolbarHeight: collapsedToolbarHeight,
       floating: false,
       pinned: true,
@@ -267,16 +276,16 @@ class MangaDetailAppBar extends StatelessWidget {
                   icon: Icon(
                     Icons.share_rounded,
                     color: buttonIconColor,
-                    size: 20,
+                    size: 19,
                   ),
                   onPressed: () {
-                    final String shareUrl =
-                        '${AppConfig.baseUrl}/manga/${manga.id}';
-                    final String customSchemeUrl =
+                    final baseUrl = AppConfig.baseUrl;
+                    final webShareUrl = '$baseUrl/manga/${manga.id}';
+                    final customSchemeUrl =
                         'open-manga-reader://manga/${manga.id}';
-                    final String shareText =
-                        'Check out ${manga.title} on Open Manga Reader!\n\n'
-                        'Read it here: $shareUrl\n'
+                    final shareText =
+                        'Read ${manga.title} on Open Manga Reader!\n\n'
+                        'Web link: $webShareUrl\n'
                         'Or open in app: $customSchemeUrl';
 
                     // ignore: deprecated_member_use
@@ -302,10 +311,10 @@ class MangaDetailAppBar extends StatelessWidget {
             titlePadding: const EdgeInsets.only(
               left: 68,
               right: 108,
-              bottom: 12,
+              bottom: 14,
             ),
             title: AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 180),
               opacity: isCollapsed ? 1.0 : 0.0,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -315,9 +324,9 @@ class MangaDetailAppBar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                       child: CachedNetworkImage(
                         imageUrl: heroImageUrl,
-                        width: 34,
-                        height: 46,
-                        memCacheWidth: 120,
+                        width: 32,
+                        height: 44,
+                        memCacheWidth: 100,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => const SizedBox.shrink(),
                       ),
@@ -339,129 +348,77 @@ class MangaDetailAppBar extends StatelessWidget {
                 ],
               ),
             ),
-            background: _buildHeroSection(context),
+            background: _buildParallaxBackdropAndHero(context, isDark),
           );
         },
       ),
     );
   }
 
-  Widget _buildHeroSection(BuildContext context) {
+  Widget _buildParallaxBackdropAndHero(BuildContext context, bool isDark) {
+    final bgColor = isDark
+        ? AppColors.backgroundDark
+        : AppColors.backgroundLight;
+
     return Stack(
+      fit: StackFit.expand,
       children: [
-        heroImageUrl.isNotEmpty
-            ? ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: CachedNetworkImage(
-                  imageUrl: heroImageUrl,
-                  fit: BoxFit.cover,
-                  memCacheWidth: 400,
-                  maxWidthDiskCache: 600,
-                  height: 400,
-                  width: double.infinity,
-                  placeholder: (context, url) => Container(
-                    height: 400,
-                    color: Colors.grey[800],
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 400,
-                    color: Colors.grey[800],
-                    child: const Center(
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: 48,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            : Container(
-                height: 400,
-                color: Colors.grey[800],
-                child: const Center(
-                  child: Icon(
-                    Icons.image_not_supported,
-                    size: 48,
-                    color: Colors.white70,
-                  ),
-                ),
+        // Blurred Backdrop Image
+        if (heroImageUrl.isNotEmpty)
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: CachedNetworkImage(
+              imageUrl: heroImageUrl,
+              fit: BoxFit.cover,
+              memCacheWidth: 700,
+              maxWidthDiskCache: 900,
+              placeholder: (_, _) => Container(
+                color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
               ),
-        // Vignette overlay for depth
+              errorBuilder: (_, _, _) => Container(
+                color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
+              ),
+            ),
+          )
+        else
+          Container(color: isDark ? const Color(0xFF0F172A) : Colors.grey[300]),
+
+        // Rich Vignette Gradient
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: const [0.0, 0.35, 0.75, 1.0],
+                stops: const [0.0, 0.35, 0.72, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha: 0.55),
-                  Colors.transparent,
-                  Colors.black.withValues(alpha: 0.45),
-                  Colors.black.withValues(alpha: 0.88),
+                  Colors.black.withValues(alpha: 0.65),
+                  Colors.black.withValues(alpha: 0.25),
+                  bgColor.withValues(alpha: 0.8),
+                  bgColor,
                 ],
               ),
             ),
           ),
         ),
-        Center(
-          child: Container(
-            width: 240,
-            height: 300,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
+
+        // Split Hero centered within max width constraints
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 14,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: MangaDetailSplitHero(
+                  manga: manga,
+                  heroImageUrl: heroImageUrl,
+                  chapterCount: chapterCount,
+                  isDark: isDark,
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: heroImageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: heroImageUrl,
-                      fit: BoxFit.cover,
-                      memCacheWidth: 600,
-                      maxWidthDiskCache: 800,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[300],
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_not_supported,
-                            size: 32,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 32,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ),
+              ),
             ),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 
@@ -24,23 +25,38 @@ class _MangaDetailSynopsisState extends State<MangaDetailSynopsis> {
 
     final TextStyle textStyle = GoogleFonts.inter(
       color: isDark ? Colors.white70 : const Color(0xFF475569),
-      height: 1.65,
-      fontSize: 14,
+      height: 1.6,
+      fontSize: 13.5,
       fontWeight: FontWeight.w400,
+      letterSpacing: 0.15,
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Synopsis',
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
+        Row(
+          children: [
+            Container(
+              width: 3.5,
+              height: 16,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Synopsis',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 250),
           firstCurve: Curves.easeOutCubic,
@@ -62,10 +78,13 @@ class _MangaDetailSynopsisState extends State<MangaDetailSynopsis> {
         if (hasLongText) ...[
           const SizedBox(height: 6),
           InkWell(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _isExpanded = !_isExpanded);
+            },
             borderRadius: BorderRadius.circular(6),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
