@@ -116,21 +116,41 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    if (!kIsWeb && !_isDesktop) {
-      await _googleSignIn.signOut();
+    try {
+      if (!kIsWeb && !_isDesktop) {
+        await _googleSignIn.signOut();
+      }
+    } catch (e) {
+      debugPrint('Google sign out error: $e');
     }
 
-    getIt<HeartbeatService>().stop();
+    try {
+      getIt<HeartbeatService>().stop();
+    } catch (e) {
+      debugPrint('Heartbeat stop error: $e');
+    }
 
     // Unregister FCM Token from backend and clear topic subscriptions
-    await getIt<NotificationService>().unregisterFcmToken();
+    try {
+      await getIt<NotificationService>().unregisterFcmToken();
+    } catch (e) {
+      debugPrint('Notification service unregister error: $e');
+    }
 
-    await getIt<MangaApiService>().logout();
+    try {
+      await getIt<MangaApiService>().logout();
+    } catch (e) {
+      debugPrint('API logout error: $e');
+    }
 
-    await Future.wait([
-      getIt<ProgressionService>().clearAllProgressions(),
-      getIt<LibraryService>().clearLibrary(),
-    ]);
+    try {
+      await Future.wait([
+        getIt<ProgressionService>().clearAllProgressions(),
+        getIt<LibraryService>().clearLibrary(),
+      ]);
+    } catch (e) {
+      debugPrint('Clear local data error: $e');
+    }
 
     await _auth.signOut();
   }
