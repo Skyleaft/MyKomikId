@@ -128,6 +128,10 @@ class HomeController extends ChangeNotifier {
             return MapEntry(p.mangaId, MangaDetail.fromMangaSummary(p.manga!));
           }
 
+          if (_historyDetailsMap.containsKey(p.mangaId)) {
+            return MapEntry(p.mangaId, _historyDetailsMap[p.mangaId]!);
+          }
+
           try {
             final cached = await _detailService.getDetail(p.mangaId);
             if (cached != null) {
