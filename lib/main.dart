@@ -16,6 +16,10 @@ import 'core/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Configure Flutter ImageCache limits to prevent memory bloat
+  PaintingBinding.instance.imageCache.maximumSize = 100; // max 100 cached images
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024; // max 100MB RAM cache
+
   // Desktop protocol setup
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     await protocolHandler.register('open-manga-reader');

@@ -51,6 +51,7 @@ class ReaderContentWidget extends StatefulWidget {
 
 class _ReaderContentWidgetState extends State<ReaderContentWidget> {
   final Set<String> _precachedUrls = {};
+  int _lastPrecachedIndex = -1;
 
   @override
   void didUpdateWidget(covariant ReaderContentWidget oldWidget) {
@@ -58,11 +59,14 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
     if (oldWidget.pageUrls != widget.pageUrls ||
         oldWidget.chapterId != widget.chapterId) {
       _precachedUrls.clear();
+      _lastPrecachedIndex = -1;
     }
   }
 
   void _precacheNearbyPages(int currentIndex) {
     if (!mounted || widget.pageUrls.isEmpty) return;
+    if (_lastPrecachedIndex == currentIndex) return;
+    _lastPrecachedIndex = currentIndex;
 
     final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
     final screenWidth = MediaQuery.of(context).size.width;
@@ -70,8 +74,8 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
     final memCacheWidth =
         (contentWidth * devicePixelRatio).round().clamp(400, 1600);
 
-    // Precache next 3 pages and previous 1 page
-    for (int offset = -1; offset <= 3; offset++) {
+    // Precache next 2 pages and previous 1 page
+    for (int offset = -1; offset <= 2; offset++) {
       final targetIndex = currentIndex + offset;
       if (targetIndex >= 0 && targetIndex < widget.pageUrls.length) {
         final url = widget.pageUrls[targetIndex];
@@ -151,7 +155,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                             child: Align(
                               alignment: Alignment.center,
                               child: SizedBox(
-                                key: GlobalObjectKey('webtoon_${widget.chapterId ?? "default"}_page_$index'),
+                                key: ValueKey('webtoon_${widget.chapterId ?? "default"}_page_$index'),
                                 width: contentWidth,
                                 child: AppNetworkImage(
                                   imageUrl: url,

@@ -317,6 +317,7 @@ class MangaDetailAppBar extends StatelessWidget {
                         imageUrl: heroImageUrl,
                         width: 34,
                         height: 46,
+                        memCacheWidth: 120,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => const SizedBox.shrink(),
                       ),
@@ -354,6 +355,8 @@ class MangaDetailAppBar extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: heroImageUrl,
                   fit: BoxFit.cover,
+                  memCacheWidth: 400,
+                  maxWidthDiskCache: 600,
                   height: 400,
                   width: double.infinity,
                   placeholder: (context, url) => Container(
@@ -428,6 +431,8 @@ class MangaDetailAppBar extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: heroImageUrl,
                       fit: BoxFit.cover,
+                      memCacheWidth: 600,
+                      maxWidthDiskCache: 800,
                       placeholder: (context, url) => Container(
                         color: Colors.grey[300],
                         child: Center(

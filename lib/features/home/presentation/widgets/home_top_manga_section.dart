@@ -155,6 +155,8 @@ class HomeTopMangaSection extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: imageUrl,
                             fit: BoxFit.cover,
+                            memCacheWidth: 350,
+                            maxWidthDiskCache: 500,
                             width: double.infinity,
                             height: double.infinity,
                             fadeInDuration: const Duration(milliseconds: 200),

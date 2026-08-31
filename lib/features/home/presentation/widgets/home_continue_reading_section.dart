@@ -155,6 +155,8 @@ class HomeContinueReadingSection extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: imageUrl,
                       fit: BoxFit.cover,
+                      memCacheWidth: 450,
+                      maxWidthDiskCache: 600,
                       fadeInDuration: const Duration(milliseconds: 200),
                       placeholder: (_, _) => Container(
                         color: isDark ? Colors.grey[850] : Colors.grey[200],

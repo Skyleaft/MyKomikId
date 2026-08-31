@@ -198,6 +198,7 @@ class MangaDetailChapterTile extends StatelessWidget {
                                               .chapterProviderIcon!,
                                           width: 12,
                                           height: 12,
+                                          memCacheWidth: 40,
                                           errorBuilder: (_, _, _) => Icon(
                                             Icons.link_rounded,
                                             size: 10,
