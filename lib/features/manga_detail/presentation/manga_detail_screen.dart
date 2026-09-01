@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/di/injection.dart';
@@ -264,22 +265,40 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
-        return Scaffold(
-          body: Stack(
-            children: [
-              RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: _controller.refresh,
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    // Responsive Parallax Backdrop Banner Header with Split Hero
-                    MangaDetailAppBar(
-                      manga: widget.manga,
-                      heroImageUrl: heroImageUrl,
-                      chapterCount: _controller.chapters.length,
-                      heroTag: widget.heroTag,
-                    ),
+        return CallbackShortcuts(
+          bindings: <ShortcutActivator, VoidCallback>{
+            const SingleActivator(LogicalKeyboardKey.f5): () {
+              HapticFeedback.lightImpact();
+              _controller.refresh();
+            },
+            const SingleActivator(LogicalKeyboardKey.keyR, control: true): () {
+              HapticFeedback.lightImpact();
+              _controller.refresh();
+            },
+            const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () {
+              HapticFeedback.lightImpact();
+              _controller.refresh();
+            },
+          },
+          child: Focus(
+            autofocus: true,
+            child: Scaffold(
+              body: Stack(
+                children: [
+                  RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: _controller.refresh,
+                    child: CustomScrollView(
+                      controller: _scrollController,
+                      slivers: [
+                        // Responsive Parallax Backdrop Banner Header with Split Hero
+                        MangaDetailAppBar(
+                          manga: widget.manga,
+                          heroImageUrl: heroImageUrl,
+                          chapterCount: _controller.chapters.length,
+                          heroTag: widget.heroTag,
+                          onRefresh: _controller.refresh,
+                        ),
 
                     // Overview Section: Genres (stretches downward) & Synopsis
                     SliverToBoxAdapter(
@@ -553,9 +572,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
+  },
+);
   }
 
   Widget _buildChapterList(bool isDark) {
