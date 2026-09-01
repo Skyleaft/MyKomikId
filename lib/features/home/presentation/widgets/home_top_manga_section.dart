@@ -151,33 +151,51 @@ class HomeTopMangaSection extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 350,
-                            maxWidthDiskCache: 500,
-                            width: double.infinity,
-                            height: double.infinity,
-                            fadeInDuration: const Duration(milliseconds: 200),
-                            placeholder: (_, _) => Container(
-                              color: isDark ? Colors.grey[850] : Colors.grey[200],
-                            ),
-                            errorBuilder: (_, _, _) => Container(
+                    child: Hero(
+                      tag: 'manga-cover-top-${manga.id}',
+                      transitionOnUserGestures: true,
+                      createRectTween: (begin, end) =>
+                          MaterialRectArcTween(begin: begin, end: end),
+                      flightShuttleBuilder: (
+                        flightContext,
+                        animation,
+                        flightDirection,
+                        fromHeroContext,
+                        toHeroContext,
+                      ) {
+                        return Material(
+                          color: Colors.transparent,
+                          child: toHeroContext.widget,
+                        );
+                      },
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 350,
+                              maxWidthDiskCache: 500,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fadeInDuration: const Duration(milliseconds: 200),
+                              placeholder: (_, _) => Container(
+                                color: isDark ? Colors.grey[850] : Colors.grey[200],
+                              ),
+                              errorBuilder: (_, _, _) => Container(
+                                color: isDark ? Colors.grey[850] : Colors.grey[200],
+                                child: const Icon(
+                                  Icons.image_not_supported_outlined,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : Container(
                               color: isDark ? Colors.grey[850] : Colors.grey[200],
                               child: const Icon(
                                 Icons.image_not_supported_outlined,
                                 color: Colors.grey,
                               ),
                             ),
-                          )
-                        : Container(
-                            color: isDark ? Colors.grey[850] : Colors.grey[200],
-                            child: const Icon(
-                              Icons.image_not_supported_outlined,
-                              color: Colors.grey,
-                            ),
-                          ),
+                    ),
                   ),
                   if (manga.rating != null)
                     Positioned(

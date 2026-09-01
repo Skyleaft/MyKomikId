@@ -31,8 +31,20 @@ class AppRoutes {
     login: (context) => const LoginScreen(),
     home: (context) => const MainScreen(),
     detail: (context) {
-      final manga = ModalRoute.of(context)!.settings.arguments as MangaDetail;
-      return MangaDetailScreen(manga: manga);
+      final args = ModalRoute.of(context)!.settings.arguments;
+      final MangaDetail manga;
+      final String? heroTag;
+      if (args is MangaDetail) {
+        manga = args;
+        heroTag = null;
+      } else if (args is Map<String, dynamic>) {
+        manga = args['manga'] as MangaDetail;
+        heroTag = args['heroTag'] as String?;
+      } else {
+        manga = args as MangaDetail;
+        heroTag = null;
+      }
+      return MangaDetailScreen(manga: manga, heroTag: heroTag);
     },
     reader: (context) {
       final content =
@@ -45,4 +57,70 @@ class AppRoutes {
     searchScrap: (context) => const SearchScrapScreen(),
     advancedRecommendation: (context) => const AdvancedRecommendationScreen(),
   };
+
+  /// Custom transition generator for high-performance, silky-smooth navigation
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    if (settings.name == detail) {
+      final args = settings.arguments;
+      final MangaDetail manga;
+      final String? heroTag;
+      if (args is MangaDetail) {
+        manga = args;
+        heroTag = null;
+      } else if (args is Map<String, dynamic>) {
+        manga = args['manga'] as MangaDetail;
+        heroTag = args['heroTag'] as String?;
+      } else {
+        manga = args as MangaDetail;
+        heroTag = null;
+      }
+      return PageRouteBuilder(
+        settings: settings,
+        transitionDuration: const Duration(milliseconds: 320),
+        reverseTransitionDuration: const Duration(milliseconds: 240),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return MangaDetailScreen(manga: manga, heroTag: heroTag);
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curvedAnimation = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+
+          final scaleAnimation = Tween<double>(
+            begin: 0.94,
+            end: 1.0,
+          ).animate(curvedAnimation);
+
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(0.0, 0.035),
+            end: Offset.zero,
+          ).animate(curvedAnimation);
+
+          final fadeAnimation = Tween<double>(
+            begin: 0.0,
+            end: 1.0,
+          ).animate(curvedAnimation);
+
+          return FadeTransition(
+            opacity: fadeAnimation,
+            child: SlideTransition(
+              position: slideAnimation,
+              child: ScaleTransition(
+                scale: scaleAnimation,
+                child: child,
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    final builder = routes[settings.name];
+    if (builder != null) {
+      return MaterialPageRoute(builder: builder, settings: settings);
+    }
+    return null;
+  }
 }

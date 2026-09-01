@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
             darkTheme: themeProvider.darkThemeData,
             themeMode: themeProvider.themeMode,
             home: const AuthWrapper(),
-            routes: AppRoutes.routes,
+            onGenerateRoute: AppRoutes.onGenerateRoute,
           );
         },
       ),

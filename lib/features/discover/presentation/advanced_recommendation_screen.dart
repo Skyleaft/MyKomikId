@@ -132,6 +132,7 @@ class _AdvancedRecommendationScreenState
   }
 
   void _navigateToDetail(MangaSummary item) async {
+    final heroTag = 'manga-cover-airec-${item.id}';
     // Fast path: Check local cache first
     try {
       final cached = await _detailService.getDetail(item.id);
@@ -140,7 +141,10 @@ class _AdvancedRecommendationScreenState
         await Navigator.pushNamed(
           context,
           AppRoutes.detail,
-          arguments: cached,
+          arguments: {
+            'manga': cached,
+            'heroTag': heroTag,
+          },
         );
         return;
       }
@@ -163,7 +167,14 @@ class _AdvancedRecommendationScreenState
         final mangaDetail = MangaDetail.fromMap(detailData);
         await _detailService.saveDetail(mangaDetail);
         if (mounted) {
-          Navigator.pushNamed(context, AppRoutes.detail, arguments: mangaDetail);
+          Navigator.pushNamed(
+            context,
+            AppRoutes.detail,
+            arguments: {
+              'manga': mangaDetail,
+              'heroTag': heroTag,
+            },
+          );
         }
       }
     } catch (e) {
@@ -565,6 +576,7 @@ class _AdvancedRecommendationScreenState
                               genres: item.genres ?? [],
                               status: item.status,
                               rating: item.rating,
+                              heroTag: 'manga-cover-airec-${item.id}',
                               imageUrl: _apiService.getLocalImageUrl(
                                 item.localImageUrl,
                                 item.imageUrl,

@@ -89,8 +89,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _navigateToDetail(
     String mangaId, {
-    MangaSummary? summary,
     MangaDetail? detail,
+    MangaSummary? summary,
+    String? heroTag,
   }) async {
     MangaDetail? targetDetail = detail;
 
@@ -106,7 +107,10 @@ class _HomeScreenState extends State<HomeScreen>
       await Navigator.pushNamed(
         context,
         AppRoutes.detail,
-        arguments: targetDetail,
+        arguments: {
+          'manga': targetDetail,
+          'heroTag': heroTag,
+        },
       );
       if (mounted) {
         _controller.fetchHistory();
@@ -132,7 +136,10 @@ class _HomeScreenState extends State<HomeScreen>
       await Navigator.pushNamed(
         context,
         AppRoutes.detail,
-        arguments: mangaDetail,
+        arguments: {
+          'manga': mangaDetail,
+          'heroTag': heroTag,
+        },
       );
       if (mounted) {
         _controller.fetchHistory();
@@ -213,7 +220,11 @@ class _HomeScreenState extends State<HomeScreen>
                         isDark: isDark,
                         apiService: _apiService,
                         onSelectManga: (id, {detail}) =>
-                            _navigateToDetail(id, detail: detail),
+                            _navigateToDetail(
+                              id,
+                              detail: detail,
+                              heroTag: 'manga-cover-continue-$id',
+                            ),
                         onNavigateToHistory: () async {
                           await Navigator.pushNamed(
                             context,
@@ -231,8 +242,12 @@ class _HomeScreenState extends State<HomeScreen>
                         trendingLoadingByTab: _controller.trendingLoadingByTab,
                         isDark: isDark,
                         apiService: _apiService,
-                        onSelectManga: (id, {summary}) =>
-                            _navigateToDetail(id, summary: summary),
+                        onSelectManga: (id, {summary, heroTag}) =>
+                            _navigateToDetail(
+                              id,
+                              summary: summary,
+                              heroTag: heroTag ?? 'manga-cover-trending-$id',
+                            ),
                         onNavigateToDiscover: () =>
                             _navigateToDiscover(sortBy: 'totalView'),
                       ),
@@ -243,7 +258,11 @@ class _HomeScreenState extends State<HomeScreen>
                         isDark: isDark,
                         apiService: _apiService,
                         onSelectManga: (id, {summary}) =>
-                            _navigateToDetail(id, summary: summary),
+                            _navigateToDetail(
+                              id,
+                              summary: summary,
+                              heroTag: 'manga-cover-latest-$id',
+                            ),
                         onNavigateToDiscover: () =>
                             _navigateToDiscover(sortBy: 'updatedAt'),
                       ),
@@ -254,7 +273,11 @@ class _HomeScreenState extends State<HomeScreen>
                         isDark: isDark,
                         apiService: _apiService,
                         onSelectManga: (id, {summary}) =>
-                            _navigateToDetail(id, summary: summary),
+                            _navigateToDetail(
+                              id,
+                              summary: summary,
+                              heroTag: 'manga-cover-top-$id',
+                            ),
                         onNavigateToDiscover: () =>
                             _navigateToDiscover(sortBy: 'rating'),
                       ),
@@ -265,7 +288,11 @@ class _HomeScreenState extends State<HomeScreen>
                         isDark: isDark,
                         apiService: _apiService,
                         onSelectManga: (id, {summary}) =>
-                            _navigateToDetail(id, summary: summary),
+                            _navigateToDetail(
+                              id,
+                              summary: summary,
+                              heroTag: 'manga-cover-recommended-$id',
+                            ),
                       ),
                     ]),
                   ),

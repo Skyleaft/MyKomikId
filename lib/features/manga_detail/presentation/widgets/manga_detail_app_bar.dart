@@ -13,12 +13,14 @@ class MangaDetailAppBar extends StatelessWidget {
   final MangaDetail manga;
   final String heroImageUrl;
   final int chapterCount;
+  final String? heroTag;
 
   const MangaDetailAppBar({
     super.key,
     required this.manga,
     required this.heroImageUrl,
     this.chapterCount = 0,
+    this.heroTag,
   });
 
   void _showExternalLinksSheet(BuildContext context) {
@@ -363,15 +365,15 @@ class MangaDetailAppBar extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Blurred Backdrop Image
+        // Blurred Backdrop Image (optimized shader surface)
         if (heroImageUrl.isNotEmpty)
           ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: CachedNetworkImage(
               imageUrl: heroImageUrl,
               fit: BoxFit.cover,
-              memCacheWidth: 700,
-              maxWidthDiskCache: 900,
+              memCacheWidth: 400,
+              maxWidthDiskCache: 600,
               placeholder: (_, _) => Container(
                 color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
               ),
@@ -417,6 +419,7 @@ class MangaDetailAppBar extends StatelessWidget {
                   heroImageUrl: heroImageUrl,
                   chapterCount: chapterCount,
                   isDark: isDark,
+                  heroTag: heroTag,
                 ),
               ),
             ),

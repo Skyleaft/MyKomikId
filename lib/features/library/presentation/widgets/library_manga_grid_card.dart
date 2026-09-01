@@ -60,120 +60,138 @@ class LibraryMangaGridCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cover Image with badges
+              // Cover Image with Hero Morph
               Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    displayUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: displayUrl,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 350,
-                            maxWidthDiskCache: 500,
-                            errorBuilder: (context, url, error) =>
-                                Container(color: Colors.grey[850]),
-                            placeholder: (context, url) =>
-                                Container(color: Colors.grey[850]),
-                          )
-                        : Container(color: Colors.grey[850]),
-                    // Gradient overlay
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 40,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.7),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Progress percentage bar
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 3,
-                        color: Colors.black.withValues(alpha: 0.3),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: manga.progressPercentage.clamp(0.0, 1.0),
-                          child: Container(color: AppColors.primary),
-                        ),
-                      ),
-                    ),
-                    if (manga.isFavorite)
+                child: Hero(
+                  tag: 'manga-cover-library-grid-${manga.id}',
+                  transitionOnUserGestures: true,
+                  createRectTween: (begin, end) =>
+                      MaterialRectArcTween(begin: begin, end: end),
+                  flightShuttleBuilder: (
+                    flightContext,
+                    animation,
+                    flightDirection,
+                    fromHeroContext,
+                    toHeroContext,
+                  ) {
+                    return Material(
+                      color: Colors.transparent,
+                      child: toHeroContext.widget,
+                    );
+                  },
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      displayUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: displayUrl,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 350,
+                              maxWidthDiskCache: 500,
+                              errorBuilder: (context, url, error) =>
+                                  Container(color: Colors.grey[850]),
+                              placeholder: (context, url) =>
+                                  Container(color: Colors.grey[850]),
+                            )
+                          : Container(color: Colors.grey[850]),
+                      // Gradient overlay
                       Positioned(
-                        top: 8,
-                        right: 8,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 40,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.favorite,
-                            color: Colors.red,
-                            size: 12,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.7),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    // Rating / Type badge top left
-                    if ((detail?.rating ?? manga.manga?.rating) != null &&
-                        (detail?.rating ?? manga.manga?.rating)! > 0)
+                      // Progress percentage bar
                       Positioned(
-                        top: 8,
-                        left: 8,
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(6),
+                          height: 3,
+                          color: Colors.black.withValues(alpha: 0.3),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: manga.progressPercentage.clamp(0.0, 1.0),
+                            child: Container(color: AppColors.primary),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
-                              const SizedBox(width: 2),
-                              Text(
-                                (detail?.rating ?? manga.manga?.rating)!.toStringAsFixed(1),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (manga.isFavorite)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.favorite,
+                              color: Colors.red,
+                              size: 12,
+                            ),
+                          ),
+                        ),
+                      // Rating / Type badge top left
+                      if ((detail?.rating ?? manga.manga?.rating) != null &&
+                          (detail?.rating ?? manga.manga?.rating)! > 0)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+                                const SizedBox(width: 2),
+                                Text(
+                                  (detail?.rating ?? manga.manga?.rating)!.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    if (manga.hasStartedReading)
-                      Positioned(
-                        bottom: 6,
-                        left: 8,
-                        child: Text(
-                          'Ch. ${manga.currentChapter % 1 == 0 ? manga.currentChapter.toInt() : manga.currentChapter}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            shadows: [
-                              Shadow(color: Colors.black, blurRadius: 4),
-                            ],
+                      if (manga.hasStartedReading)
+                        Positioned(
+                          bottom: 6,
+                          left: 8,
+                          child: Text(
+                            'Ch. ${manga.currentChapter % 1 == 0 ? manga.currentChapter.toInt() : manga.currentChapter}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              shadows: [
+                                Shadow(color: Colors.black, blurRadius: 4),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               // Manga Info

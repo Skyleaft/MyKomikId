@@ -14,7 +14,8 @@ class HomeTrendingSection extends StatelessWidget {
   final Map<int, bool> trendingLoadingByTab;
   final bool isDark;
   final MangaApiService apiService;
-  final void Function(String mangaId, {MangaSummary? summary}) onSelectManga;
+  final void Function(String mangaId, {MangaSummary? summary, String? heroTag})
+      onSelectManga;
   final VoidCallback onNavigateToDiscover;
 
   const HomeTrendingSection({
@@ -237,7 +238,13 @@ class HomeTrendingSection extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: items.length,
       itemBuilder: (context, index) {
-        return _buildTrendingCard(context, items[index], index, tabColor);
+        return _buildTrendingCard(
+          context,
+          items[index],
+          index,
+          tabColor,
+          tabIdx,
+        );
       },
     );
   }
@@ -266,14 +273,16 @@ class HomeTrendingSection extends StatelessWidget {
     MangaSummary manga,
     int rank,
     Color tabColor,
+    int tabIdx,
   ) {
     final String imageUrl = apiService.getLocalImageUrl(
       manga.localImageUrl,
       manga.imageUrl,
     );
+    final heroTag = 'manga-cover-trending-$tabIdx-${manga.id}';
 
     return GestureDetector(
-      onTap: () => onSelectManga(manga.id, summary: manga),
+      onTap: () => onSelectManga(manga.id, summary: manga, heroTag: heroTag),
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 14),
@@ -296,132 +305,150 @@ class HomeTrendingSection extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    imageUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 500,
-                            maxWidthDiskCache: 700,
-                            fadeInDuration: const Duration(milliseconds: 200),
-                            placeholder: (_, _) => Container(
-                              color: isDark ? Colors.grey[850] : Colors.grey[200],
-                            ),
-                            errorBuilder: (_, _, _) => Container(
+              child: Hero(
+                tag: heroTag,
+                transitionOnUserGestures: true,
+                createRectTween: (begin, end) =>
+                    MaterialRectArcTween(begin: begin, end: end),
+                flightShuttleBuilder: (
+                  flightContext,
+                  animation,
+                  flightDirection,
+                  fromHeroContext,
+                  toHeroContext,
+                ) {
+                  return Material(
+                    color: Colors.transparent,
+                    child: toHeroContext.widget,
+                  );
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 500,
+                              maxWidthDiskCache: 700,
+                              fadeInDuration: const Duration(milliseconds: 200),
+                              placeholder: (_, _) => Container(
+                                color: isDark ? Colors.grey[850] : Colors.grey[200],
+                              ),
+                              errorBuilder: (_, _, _) => Container(
+                                color: isDark ? Colors.grey[850] : Colors.grey[200],
+                                child: const Icon(
+                                  Icons.image_not_supported_outlined,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : Container(
                               color: isDark ? Colors.grey[850] : Colors.grey[200],
                               child: const Icon(
                                 Icons.image_not_supported_outlined,
                                 color: Colors.grey,
                               ),
                             ),
-                          )
-                        : Container(
-                            color: isDark ? Colors.grey[850] : Colors.grey[200],
-                            child: const Icon(
-                              Icons.image_not_supported_outlined,
-                              color: Colors.grey,
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: const [0.35, 1.0],
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.88),
+                              ],
                             ),
                           ),
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: const [0.35, 1.0],
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.88),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (manga.genres != null && manga.genres!.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 5),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: tabColor.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Text(
+                                    manga.genres!.first,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              Text(
+                                manga.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.remove_red_eye_outlined,
+                                    size: 11,
+                                    color: Colors.white54,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    formatViewCount(manga.totalView),
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.menu_book_rounded,
+                                    size: 11,
+                                    color: Colors.white54,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'Ch.${manga.latestChapter?.number.toInt() ?? 0}',
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (manga.genres != null && manga.genres!.isNotEmpty)
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 5),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: tabColor.withValues(alpha: 0.85),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Text(
-                                  manga.genres!.first,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ),
-                            Text(
-                              manga.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                height: 1.3,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.remove_red_eye_outlined,
-                                  size: 11,
-                                  color: Colors.white54,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  formatViewCount(manga.totalView),
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.menu_book_rounded,
-                                  size: 11,
-                                  color: Colors.white54,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  'Ch.${manga.latestChapter?.number.toInt() ?? 0}',
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

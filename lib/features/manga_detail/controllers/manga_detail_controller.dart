@@ -91,7 +91,10 @@ class MangaDetailController extends ChangeNotifier {
        _detailService = detailService ?? getIt<MangaDetailService>(),
        _signalRService = signalRService ?? getIt<MangaSignalRService>() {
     _chapters = List.from(manga.chapters);
-    _sortChapters();
+    _isLoadingChapters = manga.chapters.isEmpty;
+    if (_chapters.isNotEmpty) {
+      _sortChapters();
+    }
     _progressionService.addListener(_onProgressionServiceChanged);
   }
 
@@ -106,12 +109,17 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    _initSignalR();
+    // 1. Fast local cache lookup (runs immediately without blocking UI)
     await Future.wait([
-      _loadChapters(),
       _loadProgression(),
       _checkIfInLibrary(),
     ]);
+
+    // 2. Defer heavy background sync & SignalR connection until after page transition completes
+    Future.delayed(const Duration(milliseconds: 180), () {
+      _initSignalR();
+      _loadChapters();
+    });
   }
 
   void _initSignalR() {
@@ -229,17 +237,15 @@ class MangaDetailController extends ChangeNotifier {
   bool isChapterRead(Chapter chapter) {
     if (_progression == null) return false;
     final log = _progression!.chapterLogs
-        .where((l) => l.chapterId == chapter.id || l.chapterNumber == chapter.chapterNumber)
+        .where((l) =>
+            l.chapterId == chapter.id ||
+            l.chapterNumber == chapter.chapterNumber)
         .firstOrNull;
-    return log?.isCompleted ?? false;
-  }
-
-  Chapter? get nextUnreadChapter {
-    return manga.copyWith(chapters: _chapters).getNextUnreadChapter(_progression);
-  }
-
-  double get readProgressPercentage {
-    return manga.copyWith(chapters: _chapters).getReadPercentage(_progression);
+    if (log != null) {
+      return log.isCompleted ||
+          (log.lastReadPage > 0 && log.lastReadPage >= log.totalPages);
+    }
+    return chapter.chapterNumber <= _progression!.currentChapter;
   }
 
   void setChapterFilter(ChapterFilterOption filter) {
@@ -277,25 +283,42 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   Future<void> _loadProgression() async {
-    _progression = await _progressionService.getProgression(
+    // 1. Load from local cache first for instant display
+    final cached = await _progressionService.getProgression(
+      manga.id,
+      syncFromApi: false,
+    );
+    if (cached != null) {
+      _progression = cached;
+      notifyListeners();
+    }
+
+    // 2. Background sync from API
+    final synced = await _progressionService.getProgression(
       manga.id,
       syncFromApi: true,
     );
-    notifyListeners();
+    if (synced != null && synced != _progression) {
+      _progression = synced;
+      notifyListeners();
+    }
   }
 
   Future<void> _loadChapters() async {
     // 1. Load from local cache first for instant offline display
-    final cached = await _detailService.getDetail(manga.id);
-    if (cached != null && cached.chapters.isNotEmpty) {
-      _chapters = cached.chapters;
-      _sortChapters();
-      _isLoadingChapters = false;
-      notifyListeners();
+    if (_chapters.isEmpty) {
+      final cached = await _detailService.getDetail(manga.id);
+      if (cached != null && cached.chapters.isNotEmpty) {
+        _chapters = cached.chapters;
+        _sortChapters();
+        _isLoadingChapters = false;
+        notifyListeners();
+      }
     }
 
     final isStale = await _detailService.isCacheStale(manga.id);
     if (!isStale && _chapters.isNotEmpty) {
+      _isLoadingChapters = false;
       return;
     }
 
@@ -455,14 +478,14 @@ class MangaDetailController extends ChangeNotifier {
       manga.id,
       manga.title,
       manga.author,
-      manga.displayImageUrl,
+      manga.imageUrl ?? '',
       manga.url,
       manga.type,
       status: status,
     );
+
     await _libraryService.addToLibrary(libraryManga);
     _isInLibrary = true;
-    _isFavorite = libraryManga.isFavorite;
     _libraryStatus = status;
     notifyListeners();
   }
@@ -475,14 +498,39 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   Future<void> removeFromLibrary() async {
+    if (!_isInLibrary) return;
     await _libraryService.removeFromLibrary(manga.id);
     _isInLibrary = false;
-    _isFavorite = false;
     _libraryStatus = null;
+    _isFavorite = false;
     notifyListeners();
   }
 
-  MangaDetail _buildUpdatedDetail(List<Chapter> freshChapters) {
-    return manga.copyWith(chapters: freshChapters);
+
+  MangaDetail _buildUpdatedDetail(List<Chapter> chapters) {
+    return MangaDetail(
+      id: manga.id,
+      malId: manga.malId,
+      anilistId: manga.anilistId,
+      mangaUpdateId: manga.mangaUpdateId,
+      title: manga.title,
+      author: manga.author,
+      type: manga.type,
+      genres: manga.genres,
+      categories: manga.categories,
+      description: manga.description,
+      imageUrl: manga.imageUrl,
+      localImageUrl: manga.localImageUrl,
+      rating: manga.rating,
+      popularity: manga.popularity,
+      members: manga.members,
+      totalView: manga.totalView,
+      status: manga.status,
+      releaseDate: manga.releaseDate,
+      createdAt: manga.createdAt,
+      updatedAt: DateTime.now(),
+      url: manga.url,
+      chapters: chapters,
+    );
   }
 }

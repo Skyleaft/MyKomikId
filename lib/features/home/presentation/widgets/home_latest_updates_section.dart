@@ -157,20 +157,46 @@ class HomeLatestUpdatesSection extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  width: 56,
-                  height: 76,
-                  child: imageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 200,
-                          maxWidthDiskCache: 400,
-                          fadeInDuration: const Duration(milliseconds: 200),
-                          placeholder: (_, _) => Container(
-                            color: isDark ? Colors.grey[850] : Colors.grey[200],
-                          ),
-                          errorBuilder: (_, _, _) => Container(
+                child: Hero(
+                  tag: 'manga-cover-latest-${manga.id}',
+                  transitionOnUserGestures: true,
+                  createRectTween: (begin, end) =>
+                      MaterialRectArcTween(begin: begin, end: end),
+                  flightShuttleBuilder: (
+                    flightContext,
+                    animation,
+                    flightDirection,
+                    fromHeroContext,
+                    toHeroContext,
+                  ) {
+                    return Material(
+                      color: Colors.transparent,
+                      child: toHeroContext.widget,
+                    );
+                  },
+                  child: SizedBox(
+                    width: 56,
+                    height: 76,
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 200,
+                            maxWidthDiskCache: 400,
+                            fadeInDuration: const Duration(milliseconds: 200),
+                            placeholder: (_, _) => Container(
+                              color: isDark ? Colors.grey[850] : Colors.grey[200],
+                            ),
+                            errorBuilder: (_, _, _) => Container(
+                              color: isDark ? Colors.grey[850] : Colors.grey[200],
+                              child: const Icon(
+                                Icons.image_not_supported_outlined,
+                                color: Colors.grey,
+                                size: 20,
+                              ),
+                            ),
+                          )
+                        : Container(
                             color: isDark ? Colors.grey[850] : Colors.grey[200],
                             child: const Icon(
                               Icons.image_not_supported_outlined,
@@ -178,15 +204,7 @@ class HomeLatestUpdatesSection extends StatelessWidget {
                               size: 20,
                             ),
                           ),
-                        )
-                      : Container(
-                          color: isDark ? Colors.grey[850] : Colors.grey[200],
-                          child: const Icon(
-                            Icons.image_not_supported_outlined,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                        ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
