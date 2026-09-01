@@ -12,7 +12,20 @@ import 'core/theme/theme_provider.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/manga_detail/models/manga_detail.dart';
+import 'dart:ui';
 import 'routes/app_pages.dart';
+
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.trackpad,
+      };
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -35,6 +48,7 @@ class MyApp extends StatelessWidget {
             navigatorKey: AppRoutes.navigatorKey,
             navigatorObservers: [AppRoutes.routeObserver],
             debugShowCheckedModeBanner: false,
+            scrollBehavior: const AppScrollBehavior(),
             theme: themeProvider.lightThemeData,
             darkTheme: themeProvider.darkThemeData,
             themeMode: themeProvider.themeMode,

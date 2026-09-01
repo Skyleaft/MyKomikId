@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -14,6 +15,7 @@ class MangaDetailAppBar extends StatelessWidget {
   final String heroImageUrl;
   final int chapterCount;
   final String? heroTag;
+  final VoidCallback? onRefresh;
 
   const MangaDetailAppBar({
     super.key,
@@ -21,6 +23,7 @@ class MangaDetailAppBar extends StatelessWidget {
     required this.heroImageUrl,
     this.chapterCount = 0,
     this.heroTag,
+    this.onRefresh,
   });
 
   void _showExternalLinksSheet(BuildContext context) {
@@ -212,6 +215,39 @@ class MangaDetailAppBar extends StatelessWidget {
         ),
       ),
       actions: [
+        if (onRefresh != null)
+          Center(
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: buttonBgColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: buttonBorderColor, width: 0.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                tooltip: 'Refresh Manga (F5)',
+                icon: Icon(
+                  Icons.refresh_rounded,
+                  color: buttonIconColor,
+                  size: 20,
+                ),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  onRefresh!();
+                },
+              ),
+            ),
+          ),
         if (hasExternalLinks)
           Center(
             child: Container(
