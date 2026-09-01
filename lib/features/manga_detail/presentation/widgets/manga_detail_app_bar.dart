@@ -153,8 +153,8 @@ class MangaDetailAppBar extends StatelessWidget {
         (manga.url != null && manga.url!.isNotEmpty);
 
     final Color buttonBgColor = isDark
-        ? const Color(0xFF0F172A).withValues(alpha: 0.72)
-        : Colors.white.withValues(alpha: 0.85);
+        ? const Color(0xEB0F172A)
+        : const Color(0xF2FFFFFF);
     final Color buttonIconColor = isDark ? Colors.white : Colors.black87;
     final Color buttonBorderColor = isDark
         ? Colors.white12
@@ -194,25 +194,20 @@ class MangaDetailAppBar extends StatelessWidget {
               ),
             ],
           ),
-          child: ClipOval(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  color: buttonIconColor,
-                  size: 20,
-                ),
-                onPressed: () {
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  } else {
-                    Navigator.pushReplacementNamed(context, '/home');
-                  }
-                },
-              ),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              color: buttonIconColor,
+              size: 20,
             ),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushReplacementNamed(context, '/home');
+              }
+            },
           ),
         ),
       ),
@@ -235,20 +230,15 @@ class MangaDetailAppBar extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipOval(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    tooltip: 'External Links (MAL, AniList, Web)',
-                    icon: Icon(
-                      Icons.link_rounded,
-                      color: buttonIconColor,
-                      size: 20,
-                    ),
-                    onPressed: () => _showExternalLinksSheet(context),
-                  ),
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                tooltip: 'External Links (MAL, AniList, Web)',
+                icon: Icon(
+                  Icons.link_rounded,
+                  color: buttonIconColor,
+                  size: 20,
                 ),
+                onPressed: () => _showExternalLinksSheet(context),
               ),
             ),
           ),
@@ -269,32 +259,27 @@ class MangaDetailAppBar extends StatelessWidget {
                 ),
               ],
             ),
-            child: ClipOval(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  tooltip: 'Share Manga',
-                  icon: Icon(
-                    Icons.share_rounded,
-                    color: buttonIconColor,
-                    size: 19,
-                  ),
-                  onPressed: () {
-                    final baseUrl = AppConfig.baseUrl;
-                    final webShareUrl = '$baseUrl/manga/${manga.id}';
-                    final customSchemeUrl =
-                        'open-manga-reader://manga/${manga.id}';
-                    final shareText =
-                        'Read ${manga.title} on Open Manga Reader!\n\n'
-                        'Web link: $webShareUrl\n'
-                        'Or open in app: $customSchemeUrl';
-
-                    // ignore: deprecated_member_use
-                    Share.share(shareText, subject: 'Share ${manga.title}');
-                  },
-                ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              tooltip: 'Share Manga',
+              icon: Icon(
+                Icons.share_rounded,
+                color: buttonIconColor,
+                size: 19,
               ),
+              onPressed: () {
+                final baseUrl = AppConfig.baseUrl;
+                final webShareUrl = '$baseUrl/manga/${manga.id}';
+                final customSchemeUrl =
+                    'open-manga-reader://manga/${manga.id}';
+                final shareText =
+                    'Read ${manga.title} on Open Manga Reader!\n\n'
+                    'Web link: $webShareUrl\n'
+                    'Or open in app: $customSchemeUrl';
+
+                // ignore: deprecated_member_use
+                Share.share(shareText, subject: 'Share ${manga.title}');
+              },
             ),
           ),
         ),
@@ -365,15 +350,16 @@ class MangaDetailAppBar extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Blurred Backdrop Image (optimized shader surface)
+        // Blurred Backdrop Image (low-res decode for ultra-fast GPU blur)
         if (heroImageUrl.isNotEmpty)
           ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: CachedNetworkImage(
               imageUrl: heroImageUrl,
               fit: BoxFit.cover,
-              memCacheWidth: 400,
-              maxWidthDiskCache: 600,
+              memCacheWidth: 80,
+              maxWidthDiskCache: 300,
+              filterQuality: FilterQuality.low,
               placeholder: (_, _) => Container(
                 color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
               ),

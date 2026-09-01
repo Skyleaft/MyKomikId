@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +7,7 @@ import 'status_selection_sheet.dart';
 
 class MangaDetailFloatingDock extends StatelessWidget {
   final List<Chapter> chapters;
+  final Chapter? targetChapter;
   final bool isLoadingChapters;
   final bool isInLibrary;
   final bool isFavorite;
@@ -22,6 +22,7 @@ class MangaDetailFloatingDock extends StatelessWidget {
   const MangaDetailFloatingDock({
     super.key,
     required this.chapters,
+    this.targetChapter,
     required this.isLoadingChapters,
     required this.isInLibrary,
     required this.isFavorite,
@@ -72,12 +73,12 @@ class MangaDetailFloatingDock extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final targetChapter = _getTargetChapter();
-    final buttonLabel = _getButtonLabel(targetChapter);
+    final activeTarget = targetChapter ?? _getTargetChapter();
+    final buttonLabel = _getButtonLabel(activeTarget);
 
     final Color dockBgColor = isDark
-        ? const Color(0xFF0F172A).withValues(alpha: 0.88)
-        : Colors.white.withValues(alpha: 0.92);
+        ? const Color(0xF20F172A)
+        : const Color(0xF8FFFFFF);
     final Color dockBorderColor = isDark
         ? Colors.white.withValues(alpha: 0.12)
         : Colors.black.withValues(alpha: 0.08);
@@ -105,18 +106,14 @@ class MangaDetailFloatingDock extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(36),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: dockBgColor,
-                      borderRadius: BorderRadius.circular(36),
-                      border: Border.all(color: dockBorderColor, width: 1),
-                    ),
-                    child: Row(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: dockBgColor,
+                  borderRadius: BorderRadius.circular(36),
+                  border: Border.all(color: dockBorderColor, width: 1),
+                ),
+                child: Row(
                       children: [
                         // Main Action: Big Pill Button (Continue / Start Reading)
                         Expanded(
@@ -141,11 +138,11 @@ class MangaDetailFloatingDock extends StatelessWidget {
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                onTap: isLoadingChapters || targetChapter == null
+                                onTap: isLoadingChapters || activeTarget == null
                                     ? null
                                     : () {
                                         HapticFeedback.lightImpact();
-                                        onReadChapter(targetChapter);
+                                        onReadChapter(activeTarget);
                                       },
                                 borderRadius: BorderRadius.circular(28),
                                 child: Padding(
@@ -198,9 +195,7 @@ class MangaDetailFloatingDock extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildLibraryButton(
