@@ -60,13 +60,20 @@ class _LibraryScreenState extends State<LibraryScreen>
     _controller.loadLibrary();
   }
 
-  Future<void> _navigateToMangaDetail(String mangaId) async {
+  Future<void> _navigateToMangaDetail(String mangaId, {String? heroTag}) async {
     final cached = await _detailService.getDetail(mangaId);
 
     if (!mounted) return;
 
     if (cached != null) {
-      await Navigator.pushNamed(context, AppRoutes.detail, arguments: cached);
+      await Navigator.pushNamed(
+        context,
+        AppRoutes.detail,
+        arguments: {
+          'manga': cached,
+          'heroTag': heroTag,
+        },
+      );
       if (mounted) _controller.loadLibrary();
 
       _apiService
@@ -97,7 +104,10 @@ class _LibraryScreenState extends State<LibraryScreen>
       await Navigator.pushNamed(
         context,
         AppRoutes.detail,
-        arguments: mangaDetail,
+        arguments: {
+          'manga': mangaDetail,
+          'heroTag': heroTag,
+        },
       );
       if (mounted) _controller.loadLibrary();
     } catch (e) {
@@ -398,7 +408,10 @@ class _LibraryScreenState extends State<LibraryScreen>
             detail: detail,
             isDark: isDark,
             apiService: _apiService,
-            onTap: () => _navigateToMangaDetail(manga.id),
+            onTap: () => _navigateToMangaDetail(
+              manga.id,
+              heroTag: 'manga-cover-library-grid-${manga.id}',
+            ),
             onQuickRead: () => _quickReadManga(manga),
             onLongPress: () => _showMangaOptionsSheet(manga),
             onStatusTap: () => _changeMangaStatus(manga),
@@ -416,7 +429,10 @@ class _LibraryScreenState extends State<LibraryScreen>
           detail: detail,
           isDark: isDark,
           apiService: _apiService,
-          onTap: () => _navigateToMangaDetail(manga.id),
+          onTap: () => _navigateToMangaDetail(
+            manga.id,
+            heroTag: 'manga-cover-library-list-${manga.id}',
+          ),
           onQuickRead: () => _quickReadManga(manga),
           onLongPress: () => _showMangaOptionsSheet(manga),
           onStatusTap: () => _changeMangaStatus(manga),

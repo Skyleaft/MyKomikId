@@ -15,6 +15,7 @@ class MangaCard extends StatelessWidget {
   final String? type;
   final String? status;
   final List<String>? genres;
+  final String? heroTag;
   final VoidCallback? onTap;
 
   const MangaCard({
@@ -29,6 +30,7 @@ class MangaCard extends StatelessWidget {
     this.type,
     this.status,
     this.genres,
+    this.heroTag,
     this.onTap,
   });
 
@@ -39,170 +41,186 @@ class MangaCard extends StatelessWidget {
       imageUrl,
     );
 
+    Widget coverContainer = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (displayUrl.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: displayUrl,
+                fit: BoxFit.cover,
+                memCacheWidth: 400,
+                maxWidthDiskCache: 600,
+                errorBuilder: (context, url, error) =>
+                    _buildPlaceholder(),
+                placeholder: (context, url) => _buildPlaceholder(),
+              )
+            else
+              _buildPlaceholder(),
+
+            // Status Badge (Top Left)
+            if (status != null && status!.isNotEmpty)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: switch (status!.toLowerCase()) {
+                      'reading' => Colors.green.withValues(alpha: 0.8),
+                      'completed' => Colors.blue.withValues(alpha: 0.8),
+                      'onhold' => Colors.orange.withValues(alpha: 0.8),
+                      'dropped' => Colors.red.withValues(alpha: 0.8),
+                      'plantoread' => Colors.purple.withValues(alpha: 0.8),
+                      _ => Colors.grey.withValues(alpha: 0.8),
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    status!.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+            // Type Badge (Top Right)
+            if (type != null && type!.isNotEmpty)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    type!.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+            // Progress Bar (Bottom)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.black.withValues(alpha: 0.3),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isCompleted ? AppColors.secondary : AppColors.primary,
+                ),
+                minHeight: 4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (heroTag != null && heroTag!.isNotEmpty) {
+      coverContainer = Hero(
+        tag: heroTag!,
+        transitionOnUserGestures: true,
+        createRectTween: (begin, end) =>
+            MaterialRectArcTween(begin: begin, end: end),
+        flightShuttleBuilder: (
+          flightContext,
+          animation,
+          flightDirection,
+          fromHeroContext,
+          toHeroContext,
+        ) {
+          return Material(
+            color: Colors.transparent,
+            child: toHeroContext.widget,
+          );
+        },
+        child: coverContainer,
+      );
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (displayUrl.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: displayUrl,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 400,
-                        maxWidthDiskCache: 600,
-                        errorBuilder: (context, url, error) =>
-                            _buildPlaceholder(),
-                        placeholder: (context, url) => _buildPlaceholder(),
-                      )
-                    else
-                      _buildPlaceholder(),
-
-                    // Status Badge (Top Left)
-                    if (status != null && status!.isNotEmpty)
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: switch (status!.toLowerCase()) {
-                              'reading' => Colors.green.withValues(alpha: 0.8),
-                              'completed' => Colors.blue.withValues(alpha: 0.8),
-                              'onhold' => Colors.orange.withValues(alpha: 0.8),
-                              'dropped' => Colors.red.withValues(alpha: 0.8),
-                              'plantoread' => Colors.purple.withValues(alpha: 0.8),
-                              _ => Colors.grey.withValues(alpha: 0.8),
-                            },
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            status!.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Type Badge (Bottom Left)
-                    Positioned(
-                      bottom: 12,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          type?.toUpperCase() ?? 'MANGA',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Progress Bar
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 4,
-                        color: Colors.black.withValues(alpha: 0.4),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: progress.clamp(0.0, 1.0),
-                          child: Container(color: AppColors.primary),
-                        ),
-                      ),
-                    ),
-
-                    // Completed Badge (Keep as indicator if progression is done)
-                    if (isCompleted)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'DONE',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: coverContainer),
           const SizedBox(height: 8),
+
+          // Title
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
-            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            'Ch. $currentChapter${totalChapters > 0 ? '/$totalChapters' : ''}',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.primary.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w500,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              height: 1.2,
             ),
           ),
-          if (genres != null && genres!.isNotEmpty)
-            Text(
-              genres!.join(', '),
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          const SizedBox(height: 4),
+
+          // Progress text / Chapters
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Ch. $currentChapter / $totalChapters',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+              ),
+              if (isCompleted)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text(
+                    'DONE',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -210,11 +228,11 @@ class MangaCard extends StatelessWidget {
 
   Widget _buildPlaceholder() {
     return Container(
-      color: AppColors.primary.withValues(alpha: 0.1),
-      child: Center(
+      color: Colors.grey[850],
+      child: const Center(
         child: Icon(
-          Icons.menu_book,
-          color: AppColors.primary.withValues(alpha: 0.5),
+          Icons.image_not_supported_outlined,
+          color: Colors.white24,
           size: 32,
         ),
       ),

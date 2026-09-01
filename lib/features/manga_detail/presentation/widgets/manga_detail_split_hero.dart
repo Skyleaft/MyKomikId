@@ -10,6 +10,7 @@ class MangaDetailSplitHero extends StatelessWidget {
   final String heroImageUrl;
   final int chapterCount;
   final bool isDark;
+  final String? heroTag;
 
   const MangaDetailSplitHero({
     super.key,
@@ -17,6 +18,7 @@ class MangaDetailSplitHero extends StatelessWidget {
     required this.heroImageUrl,
     this.chapterCount = 0,
     required this.isDark,
+    this.heroTag,
   });
 
   @override
@@ -40,46 +42,72 @@ class MangaDetailSplitHero extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // Left: Poster Cover Card
-        Container(
-          width: posterWidth,
-          height: posterHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.1),
-              width: 1.2,
+        // Left: Poster Cover Card with Hero Morph
+        Hero(
+          tag: heroTag ?? 'manga-detail-poster-${manga.id}',
+          transitionOnUserGestures: true,
+          createRectTween: (begin, end) =>
+              MaterialRectArcTween(begin: begin, end: end),
+          flightShuttleBuilder: (
+            flightContext,
+            animation,
+            flightDirection,
+            fromHeroContext,
+            toHeroContext,
+          ) {
+            return Material(
+              color: Colors.transparent,
+              child: toHeroContext.widget,
+            );
+          },
+          child: Container(
+            width: posterWidth,
+            height: posterHeight,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.1),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.22),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.22),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: colorScheme.primary.withValues(alpha: 0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: heroImageUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: heroImageUrl,
-                    fit: BoxFit.cover,
-                    memCacheWidth: isDesktop ? 500 : 350,
-                    maxWidthDiskCache: 600,
-                    placeholder: (_, _) => Container(
-                      color: isDark ? Colors.grey[850] : Colors.grey[300],
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: heroImageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: heroImageUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: isDesktop ? 500 : 350,
+                      maxWidthDiskCache: 600,
+                      placeholder: (_, _) => Container(
+                        color: isDark ? Colors.grey[850] : Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    ),
-                    errorBuilder: (_, _, _) => Container(
+                      errorBuilder: (_, _, _) => Container(
+                        color: isDark ? Colors.grey[850] : Colors.grey[300],
+                        child: Icon(
+                          Icons.image_not_supported_rounded,
+                          color: isDark ? Colors.white60 : Colors.black45,
+                          size: 32,
+                        ),
+                      ),
+                    )
+                  : Container(
                       color: isDark ? Colors.grey[850] : Colors.grey[300],
                       child: Icon(
                         Icons.image_not_supported_rounded,
@@ -87,15 +115,7 @@ class MangaDetailSplitHero extends StatelessWidget {
                         size: 32,
                       ),
                     ),
-                  )
-                : Container(
-                    color: isDark ? Colors.grey[850] : Colors.grey[300],
-                    child: Icon(
-                      Icons.image_not_supported_rounded,
-                      color: isDark ? Colors.white60 : Colors.black45,
-                      size: 32,
-                    ),
-                  ),
+            ),
           ),
         ),
 

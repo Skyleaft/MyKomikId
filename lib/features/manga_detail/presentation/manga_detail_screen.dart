@@ -25,8 +25,13 @@ import 'widgets/status_selection_sheet.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final MangaDetail manga;
+  final String? heroTag;
 
-  const MangaDetailScreen({super.key, required this.manga});
+  const MangaDetailScreen({
+    super.key,
+    required this.manga,
+    this.heroTag,
+  });
 
   @override
   State<MangaDetailScreen> createState() => _MangaDetailScreenState();
@@ -43,8 +48,6 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
   void initState() {
     super.initState();
     _controller = MangaDetailController(manga: widget.manga);
-    _controller.init();
-
     _scrollController = ScrollController();
 
     _tabController = TabController(length: 2, vsync: this);
@@ -53,6 +56,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         _controller.loadRecommendations();
       }
       if (mounted) setState(() {});
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _controller.init();
+      }
     });
   }
 
@@ -214,7 +223,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
       if (!context.mounted) return;
       Navigator.pop(context);
       final mangaDetail = MangaDetail.fromMap(detailData);
-      Navigator.pushNamed(context, AppRoutes.detail, arguments: mangaDetail);
+      Navigator.pushNamed(
+        context,
+        AppRoutes.detail,
+        arguments: {
+          'manga': mangaDetail,
+          'heroTag': 'manga-cover-rec-${item.id}',
+        },
+      );
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context);
@@ -252,6 +268,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                       manga: widget.manga,
                       heroImageUrl: heroImageUrl,
                       chapterCount: _controller.chapters.length,
+                      heroTag: widget.heroTag,
                     ),
 
                     // Overview Section: Genres (stretches downward) & Synopsis

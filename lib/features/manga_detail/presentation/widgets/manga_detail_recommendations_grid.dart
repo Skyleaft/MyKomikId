@@ -228,6 +228,7 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
                     genres: item.genres ?? [],
                     status: item.status,
                     rating: item.rating,
+                    heroTag: 'manga-cover-rec-${item.id}',
                     localImageUrl: item.localImageUrl,
                     imageUrl: item.imageUrl,
                     onTap: () => onSelectRecommendation(item),

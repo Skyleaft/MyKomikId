@@ -17,6 +17,7 @@ class DiscoverCard extends StatefulWidget {
   final List<String> genres;
   final String? status;
   final double? rating;
+  final String? heroTag;
   final VoidCallback? onTap;
 
   const DiscoverCard({
@@ -30,6 +31,7 @@ class DiscoverCard extends StatefulWidget {
     required this.genres,
     this.status,
     this.rating,
+    this.heroTag,
     this.onTap,
   });
 
@@ -81,6 +83,274 @@ class _DiscoverCardState extends State<DiscoverCard> {
     final double badgeFontSize = isDesktop ? 10 : (isTablet ? 9.5 : 9);
     final double iconSize = isDesktop ? 13 : (isTablet ? 12 : 11);
 
+    Widget coverCard = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(
+              alpha: _isHovered
+                  ? (isDark ? 0.45 : 0.2)
+                  : (isDark ? 0.3 : 0.1),
+            ),
+            blurRadius: _isHovered ? 16 : 8,
+            offset: Offset(0, _isHovered ? 8 : 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Cached Image
+            if (displayUrl.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: displayUrl,
+                fit: BoxFit.cover,
+                memCacheWidth: 400,
+                maxWidthDiskCache: 600,
+                placeholder: (_, _) => ShimmerBox(
+                  borderRadius: borderRadius,
+                ),
+                errorBuilder: (_, _, _) =>
+                    _buildPlaceholder(iconSize * 3),
+              )
+            else
+              _buildPlaceholder(iconSize * 3),
+
+            // Gradient Vignette Scrim (Top & Bottom for Contrast)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.25, 0.65, 1.0],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Top Left: Type Badge
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: _getTypeColor(widget.type)
+                      .withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  widget.type.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: badgeFontSize,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+
+            // Top Right: Status & Rating Badges
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (widget.status != null &&
+                      widget.status!.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(widget.status)
+                            .withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        widget.status!.toUpperCase(),
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: badgeFontSize - 0.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.star_rounded,
+                          color: const Color(0xFFFBBF24),
+                          size: iconSize + 2,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          (widget.rating == null ||
+                                  widget.rating == 0)
+                              ? 'N/A'
+                              : widget.rating!.toStringAsFixed(1),
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: badgeFontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Bottom Badges: Latest Chapter & Views
+            Positioned(
+              bottom: 8,
+              left: 8,
+              right: 8,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary
+                            .withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'Ch. ${widget.latestChapter?.number.toInt() ?? 0}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: badgeFontSize + 0.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.visibility_outlined,
+                          color: Colors.white70,
+                          size: iconSize,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          widget.views,
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: badgeFontSize,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (widget.heroTag != null && widget.heroTag!.isNotEmpty) {
+      coverCard = Hero(
+        tag: widget.heroTag!,
+        transitionOnUserGestures: true,
+        createRectTween: (begin, end) =>
+            MaterialRectArcTween(begin: begin, end: end),
+        flightShuttleBuilder: (
+          flightContext,
+          animation,
+          flightDirection,
+          fromHeroContext,
+          toHeroContext,
+        ) {
+          return Material(
+            color: Colors.transparent,
+            child: toHeroContext.widget,
+          );
+        },
+        child: coverCard,
+      );
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
@@ -96,253 +366,7 @@ class _DiscoverCardState extends State<DiscoverCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Cover Image with Badges & Vignette
-              Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(borderRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: _isHovered
-                              ? (isDark ? 0.45 : 0.2)
-                              : (isDark ? 0.3 : 0.1),
-                        ),
-                        blurRadius: _isHovered ? 16 : 8,
-                        offset: Offset(0, _isHovered ? 8 : 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(borderRadius),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // Cached Image
-                        if (displayUrl.isNotEmpty)
-                          CachedNetworkImage(
-                            imageUrl: displayUrl,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 400,
-                            maxWidthDiskCache: 600,
-                            placeholder: (_, _) => ShimmerBox(
-                              borderRadius: borderRadius,
-                            ),
-                            errorBuilder: (_, _, _) =>
-                                _buildPlaceholder(iconSize * 3),
-                          )
-                        else
-                          _buildPlaceholder(iconSize * 3),
-
-                        // Gradient Vignette Scrim (Top & Bottom for Contrast)
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                stops: const [0.0, 0.25, 0.65, 1.0],
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.55),
-                                  Colors.transparent,
-                                  Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.8),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Top Left: Type Badge
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getTypeColor(widget.type)
-                                  .withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(6),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              widget.type.toUpperCase(),
-                              style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: badgeFontSize,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Top Right: Status & Rating Badges
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              if (widget.status != null &&
-                                  widget.status!.isNotEmpty)
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 4),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(widget.status)
-                                        .withValues(alpha: 0.9),
-                                    borderRadius: BorderRadius.circular(6),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.3),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    widget.status!.toUpperCase(),
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: badgeFontSize - 0.5,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.4,
-                                    ),
-                                  ),
-                                ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.75),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    width: 0.5,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.star_rounded,
-                                      color: const Color(0xFFFBBF24),
-                                      size: iconSize + 2,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      (widget.rating == null ||
-                                              widget.rating == 0)
-                                          ? 'N/A'
-                                          : widget.rating!.toStringAsFixed(1),
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: badgeFontSize,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Bottom Badges: Latest Chapter & Views
-                        Positioned(
-                          bottom: 8,
-                          left: 8,
-                          right: 8,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.primary
-                                        .withValues(alpha: 0.95),
-                                    borderRadius: BorderRadius.circular(6),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.3),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    'Ch. ${widget.latestChapter?.number.toInt() ?? 0}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: badgeFontSize + 0.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.75),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.15),
-                                    width: 0.5,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.visibility_outlined,
-                                      color: Colors.white70,
-                                      size: iconSize,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      widget.views,
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: badgeFontSize,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              Expanded(child: coverCard),
 
               // Title and Genres Information
               const SizedBox(height: 8),

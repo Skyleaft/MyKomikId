@@ -229,12 +229,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Future<void> _navigateToDetail(MangaSummary item) async {
+    final heroTag = 'manga-cover-discover-${item.id}';
     // Fast path: Check local cache first
     try {
       final cached = await _detailService.getDetail(item.id);
       if (cached != null && mounted) {
         FocusManager.instance.primaryFocus?.unfocus();
-        await Navigator.pushNamed(context, AppRoutes.detail, arguments: cached);
+        await Navigator.pushNamed(
+          context,
+          AppRoutes.detail,
+          arguments: {
+            'manga': cached,
+            'heroTag': heroTag,
+          },
+        );
         return;
       }
     } catch (_) {}
@@ -261,7 +269,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       await Navigator.pushNamed(
         context,
         AppRoutes.detail,
-        arguments: mangaDetail,
+        arguments: {
+          'manga': mangaDetail,
+          'heroTag': heroTag,
+        },
       );
     } catch (e) {
       if (!mounted) return;
@@ -705,6 +716,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               genres: item.genres ?? [],
                               status: item.status,
                               rating: item.rating,
+                              heroTag: 'manga-cover-discover-${item.id}',
                               imageUrl: _apiService.getLocalImageUrl(
                                 item.localImageUrl,
                                 item.imageUrl,

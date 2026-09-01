@@ -90,82 +90,100 @@ class LibraryMangaCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Cover Image Left
-                Stack(
-                  children: [
-                    Container(
-                      width: 110,
-                      height: 165,
-                      color: AppColors.primary.withValues(alpha: 0.05),
-                      child: displayUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: displayUrl,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 300,
-                              maxWidthDiskCache: 500,
-                              errorBuilder: (context, url, error) =>
-                                  _buildImagePlaceholder(),
-                              placeholder: (context, url) =>
-                                  _buildImagePlaceholder(),
-                            )
-                          : _buildImagePlaceholder(),
-                    ),
-                    // Progress Bar overlay at bottom of image
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 4,
-                        color: Colors.black.withValues(alpha: 0.2),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: manga.progressPercentage.clamp(0.0, 1.0),
-                          child: Container(color: AppColors.primary),
+                // Cover Image Left with Hero Morph
+                Hero(
+                  tag: 'manga-cover-library-list-${manga.id}',
+                  transitionOnUserGestures: true,
+                  createRectTween: (begin, end) =>
+                      MaterialRectArcTween(begin: begin, end: end),
+                  flightShuttleBuilder: (
+                    flightContext,
+                    animation,
+                    flightDirection,
+                    fromHeroContext,
+                    toHeroContext,
+                  ) {
+                    return Material(
+                      color: Colors.transparent,
+                      child: toHeroContext.widget,
+                    );
+                  },
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 110,
+                        height: 165,
+                        color: AppColors.primary.withValues(alpha: 0.05),
+                        child: displayUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: displayUrl,
+                                fit: BoxFit.cover,
+                                memCacheWidth: 300,
+                                maxWidthDiskCache: 500,
+                                errorBuilder: (context, url, error) =>
+                                    _buildImagePlaceholder(),
+                                placeholder: (context, url) =>
+                                    _buildImagePlaceholder(),
+                              )
+                            : _buildImagePlaceholder(),
+                      ),
+                      // Progress Bar overlay at bottom of image
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 4,
+                          color: Colors.black.withValues(alpha: 0.2),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: manga.progressPercentage.clamp(0.0, 1.0),
+                            child: Container(color: AppColors.primary),
+                          ),
                         ),
                       ),
-                    ),
-                    if (manga.isCompleted)
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'DONE',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
+                      if (manga.isCompleted)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'DONE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    if (manga.isFavorite)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.favorite,
-                            color: Colors.red,
-                            size: 12,
+                      if (manga.isFavorite)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.favorite,
+                              color: Colors.red,
+                              size: 12,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
                 // Information details Right
                 Expanded(
