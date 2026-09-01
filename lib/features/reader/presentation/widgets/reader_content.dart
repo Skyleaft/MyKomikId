@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/url_utils.dart';
 import 'app_network_image.dart';
 import 'dart:math' as math;
 
@@ -78,16 +79,24 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
     for (int offset = -1; offset <= 2; offset++) {
       final targetIndex = currentIndex + offset;
       if (targetIndex >= 0 && targetIndex < widget.pageUrls.length) {
-        final url = widget.pageUrls[targetIndex];
+        final rawUrl = widget.pageUrls[targetIndex];
+        final url = UrlUtils.sanitizeImageUrl(rawUrl);
         if (!_precachedUrls.contains(url)) {
           _precachedUrls.add(url);
           precacheImage(
             CachedNetworkImageProvider(
               url,
               headers: widget.httpHeaders,
-              maxWidth: memCacheWidth,
             ),
             context,
+            onError: (exception, stackTrace) {
+              try {
+                CachedNetworkImageProvider(
+                  url,
+                  headers: widget.httpHeaders,
+                ).evict();
+              } catch (_) {}
+            },
           );
         }
       }
@@ -97,12 +106,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
     final contentWidth = math.min(screenWidth, 800.0);
-    final webtoonMemCacheWidth =
-        (contentWidth * devicePixelRatio).round().clamp(400, 1600);
-    final pagedMemCacheWidth =
-        (screenWidth * devicePixelRatio).round().clamp(600, 2048);
 
     return Positioned.fill(
       child: GestureDetector(
@@ -162,7 +166,6 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                                   httpHeaders: widget.httpHeaders,
                                   fit: BoxFit.fitWidth,
                                   width: contentWidth,
-                                  memCacheWidth: webtoonMemCacheWidth,
                                   debugLabel:
                                       'P. ${index + 1}/${widget.pageUrls.length} • ${ratio.toStringAsFixed(2)}',
                                   onAspectRatioResolved: (aspect) {
@@ -284,7 +287,6 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                           imageUrl: url,
                           httpHeaders: widget.httpHeaders,
                           fit: BoxFit.contain,
-                          memCacheWidth: pagedMemCacheWidth,
                           debugLabel: 'P. ${index + 1}/${widget.pageUrls.length}',
                           gaplessPlayback: true,
                           placeholder: Container(

@@ -63,9 +63,47 @@ class MangaApiService {
           if (_jwtToken != null) {
             options.headers['Authorization'] = 'Bearer $_jwtToken';
           }
+          if (kDebugMode) {
+            options.extra['requestStartTime'] =
+                DateTime.now().millisecondsSinceEpoch;
+            debugPrint('🌐 [API REQ] ${options.method} ${options.uri}');
+            if (options.data != null) {
+              debugPrint('   📦 Data: ${options.data}');
+            }
+          }
           return handler.next(options);
         },
+        onResponse: (response, handler) {
+          if (kDebugMode) {
+            final startTime =
+                response.requestOptions.extra['requestStartTime'] as int?;
+            final durationStr = startTime != null
+                ? ' (${DateTime.now().millisecondsSinceEpoch - startTime}ms)'
+                : '';
+            debugPrint(
+              '✅ [API RES] ${response.requestOptions.method} ${response.requestOptions.uri} -> [${response.statusCode}]$durationStr',
+            );
+          }
+          return handler.next(response);
+        },
         onError: (DioException e, handler) async {
+          if (kDebugMode) {
+            final startTime =
+                e.requestOptions.extra['requestStartTime'] as int?;
+            final durationStr = startTime != null
+                ? ' (${DateTime.now().millisecondsSinceEpoch - startTime}ms)'
+                : '';
+            debugPrint(
+              '❌ [API ERR] ${e.requestOptions.method} ${e.requestOptions.uri} -> [${e.response?.statusCode ?? 'NO STATUS'}]$durationStr',
+            );
+            if (e.message != null && e.message!.isNotEmpty) {
+              debugPrint('   ⚠️ Message: ${e.message}');
+            }
+            if (e.response?.data != null) {
+              debugPrint('   ⚠️ Response Body: ${e.response?.data}');
+            }
+          }
+
           if (e.response?.statusCode == 401 &&
               e.requestOptions.path != '/api/v1/auth/firebase') {
             try {

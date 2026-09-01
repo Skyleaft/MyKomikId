@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
+import 'package:flutter_avif/flutter_avif.dart';
+import '../../../../core/utils/url_utils.dart';
 
 class AppNetworkImage extends StatefulWidget {
   final String imageUrl;
@@ -47,7 +49,11 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
   int _retryCount = 0;
   bool _isRetrying = false;
   bool _aspectRatioReported = false;
+  bool _disableMemCache = false;
+  bool _isAvifFallback = false;
   Key _imageKey = UniqueKey();
+
+  String get _effectiveImageUrl => UrlUtils.sanitizeImageUrl(widget.imageUrl);
 
   @override
   void didUpdateWidget(covariant AppNetworkImage oldWidget) {
@@ -56,20 +62,24 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       _retryCount = 0;
       _isRetrying = false;
       _aspectRatioReported = false;
+      _disableMemCache = false;
+      _isAvifFallback = false;
       _imageKey = UniqueKey();
     }
   }
 
   Future<void> _forceReload() async {
     if (_isRetrying) return;
+    final url = _effectiveImageUrl;
     setState(() {
       _isRetrying = true;
       _retryCount++;
+      _disableMemCache = true; // Always disable memCache on manual retry
     });
 
     try {
       await CachedNetworkImageProvider(
-        widget.imageUrl,
+        url,
         headers: widget.httpHeaders,
       ).evict();
     } catch (_) {}
@@ -194,61 +204,13 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final imageWidget = CachedNetworkImage(
-      key: _imageKey,
-      imageUrl: widget.imageUrl,
-      httpHeaders: widget.httpHeaders,
-      fit: widget.fit,
-      width: widget.width,
-      height: widget.height,
-      memCacheWidth: widget.memCacheWidth,
-      memCacheHeight: widget.memCacheHeight,
-      maxHeightDiskCache: widget.maxHeightDiskCache,
-      maxWidthDiskCache: widget.maxWidthDiskCache,
-      imageBuilder: widget.onAspectRatioResolved != null
-          ? (context, imageProvider) {
-              if (!_aspectRatioReported) {
-                final stream = imageProvider.resolve(const ImageConfiguration());
-                late final ImageStreamListener listener;
-                listener = ImageStreamListener(
-                  (info, _) {
-                    final w = info.image.width;
-                    final h = info.image.height;
-                    if (w > 0 && mounted && !_aspectRatioReported) {
-                      _aspectRatioReported = true;
-                      widget.onAspectRatioResolved?.call(h / w);
-                    }
-                    stream.removeListener(listener);
-                  },
-                  onError: (exception, stackTrace) {
-                    stream.removeListener(listener);
-                  },
-                );
-                stream.addListener(listener);
-              }
-              return Image(
-                image: imageProvider,
-                fit: widget.fit,
-                width: widget.width,
-                height: widget.height,
-                gaplessPlayback: widget.gaplessPlayback,
-              );
-            }
-          : null,
-      placeholder: (context, url) => _buildPlaceholder(),
-      errorBuilder: (context, url, error) => _buildErrorWidget(),
-      fadeInDuration: const Duration(milliseconds: 150),
-      fadeOutDuration: const Duration(milliseconds: 150),
-    );
-
+  Widget _wrapDebugLabel(Widget child) {
     if (kDebugMode &&
         widget.debugLabel != null &&
         widget.debugLabel!.isNotEmpty) {
       return Stack(
         children: [
-          imageWidget,
+          child,
           Positioned(
             top: 8,
             right: 8,
@@ -278,7 +240,135 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
         ],
       );
     }
+    return child;
+  }
 
-    return imageWidget;
+  @override
+  Widget build(BuildContext context) {
+    final url = _effectiveImageUrl;
+
+    if (_isAvifFallback) {
+      final avifWidget = CachedNetworkAvifImage(
+        url,
+        key: _imageKey,
+        fit: widget.fit,
+        width: widget.width,
+        height: widget.height,
+        headers: widget.httpHeaders,
+        gaplessPlayback: widget.gaplessPlayback,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (frame != null &&
+              !_aspectRatioReported &&
+              widget.onAspectRatioResolved != null) {
+            final stream = CachedNetworkAvifImageProvider(
+              url,
+              headers: widget.httpHeaders,
+            ).resolve(const ImageConfiguration());
+            late final ImageStreamListener listener;
+            listener = ImageStreamListener(
+              (info, _) {
+                final w = info.image.width;
+                final h = info.image.height;
+                if (w > 0 && mounted && !_aspectRatioReported) {
+                  _aspectRatioReported = true;
+                  widget.onAspectRatioResolved?.call(h / w);
+                }
+                stream.removeListener(listener);
+              },
+              onError: (_, __) {
+                stream.removeListener(listener);
+              },
+            );
+            stream.addListener(listener);
+          }
+          return child;
+        },
+        errorBuilder: (context, error, stackTrace) {
+          if (kDebugMode) {
+            debugPrint('🖼️ [AVIF ERR] $url -> Error: $error');
+          }
+          return _buildErrorWidget();
+        },
+      );
+
+      return _wrapDebugLabel(avifWidget);
+    }
+
+    final imageWidget = CachedNetworkImage(
+      key: _imageKey,
+      imageUrl: url,
+      httpHeaders: widget.httpHeaders,
+      fit: widget.fit,
+      width: widget.width,
+      height: widget.height,
+      memCacheWidth: _disableMemCache ? null : widget.memCacheWidth,
+      memCacheHeight: _disableMemCache ? null : widget.memCacheHeight,
+      maxHeightDiskCache: widget.maxHeightDiskCache,
+      maxWidthDiskCache: widget.maxWidthDiskCache,
+      errorListener: (error) {
+        if (kDebugMode) {
+          debugPrint('🖼️ [IMAGE ERR] $url -> Error: $error (switching to AVIF decoder)');
+        }
+        if (!_isAvifFallback) {
+          if (mounted) {
+            setState(() {
+              _isAvifFallback = true;
+              _imageKey = UniqueKey();
+            });
+            return;
+          }
+        }
+        // Evict corrupted/failed image from cache so retry or next load can re-fetch cleanly
+        try {
+          CachedNetworkImageProvider(
+            url,
+            headers: widget.httpHeaders,
+          ).evict();
+        } catch (_) {}
+      },
+      imageBuilder: widget.onAspectRatioResolved != null
+          ? (context, imageProvider) {
+              if (!_aspectRatioReported) {
+                final stream = imageProvider.resolve(const ImageConfiguration());
+                late final ImageStreamListener listener;
+                listener = ImageStreamListener(
+                  (info, _) {
+                    final w = info.image.width;
+                    final h = info.image.height;
+                    if (w > 0 && mounted && !_aspectRatioReported) {
+                      _aspectRatioReported = true;
+                      widget.onAspectRatioResolved?.call(h / w);
+                    }
+                    stream.removeListener(listener);
+                  },
+                  onError: (exception, stackTrace) {
+                    stream.removeListener(listener);
+                    try {
+                      CachedNetworkImageProvider(
+                        url,
+                        headers: widget.httpHeaders,
+                      ).evict();
+                    } catch (_) {}
+                  },
+                );
+                stream.addListener(listener);
+              }
+              return Image(
+                image: imageProvider,
+                fit: widget.fit,
+                width: widget.width,
+                height: widget.height,
+                gaplessPlayback: widget.gaplessPlayback,
+                errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+              );
+            }
+          : null,
+      placeholder: (context, url) => _buildPlaceholder(),
+      errorBuilder: (context, url, error) => _buildErrorWidget(),
+      fadeInDuration: const Duration(milliseconds: 150),
+      fadeOutDuration: const Duration(milliseconds: 150),
+    );
+
+    return _wrapDebugLabel(imageWidget);
   }
 }
