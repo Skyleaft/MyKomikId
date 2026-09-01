@@ -1,7 +1,7 @@
 name: my_manga_reader
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.6.4
+version: 0.6.5
 
 environment:
   sdk: ^3.11.0
@@ -27,7 +27,8 @@ dependencies:
   url_launcher: ^6.3.1
   uuid: ^4.6.0
   provider: ^6.1.2
-  cached_network_image_ce: ^4.10.0
+  cached_network_image_ce: ^4.10.1
+  flutter_avif: ^3.1.0
   animated_icon: ^1.0.0
   package_info_plus: ^9.0.1
   share_plus: ^12.0.2

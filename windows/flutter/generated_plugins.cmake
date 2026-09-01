@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   battery_plus
   firebase_auth
   firebase_core
+  flutter_avif_windows
   protocol_handler_windows
   screen_retriever_windows
   share_plus
