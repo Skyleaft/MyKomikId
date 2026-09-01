@@ -39,10 +39,11 @@ class MangaDetailScreen extends StatefulWidget {
 
 class _MangaDetailScreenState extends State<MangaDetailScreen>
     with SingleTickerProviderStateMixin {
-  late final MangaDetailController _controller;
-  late final TabController _tabController;
-  late final ScrollController _scrollController;
+  late MangaDetailController _controller;
+  late ScrollController _scrollController;
+  late TabController _tabController;
   final MangaApiService _apiService = getIt<MangaApiService>();
+  bool _isTransitionComplete = false;
 
   @override
   void initState() {
@@ -56,6 +57,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         _controller.loadRecommendations();
       }
       if (mounted) setState(() {});
+    });
+
+    // Defer heavy chapter list construction until after Hero morph flight (240ms)
+    Future.delayed(const Duration(milliseconds: 240), () {
+      if (mounted) {
+        setState(() {
+          _isTransitionComplete = true;
+        });
+      }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -499,6 +509,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                 right: 0,
                 child: MangaDetailFloatingDock(
                   chapters: _controller.chapters,
+                  targetChapter: _controller.targetChapter,
                   isLoadingChapters: _controller.isLoadingChapters,
                   isInLibrary: _controller.isInLibrary,
                   isFavorite: _controller.isFavorite,
@@ -531,21 +542,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                       AlertBanner.show(
                         context,
                         'Removed from library',
-                        type: AlertBannerType.success,
+                        type: AlertBannerType.info,
                       );
                     }
                   },
                   onToggleFavorite: () async {
-                    final isFav = await _controller.toggleFavorite();
-                    if (context.mounted) {
-                      AlertBanner.show(
-                        context,
-                        isFav
-                            ? 'Added to favorites'
-                            : 'Removed from favorites',
-                        type: AlertBannerType.success,
-                      );
-                    }
+                    await _controller.toggleFavorite();
                   },
                 ),
               ),
@@ -561,7 +563,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
         ? AppColors.backgroundDark
         : AppColors.backgroundLight;
 
-    if (_controller.isLoadingChapters) {
+    if (_controller.isLoadingChapters || !_isTransitionComplete) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) {
@@ -655,7 +657,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                   child: MangaDetailChapterTile(
                     chapter: chapter,
                     isDark: isDark,
-                    progression: _controller.progression,
+                    log: _controller.getLogForChapter(chapter.chapterNumber),
                     onTap: () => _navigateToReader(context, chapter),
                   ),
                 ),

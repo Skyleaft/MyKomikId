@@ -90,7 +90,7 @@ class MangaDetailSplitHero extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: heroImageUrl,
                       fit: BoxFit.cover,
-                      memCacheWidth: isDesktop ? 500 : 350,
+                      memCacheWidth: 400,
                       maxWidthDiskCache: 600,
                       placeholder: (_, _) => Container(
                         color: isDark ? Colors.grey[850] : Colors.grey[300],

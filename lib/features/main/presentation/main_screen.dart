@@ -91,22 +91,16 @@ class _MainScreenState extends State<MainScreen> {
 
   void _navigateTo(int index) {
     if (index != _currentIndex) {
-      final prevIndex = _currentIndex;
       setState(() {
         _currentIndex = index;
       });
 
       if (_pageController.hasClients) {
-        final diff = (index - prevIndex).abs();
-        if (diff == 1) {
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-          );
-        } else {
-          _pageController.jumpToPage(index);
-        }
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+        );
       }
     }
   }

@@ -44,6 +44,10 @@ class MangaDetailController extends ChangeNotifier {
   ChapterFilterOption _chapterFilter = ChapterFilterOption.all;
   ChapterScrapingProgress? _scrapingProgress;
 
+  Map<double, UserChapterLog> _chapterLogsMap = {};
+  Chapter? _targetChapter;
+  List<Chapter> _filteredChaptersCache = [];
+
   Timer? _searchDebounce;
   Timer? _clearScrapingTimer;
   CancelToken? _chaptersCancelToken;
@@ -52,6 +56,8 @@ class MangaDetailController extends ChangeNotifier {
   StreamSubscription<ChaptersUpdatedEvent>? _chaptersUpdatedSubscription;
 
   List<Chapter> get chapters => _chapters;
+  List<Chapter> get filteredChapters => _filteredChaptersCache;
+  Chapter? get targetChapter => _targetChapter;
   bool get isLoadingChapters => _isLoadingChapters;
   bool get isInLibrary => _isInLibrary;
   bool get isFavorite => _isFavorite;
@@ -78,6 +84,9 @@ class MangaDetailController extends ChangeNotifier {
       !_scrapingProgress!.isCompleted &&
       !_scrapingProgress!.isFailed;
 
+  UserChapterLog? getLogForChapter(double chapterNumber) =>
+      _chapterLogsMap[chapterNumber];
+
   MangaDetailController({
     required this.manga,
     MangaApiService? apiService,
@@ -94,6 +103,8 @@ class MangaDetailController extends ChangeNotifier {
     _isLoadingChapters = manga.chapters.isEmpty;
     if (_chapters.isNotEmpty) {
       _sortChapters();
+    } else {
+      _updateDerivedState();
     }
     _progressionService.addListener(_onProgressionServiceChanged);
   }
@@ -105,6 +116,7 @@ class MangaDetailController extends ChangeNotifier {
   Future<void> _reloadProgressionFromCache() async {
     final cached = await _progressionService.getProgression(manga.id);
     _progression = cached;
+    _updateDerivedState();
     notifyListeners();
   }
 
@@ -209,11 +221,41 @@ class MangaDetailController extends ChangeNotifier {
     super.dispose();
   }
 
-  List<Chapter> get filteredChapters {
+  void _updateDerivedState() {
+    _chapterLogsMap = {};
+    if (_progression != null) {
+      for (final log in _progression!.chapterLogs) {
+        _chapterLogsMap[log.chapterNumber] = log;
+      }
+    }
+
+    _targetChapter = null;
+    if (_chapters.isNotEmpty) {
+      final available = _chapters.where((c) => c.isChapterAvailable).toList();
+      if (available.isNotEmpty) {
+        if (_progression != null && _progression!.currentChapter > 0) {
+          _targetChapter = available
+              .where((c) => c.chapterNumber == _progression!.currentChapter)
+              .firstOrNull;
+        }
+        _targetChapter ??= available.reduce(
+          (a, b) => a.chapterNumber < b.chapterNumber ? a : b,
+        );
+      }
+    }
+
+    _filteredChaptersCache = _computeFilteredChapters();
+  }
+
+  List<Chapter> _computeFilteredChapters() {
+    if (_chapters.isEmpty) return const [];
+
+    final hasQuery = _searchQuery.isNotEmpty;
+    final query = hasQuery ? _searchQuery.toLowerCase() : '';
+
     return _chapters.where((c) {
       // 1. Search Query Filter
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
+      if (hasQuery) {
         final titleMatch = c.title.toLowerCase().contains(query);
         final numberMatch = c.chapterNumber.toString().contains(query);
         if (!titleMatch && !numberMatch) return false;
@@ -235,28 +277,28 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   bool isChapterRead(Chapter chapter) {
-    if (_progression == null) return false;
-    final log = _progression!.chapterLogs
-        .where((l) =>
-            l.chapterId == chapter.id ||
-            l.chapterNumber == chapter.chapterNumber)
-        .firstOrNull;
+    final log = _chapterLogsMap[chapter.chapterNumber];
     if (log != null) {
       return log.isCompleted ||
           (log.lastReadPage > 0 && log.lastReadPage >= log.totalPages);
     }
-    return chapter.chapterNumber <= _progression!.currentChapter;
+    if (_progression != null) {
+      return chapter.chapterNumber <= _progression!.currentChapter;
+    }
+    return false;
   }
 
   void setChapterFilter(ChapterFilterOption filter) {
     _chapterFilter = filter;
+    _filteredChaptersCache = _computeFilteredChapters();
     notifyListeners();
   }
 
   void setSearchQuery(String query) {
     _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 200), () {
+    _searchDebounce = Timer(const Duration(milliseconds: 150), () {
       _searchQuery = query.trim();
+      _filteredChaptersCache = _computeFilteredChapters();
       notifyListeners();
     });
   }
@@ -275,6 +317,7 @@ class MangaDetailController extends ChangeNotifier {
         return b.chapterNumber.compareTo(a.chapterNumber);
       }
     });
+    _updateDerivedState();
   }
 
   Future<void> refreshProgression() async {

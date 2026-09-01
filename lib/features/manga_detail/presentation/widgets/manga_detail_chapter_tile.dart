@@ -10,14 +10,14 @@ import '../../models/manga_detail.dart';
 class MangaDetailChapterTile extends StatelessWidget {
   final Chapter chapter;
   final bool isDark;
-  final MangaProgression? progression;
+  final UserChapterLog? log;
   final VoidCallback? onTap;
 
   const MangaDetailChapterTile({
     super.key,
     required this.chapter,
     required this.isDark,
-    required this.progression,
+    this.log,
     this.onTap,
   });
 
@@ -27,13 +27,9 @@ class MangaDetailChapterTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final bool isAvailable = chapter.isChapterAvailable;
 
-    final UserChapterLog? log = progression?.chapterLogs
-        .where((l) => l.chapterNumber == chapter.chapterNumber)
-        .firstOrNull;
-
     final bool isCompleted = log?.isCompleted ?? false;
     final bool isCurrentlyReading =
-        log != null && !isCompleted && log.lastReadPage > 0;
+        log != null && !isCompleted && log!.lastReadPage > 0;
 
     final Color chapterBgColor = isCurrentlyReading
         ? colorScheme.primary.withValues(alpha: isDark ? 0.16 : 0.08)

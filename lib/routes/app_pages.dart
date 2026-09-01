@@ -76,8 +76,8 @@ class AppRoutes {
       }
       return PageRouteBuilder(
         settings: settings,
-        transitionDuration: const Duration(milliseconds: 320),
-        reverseTransitionDuration: const Duration(milliseconds: 240),
+        transitionDuration: const Duration(milliseconds: 260),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
         pageBuilder: (context, animation, secondaryAnimation) {
           return MangaDetailScreen(manga: manga, heroTag: heroTag);
         },
@@ -88,30 +88,9 @@ class AppRoutes {
             reverseCurve: Curves.easeInCubic,
           );
 
-          final scaleAnimation = Tween<double>(
-            begin: 0.94,
-            end: 1.0,
-          ).animate(curvedAnimation);
-
-          final slideAnimation = Tween<Offset>(
-            begin: const Offset(0.0, 0.035),
-            end: Offset.zero,
-          ).animate(curvedAnimation);
-
-          final fadeAnimation = Tween<double>(
-            begin: 0.0,
-            end: 1.0,
-          ).animate(curvedAnimation);
-
           return FadeTransition(
-            opacity: fadeAnimation,
-            child: SlideTransition(
-              position: slideAnimation,
-              child: ScaleTransition(
-                scale: scaleAnimation,
-                child: child,
-              ),
-            ),
+            opacity: curvedAnimation,
+            child: child,
           );
         },
       );
