@@ -149,8 +149,24 @@ class LibraryService {
           .map((e) => MangaProgression.fromMap(e))
           .toList();
 
-      final library = libraryData.map((e) {
+      final pendingAddIds = syncService.getPendingMangaIdsForType('library_add');
+      final pendingRemoveIds =
+          syncService.getPendingMangaIdsForType('library_remove');
+
+      final localLibrary = await _loadFromLocalCache();
+
+      final List<LibraryManga> finalLibrary = [];
+      final apiMangaIds = <String>{};
+
+      for (final e in libraryData) {
         final libraryModel = LibraryManga.fromMap(e);
+        apiMangaIds.add(libraryModel.id);
+
+        // If user explicitly removed it locally while offline, don't bring it back
+        if (pendingRemoveIds.contains(libraryModel.id)) {
+          continue;
+        }
+
         MangaProgression? progression;
         try {
           progression = progressions.firstWhere(
@@ -159,21 +175,37 @@ class LibraryService {
         } catch (_) {}
 
         if (progression != null) {
-          return libraryModel.copyWith(
+          finalLibrary.add(libraryModel.copyWith(
             currentChapter: progression.currentChapter,
             currentPage: progression.currentPage,
             totalPages: progression.totalPages,
             isCompleted: progression.isCompleted,
-          );
+          ));
+        } else {
+          finalLibrary.add(libraryModel);
         }
-        return libraryModel;
-      }).toList();
+      }
 
-      await _saveAllToLocalCache(library);
+      // Check items that exist locally but NOT on server
+      for (final local in localLibrary) {
+        if (!apiMangaIds.contains(local.id)) {
+          if (pendingAddIds.contains(local.id)) {
+            // Added offline on this device, waiting to be synced to server
+            finalLibrary.add(local);
+          } else {
+            // Deleted from server (e.g. on Device A) -> remove from Hive
+            try {
+              await HiveStorage.libraryBox.delete(local.id);
+            } catch (_) {}
+          }
+        }
+      }
+
+      await _saveAllToLocalCache(finalLibrary);
 
       // Synchronize FCM topics for all items currently in user library
       getIt<NotificationService>().syncLibraryTopics(
-        library.map((m) => m.id).toList(),
+        finalLibrary.map((m) => m.id).toList(),
       );
 
       syncService.syncPendingActions();
@@ -186,13 +218,18 @@ class LibraryService {
   Future<void> _syncLibraryItemFromApi(String mangaId) async {
     try {
       final apiService = getIt<MangaApiService>();
+      final syncService = getIt<SyncService>();
       final userId = _currentUserId;
       final libraryData = await apiService.getUserLibrary(
         userId: userId,
         search: mangaId,
       );
 
-      if (libraryData.isNotEmpty) {
+      final pendingAddIds = syncService.getPendingMangaIdsForType('library_add');
+      final pendingRemoveIds =
+          syncService.getPendingMangaIdsForType('library_remove');
+
+      if (libraryData.isNotEmpty && !pendingRemoveIds.contains(mangaId)) {
         final fetchedModel = LibraryManga.fromMap(libraryData.first);
         final localLibrary = await _loadFromLocalCache();
         final index = localLibrary.indexWhere((m) => m.id == fetchedModel.id);
@@ -202,6 +239,9 @@ class LibraryService {
           localLibrary.add(fetchedModel);
         }
         await _saveAllToLocalCache(localLibrary);
+      } else if (libraryData.isEmpty && !pendingAddIds.contains(mangaId)) {
+        // Deleted from server on another device -> remove locally
+        await _updateLocalCacheById(mangaId, isRemoving: true);
       }
     } catch (_) {}
   }

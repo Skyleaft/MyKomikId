@@ -99,12 +99,15 @@ class HistoryController extends ChangeNotifier {
     }).toList();
   }
 
-  Future<void> loadHistory() async {
+  Future<void> loadHistory({bool forceSync = false}) async {
     _isLoading = true;
     _safeNotifyListeners();
 
     try {
-      final list = await _progressionService.getAllProgressions();
+      if (forceSync) {
+        await _progressionService.refreshFromApi();
+      }
+      final list = await _progressionService.getAllProgressions(forceSync: forceSync);
       list.sort((a, b) => b.lastRead.compareTo(a.lastRead));
       _progressions = list;
 
@@ -115,6 +118,10 @@ class HistoryController extends ChangeNotifier {
       _isLoading = false;
       _safeNotifyListeners();
     }
+  }
+
+  Future<void> refresh() async {
+    await loadHistory(forceSync: true);
   }
 
   Future<void> _hydrateMangaDetails(List<MangaProgression> list) async {

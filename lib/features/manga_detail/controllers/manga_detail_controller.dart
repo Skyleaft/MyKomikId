@@ -58,6 +58,8 @@ class MangaDetailController extends ChangeNotifier {
   List<Chapter> get chapters => _chapters;
   List<Chapter> get filteredChapters => _filteredChaptersCache;
   Chapter? get targetChapter => _targetChapter;
+  bool _isMangaNotFound = false;
+  bool get isMangaNotFound => _isMangaNotFound;
   bool get isLoadingChapters => _isLoadingChapters;
   bool get isInLibrary => _isInLibrary;
   bool get isFavorite => _isFavorite;
@@ -195,7 +197,11 @@ class MangaDetailController extends ChangeNotifier {
       final freshDetail = _buildUpdatedDetail(_chapters);
       await _detailService.saveDetail(freshDetail);
       notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 404) {
+        await _handleMangaDeleted();
+      }
+    }
   }
 
   Future<void> pauseSignalR() async {
@@ -384,6 +390,10 @@ class MangaDetailController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (e is DioException && e.type == DioExceptionType.cancel) return;
+      if (e is DioException && e.response?.statusCode == 404) {
+        await _handleMangaDeleted();
+        return;
+      }
       if (_chapters.isEmpty) {
         _isLoadingChapters = false;
         notifyListeners();
@@ -414,9 +424,37 @@ class MangaDetailController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       if (e is DioException && e.type == DioExceptionType.cancel) return;
+      if (e is DioException && e.response?.statusCode == 404) {
+        await _handleMangaDeleted();
+        return;
+      }
       _isLoadingChapters = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _handleMangaDeleted() async {
+    _isMangaNotFound = true;
+    _isLoadingChapters = false;
+    _chapters = [];
+    _updateDerivedState();
+
+    // 1. Remove detail cache from Hive
+    await _detailService.removeDetail(manga.id);
+
+    // 2. Remove from local library if present
+    if (_isInLibrary) {
+      await _libraryService.removeFromLibrary(manga.id);
+      _isInLibrary = false;
+      _isFavorite = false;
+      _libraryStatus = null;
+    }
+
+    // 3. Remove progression/history from local Hive
+    await _progressionService.deleteProgression(manga.id);
+    _progression = null;
+
+    notifyListeners();
   }
 
   Future<void> _checkIfInLibrary() async {

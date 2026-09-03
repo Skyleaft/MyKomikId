@@ -102,7 +102,7 @@ class _HistoryScreenState extends State<HistoryScreen> with RouteAware {
         return Scaffold(
           body: SafeArea(
             child: RefreshIndicator(
-              onRefresh: _controller.loadHistory,
+              onRefresh: _controller.refresh,
               color: AppColors.primary,
               child: CustomScrollView(
                 slivers: [
@@ -126,7 +126,7 @@ class _HistoryScreenState extends State<HistoryScreen> with RouteAware {
                             searchController: _searchController,
                             onSearchChanged: _controller.setSearchQuery,
                             onFilterChanged: _controller.setSelectedFilter,
-                            onRefresh: _controller.loadHistory,
+                            onRefresh: _controller.refresh,
                             onClearAll: _controller.clearAllHistory,
                           ),
                         ),
