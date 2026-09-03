@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../di/injection.dart';
+import '../storage/hive_storage.dart';
 import 'manga_api_service.dart';
 
 class SyncAction {
@@ -38,13 +38,9 @@ class SyncAction {
 }
 
 class SyncService {
-  static const _syncQueueKey = 'sync_queue';
   bool _isSyncing = false;
 
   Future<void> enqueueAction(String type, Map<String, dynamic> payload) async {
-    final prefs = await SharedPreferences.getInstance();
-    final queueJson = prefs.getStringList(_syncQueueKey) ?? [];
-    
     final action = SyncAction(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       type: type,
@@ -52,8 +48,7 @@ class SyncService {
       createdAt: DateTime.now(),
     );
 
-    queueJson.add(action.toJson());
-    await prefs.setStringList(_syncQueueKey, queueJson);
+    await HiveStorage.syncQueueBox.put(action.id, action.toJson());
   }
 
   Future<void> syncPendingActions() async {
@@ -61,17 +56,25 @@ class SyncService {
     _isSyncing = true;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final queueJson = prefs.getStringList(_syncQueueKey) ?? [];
-      if (queueJson.isEmpty) return;
+      final box = HiveStorage.syncQueueBox;
+      if (box.isEmpty) return;
 
-      final List<String> remainingQueue = [];
       final apiService = getIt<MangaApiService>();
+      final entries = box.toMap().entries.toList();
 
-      for (var actionJson in queueJson) {
-        final action = SyncAction.fromMap(jsonDecode(actionJson));
+      for (final entry in entries) {
+        final key = entry.key;
+        final actionJson = entry.value as String;
+        SyncAction action;
+        try {
+          action = SyncAction.fromMap(jsonDecode(actionJson));
+        } catch (_) {
+          // Corrupted entry, remove it
+          await box.delete(key);
+          continue;
+        }
+
         bool success = false;
-
         try {
           switch (action.type) {
             case 'library_add':
@@ -87,16 +90,14 @@ class SyncService {
               success = true;
               break;
           }
-        } catch (e) {
+        } catch (_) {
           success = false;
         }
 
-        if (!success) {
-          remainingQueue.add(actionJson);
+        if (success) {
+          await box.delete(key);
         }
       }
-
-      await prefs.setStringList(_syncQueueKey, remainingQueue);
     } finally {
       _isSyncing = false;
     }
