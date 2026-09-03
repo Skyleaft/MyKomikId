@@ -262,9 +262,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
       widget.manga.imageUrl,
     );
 
-    return ListenableBuilder(
-      listenable: _controller,
-      builder: (context, _) {
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          _controller.cancelPendingRequests();
+        }
+      },
+      child: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, _) {
         return CallbackShortcuts(
           bindings: <ShortcutActivator, VoidCallback>{
             const SingleActivator(LogicalKeyboardKey.f5): () {
@@ -526,48 +533,50 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: MangaDetailFloatingDock(
-                  chapters: _controller.chapters,
-                  targetChapter: _controller.targetChapter,
-                  isLoadingChapters: _controller.isLoadingChapters,
-                  isInLibrary: _controller.isInLibrary,
-                  isFavorite: _controller.isFavorite,
-                  libraryStatus: _controller.libraryStatus,
-                  progression: _controller.progression,
-                  onReadChapter: (ch) => _navigateToReader(context, ch),
-                  onAddToLibrary: (status) async {
-                    await _controller.addToLibrary(status);
-                    if (context.mounted) {
-                      AlertBanner.show(
-                        context,
-                        'Added to library as ${StatusSelectionSheet.getLabel(status)}',
-                        type: AlertBannerType.success,
-                      );
-                    }
-                  },
-                  onChangeLibraryStatus: (newStatus) async {
-                    await _controller.updateLibraryStatus(newStatus);
-                    if (context.mounted) {
-                      AlertBanner.show(
-                        context,
-                        'Status updated to ${StatusSelectionSheet.getLabel(newStatus)}',
-                        type: AlertBannerType.success,
-                      );
-                    }
-                  },
-                  onRemoveFromLibrary: () async {
-                    await _controller.removeFromLibrary();
-                    if (context.mounted) {
-                      AlertBanner.show(
-                        context,
-                        'Removed from library',
-                        type: AlertBannerType.info,
-                      );
-                    }
-                  },
-                  onToggleFavorite: () async {
-                    await _controller.toggleFavorite();
-                  },
+                child: RepaintBoundary(
+                  child: MangaDetailFloatingDock(
+                    chapters: _controller.chapters,
+                    targetChapter: _controller.targetChapter,
+                    isLoadingChapters: _controller.isLoadingChapters,
+                    isInLibrary: _controller.isInLibrary,
+                    isFavorite: _controller.isFavorite,
+                    libraryStatus: _controller.libraryStatus,
+                    progression: _controller.progression,
+                    onReadChapter: (ch) => _navigateToReader(context, ch),
+                    onAddToLibrary: (status) async {
+                      await _controller.addToLibrary(status);
+                      if (context.mounted) {
+                        AlertBanner.show(
+                          context,
+                          'Added to library as ${StatusSelectionSheet.getLabel(status)}',
+                          type: AlertBannerType.success,
+                        );
+                      }
+                    },
+                    onChangeLibraryStatus: (newStatus) async {
+                      await _controller.updateLibraryStatus(newStatus);
+                      if (context.mounted) {
+                        AlertBanner.show(
+                          context,
+                          'Status updated to ${StatusSelectionSheet.getLabel(newStatus)}',
+                          type: AlertBannerType.success,
+                        );
+                      }
+                    },
+                    onRemoveFromLibrary: () async {
+                      await _controller.removeFromLibrary();
+                      if (context.mounted) {
+                        AlertBanner.show(
+                          context,
+                          'Removed from library',
+                          type: AlertBannerType.info,
+                        );
+                      }
+                    },
+                    onToggleFavorite: () async {
+                      await _controller.toggleFavorite();
+                    },
+                  ),
                 ),
               ),
             ],
@@ -576,7 +585,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
       ),
     );
   },
-);
+),
+    );
   }
 
   Widget _buildChapterList(bool isDark) {

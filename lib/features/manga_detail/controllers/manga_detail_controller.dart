@@ -205,25 +205,37 @@ class MangaDetailController extends ChangeNotifier {
   }
 
   Future<void> pauseSignalR() async {
-    await _signalRService.leaveMangaGroup(manga.id);
-    await _signalRService.disconnect();
+    await _signalRService.leaveMangaGroupAndDisconnect(manga.id);
   }
 
   Future<void> resumeSignalR() async {
     await _signalRService.joinMangaGroup(manga.id);
   }
 
+  bool _isDisposed = false;
+
   @override
-  void dispose() {
-    _progressionService.removeListener(_onProgressionServiceChanged);
-    _searchDebounce?.cancel();
-    _clearScrapingTimer?.cancel();
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+
+  void cancelPendingRequests() {
     _chaptersCancelToken?.cancel();
     _recommendationsCancelToken?.cancel();
+    _searchDebounce?.cancel();
+    _clearScrapingTimer?.cancel();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    cancelPendingRequests();
+    _progressionService.removeListener(_onProgressionServiceChanged);
     _progressSubscription?.cancel();
     _chaptersUpdatedSubscription?.cancel();
-    _signalRService.leaveMangaGroup(manga.id);
-    _signalRService.disconnect();
+    _signalRService.leaveMangaGroupAndDisconnect(manga.id);
     super.dispose();
   }
 

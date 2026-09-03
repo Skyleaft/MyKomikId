@@ -74,7 +74,11 @@ class _LibraryScreenState extends State<LibraryScreen>
           'heroTag': heroTag,
         },
       );
-      if (mounted) _controller.loadLibrary();
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 280), () {
+          if (mounted) _controller.loadLibrary();
+        });
+      }
 
       _apiService
           .getMangaDetail(mangaId)
@@ -109,7 +113,11 @@ class _LibraryScreenState extends State<LibraryScreen>
           'heroTag': heroTag,
         },
       );
-      if (mounted) _controller.loadLibrary();
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 280), () {
+          if (mounted) _controller.loadLibrary();
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);

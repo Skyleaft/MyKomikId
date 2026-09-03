@@ -11,6 +11,7 @@ class MangaDetailSplitHero extends StatelessWidget {
   final int chapterCount;
   final bool isDark;
   final String? heroTag;
+  final bool isHeroVisible;
 
   const MangaDetailSplitHero({
     super.key,
@@ -19,6 +20,7 @@ class MangaDetailSplitHero extends StatelessWidget {
     this.chapterCount = 0,
     required this.isDark,
     this.heroTag,
+    this.isHeroVisible = true,
   });
 
   @override
@@ -43,24 +45,30 @@ class MangaDetailSplitHero extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         // Left: Poster Cover Card with Hero Morph
-        Hero(
-          tag: heroTag ?? 'manga-detail-poster-${manga.id}',
-          transitionOnUserGestures: true,
-          createRectTween: (begin, end) =>
-              MaterialRectArcTween(begin: begin, end: end),
-          flightShuttleBuilder: (
-            flightContext,
-            animation,
-            flightDirection,
-            fromHeroContext,
-            toHeroContext,
-          ) {
-            return Material(
-              color: Colors.transparent,
-              child: toHeroContext.widget,
-            );
-          },
-          child: Container(
+        HeroMode(
+          enabled: isHeroVisible,
+          child: Hero(
+            tag: heroTag ?? 'manga-detail-poster-${manga.id}',
+            transitionOnUserGestures: true,
+            createRectTween: (begin, end) =>
+                MaterialRectArcTween(begin: begin, end: end),
+            flightShuttleBuilder: (
+              flightContext,
+              animation,
+              flightDirection,
+              fromHeroContext,
+              toHeroContext,
+            ) {
+              final Widget flyingWidget =
+                  flightDirection == HeroFlightDirection.pop
+                      ? fromHeroContext.widget
+                      : toHeroContext.widget;
+              return Material(
+                color: Colors.transparent,
+                child: flyingWidget,
+              );
+            },
+            child: Container(
             width: posterWidth,
             height: posterHeight,
             decoration: BoxDecoration(
@@ -118,6 +126,7 @@ class MangaDetailSplitHero extends StatelessWidget {
             ),
           ),
         ),
+      ),
 
         SizedBox(width: isDesktop ? 22 : (isTablet ? 18 : 16)),
 

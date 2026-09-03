@@ -113,7 +113,9 @@ class _HomeScreenState extends State<HomeScreen>
         },
       );
       if (mounted) {
-        _controller.fetchHistory();
+        Future.delayed(const Duration(milliseconds: 280), () {
+          if (mounted) _controller.fetchHistory();
+        });
       }
       return;
     }
@@ -142,7 +144,9 @@ class _HomeScreenState extends State<HomeScreen>
         },
       );
       if (mounted) {
-        _controller.fetchHistory();
+        Future.delayed(const Duration(milliseconds: 280), () {
+          if (mounted) _controller.fetchHistory();
+        });
       }
     } catch (e) {
       if (!mounted) return;
