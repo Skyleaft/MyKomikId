@@ -159,9 +159,13 @@ class MangaCard extends StatelessWidget {
           fromHeroContext,
           toHeroContext,
         ) {
+          final Widget flyingWidget =
+              flightDirection == HeroFlightDirection.pop
+                  ? fromHeroContext.widget
+                  : toHeroContext.widget;
           return Material(
             color: Colors.transparent,
-            child: toHeroContext.widget,
+            child: flyingWidget,
           );
         },
         child: coverContainer,

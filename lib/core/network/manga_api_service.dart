@@ -37,6 +37,7 @@ class MangaApiService {
           receiveTimeout: const Duration(seconds: 45),
         ),
       ) {
+    _dio.transformer = BackgroundTransformer();
     _initInterceptor();
   }
 

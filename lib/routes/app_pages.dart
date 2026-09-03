@@ -76,8 +76,8 @@ class AppRoutes {
       }
       return PageRouteBuilder(
         settings: settings,
-        transitionDuration: const Duration(milliseconds: 260),
-        reverseTransitionDuration: const Duration(milliseconds: 200),
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 260),
         pageBuilder: (context, animation, secondaryAnimation) {
           return MangaDetailScreen(manga: manga, heroTag: heroTag);
         },
@@ -85,7 +85,7 @@ class AppRoutes {
           final curvedAnimation = CurvedAnimation(
             parent: animation,
             curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
+            reverseCurve: Curves.easeOutCubic,
           );
 
           return FadeTransition(

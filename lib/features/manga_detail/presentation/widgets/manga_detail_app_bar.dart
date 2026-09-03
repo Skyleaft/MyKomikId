@@ -329,6 +329,8 @@ class MangaDetailAppBar extends StatelessWidget {
                   MediaQuery.of(context).padding.top +
                   15);
 
+          final isHeroVisible = top > 200;
+
           return FlexibleSpaceBar(
             collapseMode: CollapseMode.parallax,
             titlePadding: const EdgeInsets.only(
@@ -371,14 +373,22 @@ class MangaDetailAppBar extends StatelessWidget {
                 ],
               ),
             ),
-            background: _buildParallaxBackdropAndHero(context, isDark),
+            background: _buildParallaxBackdropAndHero(
+              context,
+              isDark,
+              isHeroVisible: isHeroVisible,
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildParallaxBackdropAndHero(BuildContext context, bool isDark) {
+  Widget _buildParallaxBackdropAndHero(
+    BuildContext context,
+    bool isDark, {
+    required bool isHeroVisible,
+  }) {
     final bgColor = isDark
         ? AppColors.backgroundDark
         : AppColors.backgroundLight;
@@ -386,21 +396,23 @@ class MangaDetailAppBar extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Blurred Backdrop Image (low-res decode for ultra-fast GPU blur)
+        // Blurred Backdrop Image (isolated in RepaintBoundary for silky GPU caching)
         if (heroImageUrl.isNotEmpty)
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: CachedNetworkImage(
-              imageUrl: heroImageUrl,
-              fit: BoxFit.cover,
-              memCacheWidth: 80,
-              maxWidthDiskCache: 300,
-              filterQuality: FilterQuality.low,
-              placeholder: (_, _) => Container(
-                color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
-              ),
-              errorBuilder: (_, _, _) => Container(
-                color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
+          RepaintBoundary(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: CachedNetworkImage(
+                imageUrl: heroImageUrl,
+                fit: BoxFit.cover,
+                memCacheWidth: 80,
+                maxWidthDiskCache: 300,
+                filterQuality: FilterQuality.low,
+                placeholder: (_, _) => Container(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
+                ),
+                errorBuilder: (_, _, _) => Container(
+                  color: isDark ? const Color(0xFF0F172A) : Colors.grey[300],
+                ),
               ),
             ),
           )
@@ -442,6 +454,7 @@ class MangaDetailAppBar extends StatelessWidget {
                   chapterCount: chapterCount,
                   isDark: isDark,
                   heroTag: heroTag,
+                  isHeroVisible: isHeroVisible,
                 ),
               ),
             ),

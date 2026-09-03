@@ -180,8 +180,19 @@ class MangaSignalRService {
         await _hubConnection!.invoke('LeaveMangaGroup', args: [mangaId]);
         debugPrint('SignalR: Left manga group "$mangaId"');
       } catch (e) {
+        if (_hubConnection?.state != HubConnectionState.Connected ||
+            e.toString().toLowerCase().contains('canceled')) {
+          return;
+        }
         debugPrint('SignalR: Error leaving manga group "$mangaId": $e');
       }
+    }
+  }
+
+  Future<void> leaveMangaGroupAndDisconnect(String mangaId) async {
+    await leaveMangaGroup(mangaId);
+    if (_joinedMangaGroups.isEmpty) {
+      await disconnect();
     }
   }
 

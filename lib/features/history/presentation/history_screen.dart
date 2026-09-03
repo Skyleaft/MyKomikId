@@ -72,7 +72,9 @@ class _HistoryScreenState extends State<HistoryScreen> with RouteAware {
         arguments: detail,
       );
       if (mounted) {
-        _controller.loadHistory();
+        Future.delayed(const Duration(milliseconds: 280), () {
+          if (mounted) _controller.loadHistory();
+        });
       }
       return;
     }
@@ -87,7 +89,9 @@ class _HistoryScreenState extends State<HistoryScreen> with RouteAware {
         arguments: fetched,
       );
       if (mounted) {
-        _controller.loadHistory();
+        Future.delayed(const Duration(milliseconds: 280), () {
+          if (mounted) _controller.loadHistory();
+        });
       }
     } catch (_) {}
   }
