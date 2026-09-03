@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../../core/di/injection.dart';
+import '../../manga_detail/services/manga_detail_service.dart';
 
 class StorageUsageInfo {
   final int cacheBytes;
@@ -87,6 +89,13 @@ class StorageService {
             await entity.delete(recursive: true);
           } catch (_) {}
         }
+      }
+    } catch (_) {}
+
+    // 3. Clear Hive manga detail cache
+    try {
+      if (getIt.isRegistered<MangaDetailService>()) {
+        await getIt<MangaDetailService>().clearAll();
       }
     } catch (_) {}
   }

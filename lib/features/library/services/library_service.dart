@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/storage/hive_storage.dart';
 import '../models/library_manga.dart';
 import '../../history/models/progression.dart';
 import '../../../core/di/injection.dart';
@@ -7,7 +7,6 @@ import '../../../core/network/sync_service.dart';
 import '../../../core/services/notification_service.dart';
 
 class LibraryService {
-  static const _libraryKey = 'manga_library';
 
   String get _currentUserId => getIt<MangaApiService>().userId ?? '';
 
@@ -263,8 +262,9 @@ class LibraryService {
   List<LibraryManga>? _memoryCache;
 
   Future<void> clearLibrary() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_libraryKey);
+    try {
+      await HiveStorage.libraryBox.clear();
+    } catch (_) {}
     _memoryCache = [];
     await getIt<NotificationService>().clearAllSubscribedTopics();
   }
@@ -278,14 +278,20 @@ class LibraryService {
 
     if (isRemoving) {
       if (index >= 0) library.removeAt(index);
+      try {
+        await HiveStorage.libraryBox.delete(manga.id);
+      } catch (_) {}
     } else {
       if (index >= 0) {
         library[index] = manga;
       } else {
         library.add(manga);
       }
+      try {
+        await HiveStorage.libraryBox.put(manga.id, manga.toJson());
+      } catch (_) {}
     }
-    await _saveAllToLocalCache(library);
+    _memoryCache = List<LibraryManga>.from(library);
   }
 
   Future<void> _updateLocalCacheById(
@@ -297,16 +303,23 @@ class LibraryService {
 
     if (isRemoving && index >= 0) {
       library.removeAt(index);
-      await _saveAllToLocalCache(library);
+      try {
+        await HiveStorage.libraryBox.delete(mangaId);
+      } catch (_) {}
+      _memoryCache = List<LibraryManga>.from(library);
     }
   }
 
   Future<void> _saveAllToLocalCache(List<LibraryManga> library) async {
     _memoryCache = List<LibraryManga>.from(library);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = library.map((m) => m.toJson()).toList();
-      await prefs.setStringList(_libraryKey, jsonList);
+      final box = HiveStorage.libraryBox;
+      await box.clear();
+      final map = <String, dynamic>{};
+      for (final manga in library) {
+        map[manga.id] = manga.toJson();
+      }
+      await box.putAll(map);
     } catch (_) {}
   }
 
@@ -315,9 +328,15 @@ class LibraryService {
       return List<LibraryManga>.from(_memoryCache!);
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = prefs.getStringList(_libraryKey) ?? [];
-      final list = jsonList.map((json) => LibraryManga.fromJson(json)).toList();
+      final box = HiveStorage.libraryBox;
+      final list = <LibraryManga>[];
+      for (final value in box.values) {
+        if (value is String) {
+          try {
+            list.add(LibraryManga.fromJson(value));
+          } catch (_) {}
+        }
+      }
       _memoryCache = list;
       return List<LibraryManga>.from(list);
     } catch (_) {

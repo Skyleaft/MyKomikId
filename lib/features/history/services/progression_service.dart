@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/storage/hive_storage.dart';
 import '../models/progression.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/network/manga_api_service.dart';
@@ -22,7 +22,6 @@ extension ListExtensions<T> on List<T> {
 }
 
 class ProgressionService extends ChangeNotifier {
-  static const _progressionKey = 'manga_progression';
   static const Duration _cacheTtl = Duration(minutes: 5);
 
   DateTime? _lastSyncTime;
@@ -159,14 +158,19 @@ class ProgressionService extends ChangeNotifier {
   Future<void> deleteProgression(String mangaId) async {
     final progressions = await _loadFromLocalCache();
     progressions.removeWhere((p) => p.mangaId == mangaId);
-    await _saveAllToLocalCache(progressions, notify: true);
+    _memoryCache = List<MangaProgression>.from(progressions);
+    try {
+      await HiveStorage.progressionBox.delete(mangaId);
+    } catch (_) {}
+    notifyListeners();
   }
 
   List<MangaProgression>? _memoryCache;
 
   Future<void> clearAllProgressions() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_progressionKey);
+    try {
+      await HiveStorage.progressionBox.clear();
+    } catch (_) {}
     _memoryCache = [];
     _lastSyncTime = null;
     notifyListeners();
@@ -182,9 +186,11 @@ class ProgressionService extends ChangeNotifier {
       (p) => p.mangaId == progression.mangaId,
     );
 
+    MangaProgression targetProgression;
     if (index >= 0) {
       if (overwrite) {
         progressions[index] = progression;
+        targetProgression = progression;
       } else {
         final existing = progressions[index];
         final updatedLogs = List<UserChapterLog>.from(existing.chapterLogs);
@@ -215,17 +221,26 @@ class ProgressionService extends ChangeNotifier {
           (sum, log) => sum + log.readingTimeSeconds,
         );
 
-        progressions[index] = existing.copyWith(
+        targetProgression = existing.copyWith(
           chapterLogs: updatedLogs,
           totalReadingTime: totalReadingTime,
           lastReadAt: progression.lastReadAt,
           manga: progression.manga ?? existing.manga,
         );
+        progressions[index] = targetProgression;
       }
     } else {
       progressions.add(progression);
+      targetProgression = progression;
     }
-    await _saveAllToLocalCache(progressions, notify: notify);
+
+    _memoryCache = List<MangaProgression>.from(progressions);
+    if (notify) {
+      notifyListeners();
+    }
+    try {
+      await HiveStorage.progressionBox.put(targetProgression.mangaId, targetProgression.toJson());
+    } catch (_) {}
   }
 
   Future<void> _saveAllToLocalCache(
@@ -237,9 +252,13 @@ class ProgressionService extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = progressions.map((p) => p.toJson()).toList();
-      await prefs.setStringList(_progressionKey, jsonList);
+      final box = HiveStorage.progressionBox;
+      await box.clear();
+      final map = <String, dynamic>{};
+      for (final p in progressions) {
+        map[p.mangaId] = p.toJson();
+      }
+      await box.putAll(map);
     } catch (_) {}
   }
 
@@ -248,13 +267,14 @@ class ProgressionService extends ChangeNotifier {
       return List<MangaProgression>.from(_memoryCache!);
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = prefs.getStringList(_progressionKey) ?? [];
+      final box = HiveStorage.progressionBox;
       final list = <MangaProgression>[];
-      for (final json in jsonList) {
-        try {
-          list.add(MangaProgression.fromJson(json));
-        } catch (_) {}
+      for (final value in box.values) {
+        if (value is String) {
+          try {
+            list.add(MangaProgression.fromJson(value));
+          } catch (_) {}
+        }
       }
       _memoryCache = list;
       return List<MangaProgression>.from(list);

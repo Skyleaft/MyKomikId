@@ -10,11 +10,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/storage/hive_storage.dart';
 import 'core/config/app_config.dart';
 import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive storage and migrate data from SharedPreferences if needed
+  await HiveStorage.init();
+  await HiveStorage.migrateFromSharedPreferences();
 
   // Configure Flutter ImageCache limits to prevent memory bloat
   PaintingBinding.instance.imageCache.maximumSize = 100; // max 100 cached images
