@@ -651,14 +651,43 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
       return SliverToBoxAdapter(
         child: Container(
           color: bgColor,
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
           child: Center(
-            child: Text(
-              _controller.searchQuery.isEmpty
-                  ? 'No chapters available'
-                  : 'No chapters matching "${_controller.searchQuery}"',
-              style: const TextStyle(color: Colors.grey),
-            ),
+            child: _controller.isMangaNotFound
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.cloud_off_rounded,
+                        size: 48,
+                        color: Colors.redAccent.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Manga Tidak Tersedia',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Manga ini telah dihapus atau tidak lagi ditemukan di server.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    _controller.searchQuery.isEmpty
+                        ? 'No chapters available'
+                        : 'No chapters matching "${_controller.searchQuery}"',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
           ),
         ),
       );

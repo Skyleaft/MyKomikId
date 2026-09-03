@@ -83,11 +83,35 @@ class ProgressionService extends ChangeNotifier {
 
     try {
       final apiService = getIt<MangaApiService>();
+      final syncService = getIt<SyncService>();
+      final isPendingSync = syncService
+          .getPendingMangaIdsForType('progression_update')
+          .contains(mangaId);
+      final localList = await _loadFromLocalCache();
+      final local = localList.firstWhereOrNull((p) => p.mangaId == mangaId);
+
       final data = await apiService.getProgressionForManga(_currentUserId, mangaId);
       if (data != null) {
-        final progression = MangaProgression.fromMap(data);
-        await _updateLocalCache(progression, overwrite: true, notify: true);
-        return progression;
+        final remoteProgression = MangaProgression.fromMap(data);
+
+        // Conflict resolution: if local has newer offline progress pending sync, preserve local
+        if (local != null &&
+            local.lastReadAt.isAfter(remoteProgression.lastReadAt) &&
+            isPendingSync) {
+          return local;
+        }
+
+        final merged = remoteProgression.copyWith(
+          manga: remoteProgression.manga ?? local?.manga,
+        );
+        await _updateLocalCache(merged, overwrite: true, notify: true);
+        return merged;
+      } else {
+        // If deleted on remote (e.g. from Device A) and not pending sync locally
+        if (!isPendingSync && local != null) {
+          await deleteProgression(mangaId);
+          return null;
+        }
       }
     } catch (_) {
     } finally {
@@ -122,6 +146,7 @@ class ProgressionService extends ChangeNotifier {
 
     try {
       final apiService = getIt<MangaApiService>();
+      final syncService = getIt<SyncService>();
       final data = await apiService.getUserProgression(_currentUserId);
       _lastSyncTime = DateTime.now();
 
@@ -131,24 +156,51 @@ class ProgressionService extends ChangeNotifier {
 
       final localList = await _loadFromLocalCache();
       final localMap = {for (final p in localList) p.mangaId: p};
+      final pendingSyncMangaIds =
+          syncService.getPendingMangaIdsForType('progression_update');
 
-      final merged = apiProgressions.map((apiProg) {
+      final List<MangaProgression> merged = [];
+      final apiMangaIds = <String>{};
+
+      for (final apiProg in apiProgressions) {
+        apiMangaIds.add(apiProg.mangaId);
         final local = localMap[apiProg.mangaId];
-        return apiProg.copyWith(
-          manga: apiProg.manga ?? local?.manga,
-        );
-      }).toList();
 
-      // If there are local progressions not yet on remote, retain them
-      final apiMangaIds = apiProgressions.map((e) => e.mangaId).toSet();
+        if (local == null) {
+          // New progression from remote (e.g. read on Device A)
+          merged.add(apiProg);
+        } else {
+          // Conflict resolution: compare timestamps
+          if (local.lastReadAt.isAfter(apiProg.lastReadAt) &&
+              pendingSyncMangaIds.contains(local.mangaId)) {
+            // Local device read newer chapter offline
+            merged.add(local);
+          } else {
+            // Server (e.g. Device A) is newer or equal
+            merged.add(apiProg.copyWith(
+              manga: apiProg.manga ?? local.manga,
+            ));
+          }
+        }
+      }
+
+      // Check items that exist locally but NOT on server:
       for (final local in localList) {
         if (!apiMangaIds.contains(local.mangaId)) {
-          merged.add(local);
+          if (pendingSyncMangaIds.contains(local.mangaId)) {
+            // Read offline on this device, waiting to be synced to server
+            merged.add(local);
+          } else {
+            // Deleted from server (e.g. removed on Device A) -> remove from Hive
+            try {
+              await HiveStorage.progressionBox.delete(local.mangaId);
+            } catch (_) {}
+          }
         }
       }
 
       await _saveAllToLocalCache(merged, notify: true);
-      getIt<SyncService>().syncPendingActions();
+      syncService.syncPendingActions();
     } catch (_) {
     } finally {
       _isSyncingAll = false;

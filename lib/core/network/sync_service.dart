@@ -51,6 +51,29 @@ class SyncService {
     await HiveStorage.syncQueueBox.put(action.id, action.toJson());
   }
 
+  /// Returns a set of manga IDs that currently have pending offline actions of [type].
+  Set<String> getPendingMangaIdsForType(String type) {
+    final ids = <String>{};
+    try {
+      final box = HiveStorage.syncQueueBox;
+      for (final value in box.values) {
+        if (value is String) {
+          try {
+            final map = jsonDecode(value) as Map<String, dynamic>;
+            if (map['type'] == type) {
+              final payload = map['payload'] as Map<String, dynamic>?;
+              final mangaId = payload?['mangaId'] as String? ?? payload?['id'] as String?;
+              if (mangaId != null && mangaId.isNotEmpty) {
+                ids.add(mangaId);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+    return ids;
+  }
+
   Future<void> syncPendingActions() async {
     if (_isSyncing) return;
     _isSyncing = true;
