@@ -362,45 +362,52 @@ class _ReaderScreenState extends State<ReaderScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final targetYThreshold = screenHeight * 0.35;
 
-    for (int i = 0; i < _pageUrls.length; i++) {
-      final key = GlobalObjectKey('webtoon_${_chapterId}_page_$i');
-      final ctx = key.currentContext;
-      if (ctx != null) {
-        final renderBox = ctx.findRenderObject() as RenderBox?;
-        if (renderBox != null && renderBox.hasSize && renderBox.attached) {
-          final pos = renderBox.localToGlobal(Offset.zero);
-          final top = pos.dy;
-          final bottom = top + renderBox.size.height;
+    // 1. If at or near the bottom of the chapter, immediately set activePage to the last page
+    if (maxScroll > 0 &&
+        (position.pixels >= maxScroll - 80 || position.extentAfter <= 80)) {
+      activePage = _pageUrls.length;
+    } else {
+      for (int i = 0; i < _pageUrls.length; i++) {
+        final key = GlobalObjectKey('webtoon_${_chapterId}_page_$i');
+        final ctx = key.currentContext;
+        if (ctx != null) {
+          final renderBox = ctx.findRenderObject() as RenderBox?;
+          if (renderBox != null && renderBox.hasSize && renderBox.attached) {
+            final pos = renderBox.localToGlobal(Offset.zero);
+            final top = pos.dy;
+            final bottom = top + renderBox.size.height;
 
-          if (top <= targetYThreshold && bottom > 0) {
-            activePage = i + 1;
-            break;
+            if (top <= targetYThreshold && bottom > 0) {
+              activePage = i + 1;
+              break;
+            }
           }
         }
       }
-    }
 
-    if (activePage == null && maxScroll > 0) {
-      final currentScroll = position.pixels;
-      final screenWidth = MediaQuery.of(context).size.width;
-      final contentWidth = (screenWidth < 800.0 ? screenWidth : 800.0);
-      double cumulativeOffset = 0.0;
-      for (int i = 0; i < _pageUrls.length; i++) {
-        final ratio = _pageAspectRatios[i] ?? 1.4;
-        final pageHeight = contentWidth * ratio;
-        if (currentScroll < cumulativeOffset + (pageHeight * 0.7)) {
-          activePage = i + 1;
-          break;
+      if (activePage == null && maxScroll > 0) {
+        final currentScroll = position.pixels;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final contentWidth = (screenWidth < 800.0 ? screenWidth : 800.0);
+        final focalPoint = currentScroll + (screenHeight * 0.35);
+        double cumulativeOffset = 0.0;
+        for (int i = 0; i < _pageUrls.length; i++) {
+          final ratio = _pageAspectRatios[i] ?? 1.4;
+          final pageHeight = contentWidth * ratio;
+          if (focalPoint < cumulativeOffset + pageHeight) {
+            activePage = i + 1;
+            break;
+          }
+          cumulativeOffset += pageHeight;
         }
-        cumulativeOffset += pageHeight;
+        activePage ??= _pageUrls.length;
       }
-      activePage ??= _pageUrls.length;
     }
 
     if (activePage != null && activePage != _currentPage) {
       final newProgress = _pageUrls.length > 1
           ? ((activePage - 1) / (_pageUrls.length - 1)).clamp(0.0, 1.0)
-          : 0.0;
+          : 1.0;
 
       setState(() {
         _currentPage = activePage!;
@@ -419,6 +426,15 @@ class _ReaderScreenState extends State<ReaderScreen>
   }
 
   Future<void> _changeChapter(bool next) async {
+    if (next && _pageUrls.isNotEmpty) {
+      if (_debounceTimer?.isActive ?? false) {
+        _debounceTimer!.cancel();
+      }
+      _currentPage = _pageUrls.length;
+      _progress = 1.0;
+      await _saveProgression();
+    }
+
     final chapters = widget.content.allChapters;
     final currentIndex = chapters.indexWhere(
       (c) => c.chapterNumber == _currentChapterNumber,
@@ -432,6 +448,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
 
     if (targetIndex < 0 || targetIndex >= chapters.length) {
+      if (!mounted) return;
       AlertBanner.show(
         context,
         next ? 'This is the latest chapter' : 'This is the first chapter',
@@ -853,7 +870,13 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   @override
   Widget build(BuildContext context) {
-    final double maxChapter = widget.content.allChapters.fold(
+    final chapters = widget.content.allChapters;
+    final currentIndex = chapters.indexWhere(
+      (c) => c.chapterNumber == _currentChapterNumber,
+    );
+    final hasNextChapter = currentIndex > 0;
+
+    final double maxChapter = chapters.fold(
       0.0,
       (max, c) => c.chapterNumber > max ? c.chapterNumber : max,
     );
@@ -872,73 +895,94 @@ class _ReaderScreenState extends State<ReaderScreen>
         }
         return KeyEventResult.ignored;
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            NotificationListener<ScrollNotification>(
-              onNotification: (notification) {
-                if (notification is UserScrollNotification) {
-                  _isRestoringScroll = false;
-                  _isJumpingToPage = false;
-                } else if (notification is OverscrollNotification) {
-                  if (_isWebtoonMode &&
-                      notification.overscroll > 0 &&
-                      notification.metrics.pixels >=
-                          notification.metrics.maxScrollExtent &&
-                      !_isLoading &&
-                      !_isRestoringScroll &&
-                      !_isJumpingToPage &&
-                      !_isSliderScrolling) {
-                    _accumulatedBottomOverscroll += notification.overscroll;
-                    if (_accumulatedBottomOverscroll >= 150) {
-                      _accumulatedBottomOverscroll = 0;
-                      _changeChapter(true);
+      child: PopScope(
+        canPop: true,
+        onPopInvokedWithResult: (didPop, result) {
+          if (_debounceTimer?.isActive ?? false) {
+            _debounceTimer?.cancel();
+            _saveProgression();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is UserScrollNotification) {
+                    _isRestoringScroll = false;
+                    _isJumpingToPage = false;
+                  } else if (notification is OverscrollNotification) {
+                    if (_isWebtoonMode &&
+                        notification.overscroll > 0 &&
+                        notification.metrics.pixels >=
+                            notification.metrics.maxScrollExtent &&
+                        !_isLoading &&
+                        !_isRestoringScroll &&
+                        !_isJumpingToPage &&
+                        !_isSliderScrolling) {
+                      if (_currentPage != _pageUrls.length) {
+                        setState(() {
+                          _currentPage = _pageUrls.length;
+                          _progress = 1.0;
+                        });
+                      }
+                      _accumulatedBottomOverscroll += notification.overscroll;
+                      if (_accumulatedBottomOverscroll >= 150) {
+                        _accumulatedBottomOverscroll = 0;
+                        _changeChapter(true);
+                      }
                     }
-                  }
-                } else if (notification is ScrollUpdateNotification) {
-                  if (_isWebtoonMode &&
-                      !_isLoading &&
-                      !_isRestoringScroll &&
-                      !_isJumpingToPage &&
-                      !_isSliderScrolling &&
-                      notification.metrics.pixels >
-                          notification.metrics.maxScrollExtent) {
-                    final overscrollAmount =
-                        notification.metrics.pixels -
-                        notification.metrics.maxScrollExtent;
-                    if (overscrollAmount >= 120) {
-                      _accumulatedBottomOverscroll = 0;
-                      _changeChapter(true);
+                  } else if (notification is ScrollUpdateNotification) {
+                    if (_isWebtoonMode &&
+                        !_isLoading &&
+                        !_isRestoringScroll &&
+                        !_isJumpingToPage &&
+                        !_isSliderScrolling &&
+                        notification.metrics.pixels >
+                            notification.metrics.maxScrollExtent) {
+                      if (_currentPage != _pageUrls.length) {
+                        setState(() {
+                          _currentPage = _pageUrls.length;
+                          _progress = 1.0;
+                        });
+                      }
+                      final overscrollAmount =
+                          notification.metrics.pixels -
+                          notification.metrics.maxScrollExtent;
+                      if (overscrollAmount >= 120) {
+                        _accumulatedBottomOverscroll = 0;
+                        _changeChapter(true);
+                      }
                     }
+                  } else if (notification is ScrollEndNotification) {
+                    _accumulatedBottomOverscroll = 0;
                   }
-                } else if (notification is ScrollEndNotification) {
-                  _accumulatedBottomOverscroll = 0;
-                }
-                return false;
-              },
-              child: ReaderContentWidget(
-                chapterId: _chapterId,
-                pageUrls: _pageUrls,
-                httpHeaders: widget.content.httpHeaders,
-                isLoading: _isLoading,
-                showUI: _showUI,
-                transformationController: _transformationController,
-                scrollController: _scrollController,
-                pageController: _pageController,
-                isWebtoonMode: _isWebtoonMode,
-                isRtlMode: _isRtlMode,
-                pageAspectRatios: _pageAspectRatios,
-                onAspectRatioResolved: (index, ratio) {
-                  _pageAspectRatios[index] = ratio;
+                  return false;
                 },
-                onPageChanged: _onPageChanged,
-                onTap: _toggleUI,
-                onDoubleTapDown: _handleDoubleTapDown,
-                onDoubleTap: _handleDoubleTap,
-                onToggleUI: _toggleUI,
+                child: ReaderContentWidget(
+                  chapterId: _chapterId,
+                  pageUrls: _pageUrls,
+                  httpHeaders: widget.content.httpHeaders,
+                  isLoading: _isLoading,
+                  showUI: _showUI,
+                  transformationController: _transformationController,
+                  scrollController: _scrollController,
+                  pageController: _pageController,
+                  isWebtoonMode: _isWebtoonMode,
+                  isRtlMode: _isRtlMode,
+                  pageAspectRatios: _pageAspectRatios,
+                  hasNextChapter: hasNextChapter,
+                  onAspectRatioResolved: (index, ratio) {
+                    _pageAspectRatios[index] = ratio;
+                  },
+                  onPageChanged: _onPageChanged,
+                  onTap: _toggleUI,
+                  onDoubleTapDown: _handleDoubleTapDown,
+                  onDoubleTap: _handleDoubleTap,
+                  onToggleUI: _toggleUI,
+                ),
               ),
-            ),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               top: _showUI ? 0 : -150,
@@ -1152,7 +1196,8 @@ class _ReaderScreenState extends State<ReaderScreen>
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _saveProgression() async {
