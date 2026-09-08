@@ -42,6 +42,20 @@ class HomeController extends ChangeNotifier {
   bool get isLoadingRecommended => _isLoadingRecommended;
   bool get isLoadingTop => _isLoadingTop;
 
+  List<MangaSummary> get heroManga {
+    final trending = _trendingByTab[0];
+    if (trending != null && trending.isNotEmpty) {
+      return trending.take(5).toList();
+    }
+    if (_topManga.isNotEmpty) {
+      return _topManga.take(5).toList();
+    }
+    return [];
+  }
+
+  bool get isLoadingHero =>
+      (_trendingLoadingByTab[0] ?? true) && _isLoadingTop && heroManga.isEmpty;
+
   HomeController({
     MangaApiService? apiService,
     ProgressionService? progressionService,
