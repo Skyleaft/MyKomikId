@@ -24,6 +24,7 @@ class ReaderContentWidget extends StatefulWidget {
   final Map<String, String>? httpHeaders;
   final Map<int, double>? pageAspectRatios;
   final void Function(int index, double ratio)? onAspectRatioResolved;
+  final bool hasNextChapter;
 
   const ReaderContentWidget({
     super.key,
@@ -44,6 +45,7 @@ class ReaderContentWidget extends StatefulWidget {
     this.httpHeaders,
     this.pageAspectRatios,
     this.onAspectRatioResolved,
+    this.hasNextChapter = true,
   });
 
   @override
@@ -87,6 +89,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
             CachedNetworkImageProvider(
               url,
               headers: widget.httpHeaders,
+              maxWidth: memCacheWidth,
             ),
             context,
             onError: (exception, stackTrace) {
@@ -94,6 +97,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                 CachedNetworkImageProvider(
                   url,
                   headers: widget.httpHeaders,
+                  maxWidth: memCacheWidth,
                 ).evict();
               } catch (_) {}
             },
@@ -159,7 +163,7 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                             child: Align(
                               alignment: Alignment.center,
                               child: SizedBox(
-                                key: ValueKey('webtoon_${widget.chapterId ?? "default"}_page_$index'),
+                                key: GlobalObjectKey('webtoon_${widget.chapterId ?? "default"}_page_$index'),
                                 width: contentWidth,
                                 child: AppNetworkImage(
                                   imageUrl: url,
@@ -203,31 +207,129 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                         addRepaintBoundaries: false,
                       ),
                     ),
-                    const SliverToBoxAdapter(
+                    SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 36,
+                          horizontal: 24,
+                        ),
                         child: Center(
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.keyboard_arrow_up_rounded,
-                                color: Colors.white30,
-                                size: 28,
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Pull up to next chapter',
-                                style: TextStyle(
-                                  color: Colors.white30,
-                                  fontSize: 13,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 400),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: AppColors.primary,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'End of Chapter (${widget.pageUrls.length}/${widget.pageUrls.length})',
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 20),
+                                if (widget.hasNextChapter) ...[
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => widget.onPageChanged(
+                                        widget.pageUrls.length,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 14,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.4,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              'Next Chapter',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Icon(
+                                              Icons.arrow_forward_rounded,
+                                              color: AppColors.primary,
+                                              size: 20,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Pull up or tap to continue',
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'You have reached the latest chapter',
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: math.max(
+                          160.0,
+                          MediaQuery.sizeOf(context).height * 0.45,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               )
@@ -258,15 +360,19 @@ class _ReaderContentWidgetState extends State<ReaderContentWidget> {
                                 border: Border.all(color: Colors.white10),
                               ),
                               child: Icon(
-                                Icons.arrow_forward_rounded,
+                                widget.hasNextChapter
+                                    ? Icons.arrow_forward_rounded
+                                    : Icons.check_circle_outline_rounded,
                                 color: AppColors.primary,
                                 size: 40,
                               ),
                             ),
                             const SizedBox(height: 24),
-                            const Text(
-                              'Swipe or tap to load next chapter',
-                              style: TextStyle(
+                            Text(
+                              widget.hasNextChapter
+                                  ? 'Swipe or tap to load next chapter'
+                                  : 'You have reached the latest chapter',
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
