@@ -12,6 +12,9 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
   final VoidCallback? onClearFilters;
   final VoidCallback? onRetry;
   final ValueChanged<MangaSummary> onSelectRecommendation;
+  final String? emptyTitle;
+  final String? emptySubtitle;
+  final String? loadingMessage;
 
   const MangaDetailRecommendationsGrid({
     super.key,
@@ -22,6 +25,9 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
     this.onClearFilters,
     this.onRetry,
     required this.onSelectRecommendation,
+    this.emptyTitle,
+    this.emptySubtitle,
+    this.loadingMessage,
   });
 
   @override
@@ -43,9 +49,10 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
                 CircularProgressIndicator(color: AppColors.primary),
                 const SizedBox(height: 16),
                 Text(
-                  hasFilters
-                      ? 'Finding matching similar manga...'
-                      : 'Loading recommendations...',
+                  loadingMessage ??
+                      (hasFilters
+                          ? 'Finding matching similar manga...'
+                          : 'Loading recommendations...'),
                   style: TextStyle(
                     color: isDark ? Colors.white70 : Colors.black54,
                     fontSize: 14,
@@ -141,9 +148,10 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  hasFilters
-                      ? 'No similar manga match the filters'
-                      : 'No similar manga found',
+                  emptyTitle ??
+                      (hasFilters
+                          ? 'No similar manga match the filters'
+                          : 'No similar manga found'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -152,9 +160,10 @@ class MangaDetailRecommendationsGrid extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  hasFilters
-                      ? 'Try adjusting or clearing your active filters to see more recommendations.'
-                      : 'Check back later for semantic recommendations.',
+                  emptySubtitle ??
+                      (hasFilters
+                          ? 'Try adjusting or clearing your active filters to see more recommendations.'
+                          : 'Check back later for semantic recommendations.'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,

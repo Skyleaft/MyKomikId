@@ -24,6 +24,7 @@ import 'widgets/manga_detail_scraping_progress_card.dart';
 import 'widgets/similar_manga_filter_sheet.dart';
 import 'widgets/status_selection_sheet.dart';
 import 'widgets/manga_cover_dialog.dart';
+import 'widgets/manga_detail_similar_category_header.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final MangaDetail manga;
@@ -53,10 +54,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     _controller = MangaDetailController(manga: widget.manga);
     _scrollController = ScrollController();
 
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _controller.recommendations.isEmpty) {
         _controller.loadRecommendations();
+      } else if (_tabController.index == 2 &&
+          _controller.similarByCategory.isEmpty) {
+        _controller.loadSimilarByCategory();
       }
       if (mounted) setState(() {});
     });
@@ -366,6 +370,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                             : AppColors.backgroundLight,
                         tabBar: TabBar(
                           controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
                           indicatorColor: colorScheme.primary,
                           indicatorWeight: 3,
                           indicatorSize: TabBarIndicatorSize.label,
@@ -374,15 +380,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                           unselectedLabelColor: isDark ? Colors.white60 : Colors.black54,
                           labelStyle: GoogleFonts.inter(
                             fontWeight: FontWeight.w700,
-                            fontSize: 15.5,
+                            fontSize: 15,
                           ),
                           unselectedLabelStyle: GoogleFonts.inter(
                             fontWeight: FontWeight.w600,
-                            fontSize: 15.5,
+                            fontSize: 15,
                           ),
                           tabs: [
                             Tab(text: 'Chapters (${_controller.chapters.length})'),
                             Tab(text: 'Recommendations (${_controller.recommendations.length})'),
+                            Tab(text: 'Similar Category (${_controller.similarByCategory.length})'),
                           ],
                         ),
                       ),
@@ -460,10 +467,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                         ),
                       ),
 
-                    // Tab Content (Chapters or Recommendations)
+                    // Tab Content (Chapters, Recommendations, or Similar by Category)
                     if (_tabController.index == 0)
                       _buildChapterList(isDark)
-                    else ...[
+                    else if (_tabController.index == 1) ...[
                       SliverToBoxAdapter(
                         child: Container(
                           color: isDark
@@ -528,6 +535,84 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                         hasFilters: _controller.hasRecommendationFilters,
                         onClearFilters: _controller.clearRecommendationFilters,
                         onRetry: () => _controller.loadRecommendations(
+                            forceReload: true),
+                        onSelectRecommendation: (item) =>
+                            _navigateToDetail(context, item),
+                      ),
+                    ] else ...[
+                      SliverToBoxAdapter(
+                        child: Container(
+                          color: isDark
+                              ? AppColors.backgroundDark
+                              : AppColors.backgroundLight,
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1100),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                child: MangaDetailSimilarCategoryHeader(
+                                  manga: widget.manga,
+                                  totalCount: _controller.similarByCategory.length,
+                                  isLoading:
+                                      _controller.isLoadingSimilarByCategory,
+                                  selectedStatus:
+                                      _controller.similarCategoryStatus,
+                                  selectedType: _controller.similarCategoryType,
+                                  selectedGenres:
+                                      _controller.similarCategoryGenres,
+                                  selectedCategories:
+                                      _controller.selectedCategories,
+                                  onOpenFilter: () {
+                                    SimilarMangaFilterSheet.show(
+                                      context,
+                                      currentGenres:
+                                          _controller.similarCategoryGenres,
+                                      currentType:
+                                          _controller.similarCategoryType,
+                                      currentStatus:
+                                          _controller.similarCategoryStatus,
+                                      mangaGenres: widget.manga.genres ?? [],
+                                      onApply: (genres, type, status) {
+                                        _controller.setSimilarCategoryFilters(
+                                          genres: genres,
+                                          type: type,
+                                          status: status,
+                                        );
+                                      },
+                                    );
+                                  },
+                                  onClearFilters:
+                                      _controller.clearSimilarCategoryFilters,
+                                  onRemoveGenre:
+                                      _controller.removeSimilarCategoryGenre,
+                                  onRemoveType: () =>
+                                      _controller.setSimilarCategoryType(null),
+                                  onRemoveStatus: () =>
+                                      _controller.setSimilarCategoryStatus(null),
+                                  onToggleCategory: _controller.toggleCategory,
+                                  onRefresh: () => _controller
+                                      .loadSimilarByCategory(forceReload: true),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      MangaDetailRecommendationsGrid(
+                        recommendations: _controller.similarByCategory,
+                        isLoading: _controller.isLoadingSimilarByCategory,
+                        errorMessage: _controller.similarByCategoryErrorMessage,
+                        hasFilters: _controller.hasSimilarCategoryFilters,
+                        loadingMessage: 'Finding titles matching category tropes...',
+                        emptyTitle: 'No similar category manga found',
+                        emptySubtitle: _controller.hasSimilarCategoryFilters
+                            ? 'Try clearing active category or genre filters to see more results.'
+                            : 'No similar manga found matching this category profile.',
+                        onClearFilters: _controller.clearSimilarCategoryFilters,
+                        onRetry: () => _controller.loadSimilarByCategory(
                             forceReload: true),
                         onSelectRecommendation: (item) =>
                             _navigateToDetail(context, item),

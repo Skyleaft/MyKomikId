@@ -352,6 +352,73 @@ class MangaApiService {
     }
   }
 
+  Future<List<MangaSummary>> getSimilarMangaByCategory({
+    List<String>? categories,
+    String? status,
+    String? type,
+    List<String>? genres,
+    String? excludeMangaId,
+    int limit = 20,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/manga/similar/by-category',
+        queryParameters: {
+          if (categories != null && categories.isNotEmpty)
+            'categories': categories,
+          if (status != null && status.isNotEmpty) 'status': status,
+          if (type != null && type.isNotEmpty) 'type': type,
+          if (genres != null && genres.isNotEmpty) 'genres': genres,
+          if (excludeMangaId != null && excludeMangaId.isNotEmpty)
+            'excludeMangaId': excludeMangaId,
+          'limit': limit,
+        },
+        cancelToken: cancelToken,
+      );
+      final unwrapped = _unwrap(response.data);
+      final List<dynamic> items = unwrapped is List
+          ? unwrapped
+          : (unwrapped['items'] ?? []);
+      return items
+          .map((json) => MangaSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<MangaSummary>> getSimilarMangaByIdCategories(
+    String mangaId, {
+    String? status,
+    String? type,
+    List<String>? genres,
+    int limit = 20,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/manga/$mangaId/similar/by-category',
+        queryParameters: {
+          if (status != null && status.isNotEmpty) 'status': status,
+          if (type != null && type.isNotEmpty) 'type': type,
+          if (genres != null && genres.isNotEmpty) 'genres': genres,
+          'limit': limit,
+        },
+        cancelToken: cancelToken,
+      );
+      final unwrapped = _unwrap(response.data);
+      final List<dynamic> items = unwrapped is List
+          ? unwrapped
+          : (unwrapped['items'] ?? []);
+      return items
+          .map((json) => MangaSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<List<MangaSummary>> getAdvancedRecommendations(
     AdvancedRecommendationRequest request,
   ) async {
