@@ -39,6 +39,13 @@ class MangaDetailController extends ChangeNotifier {
   String? _recommendationStatus;
   String? _recommendationType;
   List<String> _recommendationGenres = [];
+  List<MangaSummary> _similarByCategory = [];
+  bool _isLoadingSimilarByCategory = false;
+  String? _similarByCategoryErrorMessage;
+  String? _similarCategoryStatus;
+  String? _similarCategoryType;
+  List<String> _similarCategoryGenres = [];
+  List<String> _selectedCategories = [];
   bool _isAscending = false;
   String _searchQuery = '';
   ChapterFilterOption _chapterFilter = ChapterFilterOption.all;
@@ -52,6 +59,7 @@ class MangaDetailController extends ChangeNotifier {
   Timer? _clearScrapingTimer;
   CancelToken? _chaptersCancelToken;
   CancelToken? _recommendationsCancelToken;
+  CancelToken? _similarCategoryCancelToken;
   StreamSubscription<ChapterScrapingProgress>? _progressSubscription;
   StreamSubscription<ChaptersUpdatedEvent>? _chaptersUpdatedSubscription;
 
@@ -77,6 +85,20 @@ class MangaDetailController extends ChangeNotifier {
       (_recommendationType != null ? 1 : 0) +
       _recommendationGenres.length;
   bool get hasRecommendationFilters => recommendationFilterCount > 0;
+  List<MangaSummary> get similarByCategory => _similarByCategory;
+  bool get isLoadingSimilarByCategory => _isLoadingSimilarByCategory;
+  String? get similarByCategoryErrorMessage => _similarByCategoryErrorMessage;
+  String? get similarCategoryStatus => _similarCategoryStatus;
+  String? get similarCategoryType => _similarCategoryType;
+  List<String> get similarCategoryGenres =>
+      List.unmodifiable(_similarCategoryGenres);
+  List<String> get selectedCategories => List.unmodifiable(_selectedCategories);
+  int get similarCategoryFilterCount =>
+      (_similarCategoryStatus != null ? 1 : 0) +
+      (_similarCategoryType != null ? 1 : 0) +
+      _similarCategoryGenres.length +
+      _selectedCategories.length;
+  bool get hasSimilarCategoryFilters => similarCategoryFilterCount > 0;
   bool get isAscending => _isAscending;
   String get searchQuery => _searchQuery;
   ChapterFilterOption get chapterFilter => _chapterFilter;
@@ -224,6 +246,7 @@ class MangaDetailController extends ChangeNotifier {
   void cancelPendingRequests() {
     _chaptersCancelToken?.cancel();
     _recommendationsCancelToken?.cancel();
+    _similarCategoryCancelToken?.cancel();
     _searchDebounce?.cancel();
     _clearScrapingTimer?.cancel();
   }
@@ -433,6 +456,12 @@ class MangaDetailController extends ChangeNotifier {
       await _detailService.saveDetail(freshDetail);
       await refreshProgression();
       await _checkIfInLibrary();
+      if (_recommendations.isNotEmpty) {
+        loadRecommendations(forceReload: true);
+      }
+      if (_similarByCategory.isNotEmpty) {
+        loadSimilarByCategory(forceReload: true);
+      }
       notifyListeners();
     } catch (e) {
       if (e is DioException && e.type == DioExceptionType.cancel) return;
@@ -556,6 +585,122 @@ class MangaDetailController extends ChangeNotifier {
     _recommendationType = null;
     _recommendationGenres = [];
     await loadRecommendations(forceReload: true);
+  }
+
+  Future<void> loadSimilarByCategory({bool forceReload = false}) async {
+    if (_isLoadingSimilarByCategory) return;
+    if (!forceReload && _similarByCategory.isNotEmpty) return;
+
+    _isLoadingSimilarByCategory = true;
+    _similarByCategoryErrorMessage = null;
+    notifyListeners();
+
+    _similarCategoryCancelToken?.cancel();
+    _similarCategoryCancelToken = CancelToken();
+
+    try {
+      final categoriesToUse = _selectedCategories.isNotEmpty
+          ? _selectedCategories
+          : (manga.categories ?? []);
+
+      List<MangaSummary> results;
+      if (categoriesToUse.isNotEmpty) {
+        results = await _apiService.getSimilarMangaByCategory(
+          categories: categoriesToUse,
+          status: _similarCategoryStatus,
+          type: _similarCategoryType,
+          genres: _similarCategoryGenres.isNotEmpty
+              ? _similarCategoryGenres
+              : null,
+          excludeMangaId: manga.id,
+          limit: 20,
+          cancelToken: _similarCategoryCancelToken,
+        );
+      } else {
+        results = await _apiService.getSimilarMangaByIdCategories(
+          manga.id,
+          status: _similarCategoryStatus,
+          type: _similarCategoryType,
+          genres: _similarCategoryGenres.isNotEmpty
+              ? _similarCategoryGenres
+              : null,
+          limit: 20,
+          cancelToken: _similarCategoryCancelToken,
+        );
+      }
+      _similarByCategory = results;
+    } catch (e) {
+      if (e is DioException && e.type == DioExceptionType.cancel) return;
+      _similarByCategoryErrorMessage = e.toString();
+    } finally {
+      _isLoadingSimilarByCategory = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleCategory(String category) async {
+    if (_selectedCategories.contains(category)) {
+      _selectedCategories.remove(category);
+    } else {
+      _selectedCategories.add(category);
+    }
+    await loadSimilarByCategory(forceReload: true);
+  }
+
+  Future<void> setSimilarCategoryFilters({
+    String? status,
+    String? type,
+    List<String>? genres,
+    List<String>? categories,
+  }) async {
+    _similarCategoryStatus = status;
+    _similarCategoryType = type;
+    _similarCategoryGenres = genres != null ? List.from(genres) : [];
+    if (categories != null) {
+      _selectedCategories = List.from(categories);
+    }
+    await loadSimilarByCategory(forceReload: true);
+  }
+
+  Future<void> clearSimilarCategoryFilters() async {
+    _similarCategoryStatus = null;
+    _similarCategoryType = null;
+    _similarCategoryGenres.clear();
+    _selectedCategories.clear();
+    await loadSimilarByCategory(forceReload: true);
+  }
+
+  Future<void> toggleSimilarCategoryGenre(String genre) async {
+    if (_similarCategoryGenres.contains(genre)) {
+      _similarCategoryGenres.remove(genre);
+    } else {
+      _similarCategoryGenres.add(genre);
+    }
+    await loadSimilarByCategory(forceReload: true);
+  }
+
+  Future<void> removeSimilarCategoryGenre(String genre) async {
+    if (_similarCategoryGenres.remove(genre)) {
+      await loadSimilarByCategory(forceReload: true);
+    }
+  }
+
+  Future<void> setSimilarCategoryType(String? type) async {
+    if (_similarCategoryType == type) {
+      _similarCategoryType = null;
+    } else {
+      _similarCategoryType = type;
+    }
+    await loadSimilarByCategory(forceReload: true);
+  }
+
+  Future<void> setSimilarCategoryStatus(String? status) async {
+    if (_similarCategoryStatus == status) {
+      _similarCategoryStatus = null;
+    } else {
+      _similarCategoryStatus = status;
+    }
+    await loadSimilarByCategory(forceReload: true);
   }
 
   Future<bool> toggleFavorite() async {

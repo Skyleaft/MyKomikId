@@ -5,6 +5,63 @@ info:
 servers:
   - url: http://11.1.1.4:5009/
 paths:
+  /api/v1/manga/{id}/thumbnail:
+    patch:
+      tags:
+        - Manga
+      summary: Update manga thumbnail from a remote URL
+      operationId: UpdateMangaThumbnail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateThumbnailRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfMangaSummaryResponse"
+  /api/v1/manga/{id}/thumbnail/upload:
+    post:
+      tags:
+        - Manga
+      summary: Upload manga thumbnail file directly
+      operationId: UploadMangaThumbnail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+                - file
+              type: object
+              properties:
+                file:
+                  $ref: "#/components/schemas/IFormFile"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfMangaSummaryResponse"
   /api/v1/manga/{id}:
     patch:
       tags:
@@ -250,6 +307,118 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/similar/by-category:
+    get:
+      tags:
+        - Manga
+      summary: Get mangas similar by category / tropes with optional status, type, and
+        genres filtering
+      operationId: GetSimilarMangaByCategory
+      parameters:
+        - name: categories
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: excludeMangaId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+    post:
+      tags:
+        - Manga
+      summary: Get mangas similar by category / tropes with optional status, type, and
+        genres filtering via body
+      operationId: PostSimilarMangaByCategory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimilarByCategoryRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfListOfMangaSummaryResponse"
+  /api/v1/manga/{mangaId}/similar/by-category:
+    get:
+      tags:
+        - Manga
+      summary: Get mangas similar to a given manga's categories / tropes with optional
+        status, type, and genres filtering
+      operationId: GetSimilarMangaByIdCategories
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
         - name: limit
           in: query
           schema:
@@ -898,6 +1067,36 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/scrapper/processes:
+    get:
+      tags:
+        - Scrapper
+      operationId: GetScrapingProcesses
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/cancel:
+    post:
+      tags:
+        - Scrapper
+      operationId: CancelScrapingProcess
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelScrapingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/purge:
+    post:
+      tags:
+        - Scrapper
+      operationId: PurgeScrapingQueue
+      responses:
+        "200":
+          description: OK
   /api/v1/scrapper/queue:
     get:
       tags:
@@ -968,6 +1167,128 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/softkomik:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/softkomik/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/softkomik/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/manhwadesu:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/manhwadesu/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/manhwadesu/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
       responses:
         "200":
           description: OK
@@ -1059,6 +1380,67 @@ paths:
         "200":
           description: OK
   /api/v1/scrapper/komiku/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komiktap:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komiktap/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/komiktap/search:
     get:
       tags:
         - ProviderScrapers
@@ -1215,6 +1597,67 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/scrapper/doujindesu:
+    post:
+      tags:
+        - ProviderScrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProviderScrapMangaRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/doujindesu/detail:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: mangaUrl
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/scrapper/doujindesu/search:
+    get:
+      tags:
+        - ProviderScrapers
+      parameters:
+        - name: Keyword
+          in: query
+          schema:
+            type: string
+        - name: Genres
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: Status
+          in: query
+          schema:
+            type: string
+        - name: Type
+          in: query
+          schema:
+            type: string
+        - name: Page
+          in: query
+          required: true
+          schema:
+            pattern: ^-?(?:0|[1-9]\d*)$
+            type:
+              - integer
+              - string
+            format: int32
+      responses:
+        "200":
+          description: OK
   /api/v1/providers/{fileName}:
     get:
       tags:
@@ -1229,6 +1672,98 @@ paths:
       responses:
         "200":
           description: OK
+  /api/v1/manga/{mangaId}/chapters/{chapterId}/view:
+    post:
+      tags:
+        - Manga
+      summary: Increment view count for a specific manga chapter
+      operationId: IncrementChapterViewWithMangaId
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+  /api/v1/manga/{mangaId}/chapter/{chapterId}/view:
+    post:
+      tags:
+        - Manga
+      summary: Increment view count for a specific manga chapter
+      operationId: IncrementSingleChapterViewWithMangaId
+      parameters:
+        - name: mangaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+  /api/v1/manga/chapters/{chapterId}/view:
+    post:
+      tags:
+        - Manga
+      summary: Increment view count for a chapter by chapter ID
+      operationId: IncrementChapterView
+      parameters:
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
+  /api/v1/manga/chapter/{chapterId}/view:
+    post:
+      tags:
+        - Manga
+      summary: Increment view count for a chapter by chapter ID
+      operationId: IncrementSingleChapterView
+      parameters:
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseOfObject"
   /api/v1/dashboard/sync-storage:
     post:
       tags:
@@ -1688,6 +2223,22 @@ components:
         timestamp:
           type: string
           format: date-time
+    CancelScrapingRequest:
+      type: object
+      properties:
+        mangaId:
+          type:
+            - "null"
+            - string
+          format: uuid
+        chapterId:
+          type:
+            - "null"
+            - string
+          format: uuid
+        cancelAll:
+          type: boolean
+          default: false
     ChapterLogsResponse:
       required:
         - id
@@ -1764,6 +2315,9 @@ components:
           type:
             - "null"
             - string
+        isFallback:
+          type: boolean
+          default: false
     ChapterResponse:
       required:
         - id
@@ -1840,6 +2394,9 @@ components:
       properties:
         idToken:
           type: string
+    IFormFile:
+      type: string
+      format: binary
     LoginRequest:
       required:
         - username
@@ -2326,6 +2883,41 @@ components:
           type: string
         email:
           type: string
+    SimilarByCategoryRequest:
+      type: object
+      properties:
+        categories:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        status:
+          type:
+            - "null"
+            - string
+        type:
+          type:
+            - "null"
+            - string
+        genres:
+          type:
+            - "null"
+            - array
+          items:
+            type: string
+        excludeMangaId:
+          type:
+            - "null"
+            - string
+          format: uuid
+        limit:
+          pattern: ^-?(?:0|[1-9]\d*)$
+          type:
+            - integer
+            - string
+          format: int32
+          default: 10
     UnregisterFcmTokenRequest:
       required:
         - fcmToken
@@ -2437,6 +3029,17 @@ components:
             - integer
             - string
           format: int32
+        title:
+          type:
+            - "null"
+            - string
+    UpdateThumbnailRequest:
+      required:
+        - imageUrl
+      type: object
+      properties:
+        imageUrl:
+          type: string
     UpdateUserProgressionCommand:
       required:
         - userId

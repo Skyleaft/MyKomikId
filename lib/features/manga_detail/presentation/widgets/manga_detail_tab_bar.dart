@@ -49,7 +49,7 @@ class MangaDetailTabBarDelegate extends SliverPersistentHeaderDelegate {
                     ? Align(
                         alignment: Alignment.centerLeft,
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 480),
+                          constraints: const BoxConstraints(maxWidth: 680),
                           child: tabBar,
                         ),
                       )
