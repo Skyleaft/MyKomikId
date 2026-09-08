@@ -11,6 +11,7 @@ import '../../manga_detail/models/manga_detail.dart';
 import '../controllers/home_controller.dart';
 import '../models/trending_tab.dart';
 import 'widgets/home_header.dart';
+import 'widgets/home_hero_carousel.dart';
 import 'widgets/home_continue_reading_section.dart';
 import 'widgets/home_trending_section.dart';
 import 'widgets/home_latest_updates_section.dart';
@@ -216,7 +217,19 @@ class _HomeScreenState extends State<HomeScreen>
                   padding: const EdgeInsets.only(bottom: 120),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      HomeHeroCarousel(
+                        mangaList: _controller.heroManga,
+                        isLoading: _controller.isLoadingHero,
+                        apiService: _apiService,
+                        onSelectManga: (id, {summary, heroTag}) =>
+                            _navigateToDetail(
+                              id,
+                              summary: summary,
+                              heroTag: heroTag ?? 'manga-cover-hero-$id',
+                            ),
+                      ),
+                      const SizedBox(height: 24),
                       HomeContinueReadingSection(
                         recentProgressions: _controller.recentProgressions,
                         historyDetailsMap: _controller.historyDetailsMap,
