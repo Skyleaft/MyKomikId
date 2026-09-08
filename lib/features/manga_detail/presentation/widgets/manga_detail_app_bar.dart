@@ -16,6 +16,7 @@ class MangaDetailAppBar extends StatelessWidget {
   final int chapterCount;
   final String? heroTag;
   final VoidCallback? onRefresh;
+  final VoidCallback? onCoverTap;
 
   const MangaDetailAppBar({
     super.key,
@@ -24,6 +25,7 @@ class MangaDetailAppBar extends StatelessWidget {
     this.chapterCount = 0,
     this.heroTag,
     this.onRefresh,
+    this.onCoverTap,
   });
 
   void _showExternalLinksSheet(BuildContext context) {
@@ -345,15 +347,27 @@ class MangaDetailAppBar extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (heroImageUrl.isNotEmpty) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: CachedNetworkImage(
-                        imageUrl: heroImageUrl,
-                        width: 32,
-                        height: 44,
-                        memCacheWidth: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    GestureDetector(
+                      onTap: onCoverTap,
+                      child: MouseRegion(
+                        cursor: onCoverTap != null
+                            ? SystemMouseCursors.click
+                            : SystemMouseCursors.basic,
+                        child: Tooltip(
+                          message: 'View cover',
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: CachedNetworkImage(
+                              imageUrl: heroImageUrl,
+                              width: 32,
+                              height: 44,
+                              memCacheWidth: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -455,6 +469,7 @@ class MangaDetailAppBar extends StatelessWidget {
                   isDark: isDark,
                   heroTag: heroTag,
                   isHeroVisible: isHeroVisible,
+                  onCoverTap: onCoverTap,
                 ),
               ),
             ),

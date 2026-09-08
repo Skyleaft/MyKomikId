@@ -23,6 +23,7 @@ import 'widgets/manga_detail_recommendations_header.dart';
 import 'widgets/manga_detail_scraping_progress_card.dart';
 import 'widgets/similar_manga_filter_sheet.dart';
 import 'widgets/status_selection_sheet.dart';
+import 'widgets/manga_cover_dialog.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final MangaDetail manga;
@@ -253,6 +254,20 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     }
   }
 
+  void _openFullScreenCover() {
+    final heroImageUrl = _apiService.getLocalImageUrl(
+      widget.manga.localImageUrl,
+      widget.manga.imageUrl,
+    );
+    if (heroImageUrl.isEmpty) return;
+    MangaCoverViewer.show(
+      context,
+      manga: widget.manga,
+      heroImageUrl: heroImageUrl,
+      heroTag: widget.heroTag,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -286,6 +301,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
               HapticFeedback.lightImpact();
               _controller.refresh();
             },
+            const SingleActivator(LogicalKeyboardKey.keyC): () {
+              _openFullScreenCover();
+            },
           },
           child: Focus(
             autofocus: true,
@@ -305,6 +323,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
                           chapterCount: _controller.chapters.length,
                           heroTag: widget.heroTag,
                           onRefresh: _controller.refresh,
+                          onCoverTap: _openFullScreenCover,
                         ),
 
                     // Overview Section: Genres (stretches downward) & Synopsis

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../models/manga_detail.dart';
+import 'manga_cover_dialog.dart';
 
 class MangaDetailSplitHero extends StatelessWidget {
   final MangaDetail manga;
@@ -12,6 +13,7 @@ class MangaDetailSplitHero extends StatelessWidget {
   final bool isDark;
   final String? heroTag;
   final bool isHeroVisible;
+  final VoidCallback? onCoverTap;
 
   const MangaDetailSplitHero({
     super.key,
@@ -21,6 +23,7 @@ class MangaDetailSplitHero extends StatelessWidget {
     required this.isDark,
     this.heroTag,
     this.isHeroVisible = true,
+    this.onCoverTap,
   });
 
   @override
@@ -68,65 +71,130 @@ class MangaDetailSplitHero extends StatelessWidget {
                 child: flyingWidget,
               );
             },
-            child: Container(
-            width: posterWidth,
-            height: posterHeight,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.1),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.22),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.15),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: heroImageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: heroImageUrl,
-                      fit: BoxFit.cover,
-                      memCacheWidth: 400,
-                      maxWidthDiskCache: 600,
-                      placeholder: (_, _) => Container(
-                        color: isDark ? Colors.grey[850] : Colors.grey[300],
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  if (onCoverTap != null) {
+                    onCoverTap!();
+                  } else {
+                    MangaCoverViewer.show(
+                      context,
+                      manga: manga,
+                      heroImageUrl: heroImageUrl,
+                      heroTag: heroTag,
+                    );
+                  }
+                },
+                child: Tooltip(
+                  message: 'View full screen cover',
+                  child: Container(
+                    width: posterWidth,
+                    height: posterHeight,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : Colors.black.withValues(alpha: 0.1),
+                        width: 1.2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.55 : 0.22),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
                         ),
-                      ),
-                      errorBuilder: (_, _, _) => Container(
-                        color: isDark ? Colors.grey[850] : Colors.grey[300],
-                        child: Icon(
-                          Icons.image_not_supported_rounded,
-                          color: isDark ? Colors.white60 : Colors.black45,
-                          size: 32,
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                    )
-                  : Container(
-                      color: isDark ? Colors.grey[850] : Colors.grey[300],
-                      child: Icon(
-                        Icons.image_not_supported_rounded,
-                        color: isDark ? Colors.white60 : Colors.black45,
-                        size: 32,
-                      ),
+                      ],
                     ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: heroImageUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: heroImageUrl,
+                                  fit: BoxFit.cover,
+                                  memCacheWidth: 400,
+                                  maxWidthDiskCache: 600,
+                                  placeholder: (_, _) => Container(
+                                    color: isDark
+                                        ? Colors.grey[850]
+                                        : Colors.grey[300],
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                  ),
+                                  errorBuilder: (_, _, _) => Container(
+                                    color: isDark
+                                        ? Colors.grey[850]
+                                        : Colors.grey[300],
+                                    child: Icon(
+                                      Icons.image_not_supported_rounded,
+                                      color: isDark
+                                          ? Colors.white60
+                                          : Colors.black45,
+                                      size: 32,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  color: isDark
+                                      ? Colors.grey[850]
+                                      : Colors.grey[300],
+                                  child: Icon(
+                                    Icons.image_not_supported_rounded,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : Colors.black45,
+                                    size: 32,
+                                  ),
+                                ),
+                        ),
+                        // Sleek fullscreen indicator badge
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                                width: 0.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.fullscreen_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-      ),
 
         SizedBox(width: isDesktop ? 22 : (isTablet ? 18 : 16)),
 
