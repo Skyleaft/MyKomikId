@@ -2,10 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/widgets.dart';
 import '../config/app_config.dart';
 import '../models/manga_summary.dart';
 import '../models/paged_response.dart';
 import '../models/chapter_page.dart';
+import '../widgets/alert_banner.dart';
 import '../../features/discover/models/advanced_recommendation_request.dart';
 import '../../features/discover/models/query_paged_manga_request.dart';
 
@@ -23,6 +25,7 @@ class MangaApiService {
 
   List<String>? _cachedGenres;
   List<String>? _cachedTypes;
+  DateTime? _lastRateLimitAlertTime;
 
   String? get userId => _userId;
   String? get username => _username;
@@ -105,6 +108,10 @@ class MangaApiService {
             }
           }
 
+          if (e.response?.statusCode == 429) {
+            _handleRateLimit(e);
+          }
+
           if (e.response?.statusCode == 401 &&
               e.requestOptions.path != '/api/v1/auth/firebase') {
             try {
@@ -138,6 +145,44 @@ class MangaApiService {
         },
       ),
     );
+  }
+
+  void _handleRateLimit(DioException e) {
+    final now = DateTime.now();
+    if (_lastRateLimitAlertTime != null &&
+        now.difference(_lastRateLimitAlertTime!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastRateLimitAlertTime = now;
+
+    String message =
+        'Terlalu banyak permintaan (Rate limit). Mohon tunggu beberapa saat.';
+
+    final retryAfter = e.response?.headers.value('retry-after');
+    final responseData = e.response?.data;
+
+    if (responseData is Map<String, dynamic>) {
+      final msg = responseData['message'] ??
+          responseData['detail'] ??
+          responseData['error'] ??
+          responseData['title'];
+      if (msg != null && msg.toString().trim().isNotEmpty) {
+        message = msg.toString().trim();
+      }
+    } else if (responseData is String && responseData.trim().isNotEmpty) {
+      message = responseData.trim();
+    } else if (retryAfter != null && retryAfter.isNotEmpty) {
+      message =
+          'Rate limit tercapai. Silakan coba lagi dalam $retryAfter detik.';
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AlertBanner.showGlobal(
+        message,
+        type: AlertBannerType.warning,
+        duration: const Duration(milliseconds: 4000),
+      );
+    });
   }
 
   Future<void> loginWithFirebase(String idToken) async {
@@ -551,6 +596,14 @@ class MangaApiService {
       return [];
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> incrementChapterView(String mangaId, dynamic chapterId) async {
+    try {
+      await _dio.post('/api/v1/manga/$mangaId/chapters/$chapterId/view');
+    } catch (e) {
+      debugPrint('Failed to increment chapter view: $e');
     }
   }
 

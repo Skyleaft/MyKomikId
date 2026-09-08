@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:my_manga_reader/core/constants/app_colors.dart';
+import 'package:my_manga_reader/routes/app_pages.dart';
 
-enum AlertBannerType { success, error, info }
+enum AlertBannerType { success, error, info, warning }
 
 class AlertBanner {
   static OverlayEntry? _currentEntry;
 
   static void show(
-    BuildContext context,
+    BuildContext? context,
     String message, {
     AlertBannerType type = AlertBannerType.info,
     Duration duration = const Duration(milliseconds: 2500),
@@ -16,7 +17,10 @@ class AlertBanner {
     // Dismiss any existing banner instantly
     dismiss();
 
-    final overlay = Overlay.maybeOf(context);
+    final targetContext = context ?? AppRoutes.navigatorKey.currentContext;
+    if (targetContext == null) return;
+
+    final overlay = Overlay.maybeOf(targetContext);
     if (overlay == null) return;
 
     _currentEntry = OverlayEntry(
@@ -38,6 +42,14 @@ class AlertBanner {
       _currentEntry!.remove();
       _currentEntry = null;
     }
+  }
+
+  static void showGlobal(
+    String message, {
+    AlertBannerType type = AlertBannerType.warning,
+    Duration duration = const Duration(milliseconds: 3500),
+  }) {
+    show(null, message, type: type, duration: duration);
   }
 }
 
@@ -123,12 +135,14 @@ class _AlertBannerWidgetState extends State<AlertBannerWidget>
     final Color accentColor = switch (widget.type) {
       AlertBannerType.success => const Color(0xFF10B981), // Emerald
       AlertBannerType.error => const Color(0xFFEF4444), // Crimson
+      AlertBannerType.warning => const Color(0xFFF59E0B), // Amber
       AlertBannerType.info => AppColors.primary,
     };
 
     final IconData icon = switch (widget.type) {
       AlertBannerType.success => Icons.check_circle_rounded,
       AlertBannerType.error => Icons.error_outline_rounded,
+      AlertBannerType.warning => Icons.speed_rounded,
       AlertBannerType.info => Icons.info_outline_rounded,
     };
 
