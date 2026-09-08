@@ -463,6 +463,11 @@ class _ReaderScreenState extends State<ReaderScreen>
     setState(() => _isLoading = true);
 
     try {
+      _apiService.incrementChapterView(
+        widget.content.mangaId,
+        targetChapter.id,
+      );
+
       final pages = await _apiService.getChapterPages(
         widget.content.mangaId,
         targetChapter.id,

@@ -129,6 +129,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen>
     );
 
     try {
+      _apiService.incrementChapterView(widget.manga.id, chapter.id);
+
       final pages = await _apiService.getChapterPages(
         widget.manga.id,
         chapter.id,
